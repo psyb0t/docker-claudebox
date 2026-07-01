@@ -4,6 +4,81 @@ All notable changes to **claudebox** (formerly `docker-claude-code`).
 
 Format roughly follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versions before `v1.0.0` are pre-release; the rename to `claudebox` at `v1.0.0` is the only breaking change in the project's history.
 
+## [v1.14.1] — 2026-07-01
+
+### Changed
+- Bump the pinned Claude CLI to `2.1.197` (was `2.1.123`) via the Dockerfile `CLAUDE_VERSION` build arg.
+- `.gitignore`: ignore `.telemetry/`.
+
+## [v1.14.0] — 2026-05-08
+
+### Added
+- 24 unit tests + 3 integration tests for the OpenAI-compat wrapper.
+
+### Security
+- SSRF guard on the OpenAI-compat wrapper.
+
+### Fixed
+- `finish_reason` mapping, multi-turn workspace handling, and a `400` response on unsupported request fields in the OpenAI-compat wrapper.
+
+## [v1.13.1] — 2026-05-07
+
+### Fixed
+- Installer always pulls, removing the `SKIP_PULL`/`FORCE_PULL` pipeline-scoping footgun.
+
+### Changed
+- README/docs use the export-before-pipe pattern so env-var examples actually work.
+
+## [v1.13.0] — 2026-05-02
+
+### Added
+- Cron jobs automatically see paths to prior runs (`history_dir` + glob pattern), enabling trend/regression jobs without per-job wiring.
+
+### Changed
+- pyright clean over the Python entrypoints.
+
+## [v1.12.7] — 2026-05-01
+
+### Added
+- Full end-to-end Telegram test suite via telethon-plus.
+
+### Fixed
+- cron+telegram `HOME` propagation (the bot read `/root/.claude/` and missed every cron-reply context).
+- Iterative placeholder restore for nested stashes.
+
+## [v1.12.6] — 2026-05-01
+
+### Fixed
+- Telegram placeholder leak: NUL-byte delimiters were stripped in transport, leaking `CB0`, `CB1`, … as visible text. Switched to Unicode PUA delimiters.
+
+## [v1.12.5] — 2026-04-30
+
+### Changed
+- markdown → Telegram-HTML converter; formatting hint flipped to markdown. (Re-tag of v1.12.4 — the v1.12.4 Docker tag was poisoned by an earlier incomplete commit.)
+
+## [v1.12.4] — 2026-04-30
+
+### Added
+- markdown → Telegram-HTML converter + canonical formatting hint.
+
+## [v1.12.3] — 2026-04-30
+
+### Added
+- Telegram-aware cron output.
+
+### Fixed
+- Raw HTML fallback.
+
+## [v1.12.1] — 2026-04-30
+
+### Fixed
+- Permission-error reply in cron+telegram mode (path resolution + `Path.exists()` wrapped in try/except).
+
+## [v1.12.0] — 2026-04-30
+
+### Added
+- Cron `effort` field (root-level default + per-job override).
+
 ## [v1.11.0] — 2026-04-30
 
 ### Added
