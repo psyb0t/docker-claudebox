@@ -61,14 +61,18 @@ RUN curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/HEAD/ins
     rm -rf "${GOPATH}" /root/.cache/go-build
 
 # Terraform via HashiCorp apt.
-RUN curl -fsSL https://apt.releases.hashicorp.com/gpg | gpg --dearmor -o /etc/apt/keyrings/hashicorp.gpg && \
+# gpg needs --batch --no-tty --yes because BuildKit has no /dev/tty and old
+# gpg tries to open it for its (unused) pinentry prompt on --dearmor.
+RUN curl -fsSL https://apt.releases.hashicorp.com/gpg \
+        | gpg --batch --no-tty --yes --dearmor -o /etc/apt/keyrings/hashicorp.gpg && \
     echo "deb [signed-by=/etc/apt/keyrings/hashicorp.gpg] https://apt.releases.hashicorp.com $(lsb_release -cs) main" \
         > /etc/apt/sources.list.d/hashicorp.list && \
     apt-get update && apt-get install -y --no-install-recommends terraform && \
     rm -rf /var/lib/apt/lists/*
 
 # kubectl via k8s apt.
-RUN curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.31/deb/Release.key | gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg && \
+RUN curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.31/deb/Release.key \
+        | gpg --batch --no-tty --yes --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg && \
     echo "deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.31/deb/ /" \
         > /etc/apt/sources.list.d/kubernetes.list && \
     apt-get update && apt-get install -y --no-install-recommends kubectl && \

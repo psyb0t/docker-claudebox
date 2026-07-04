@@ -4,6 +4,14 @@ All notable changes to **claudebox** (formerly `docker-claude-code`).
 
 Format roughly follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [v2.0.2] — 2026-07-04 — Fix Dockerfile.full BuildKit gpg failure
+
+The v2.0.1 CI push exposed a BuildKit-only failure: `gpg --dearmor` in the terraform + kubectl keyring steps of `Dockerfile.full` failed with `cannot open '/dev/tty': No such device or address`. gpg tries to open the (non-existent) tty for its unused pinentry prompt when running under BuildKit. Local `docker build` didn't hit this because it was falling back to the classic builder.
+
+### Fixed
+
+- **Dockerfile.full**: added `--batch --no-tty --yes` to both `gpg --dearmor` invocations (terraform + kubectl apt keyrings) so gpg doesn't try to open the tty. Verified with a local `docker build -f Dockerfile.full` — both keyring steps complete cleanly.
+
 ## [v2.0.1] — 2026-07-04 — CI fix + doc sync + uv/lint hardening
 
 Follow-up to v2.0.0. Fixes the CI pipeline broken by the two-Dockerfile split, brings every user-facing doc in sync with the v2 env-var / path / variant naming, and formalizes the Python dev toolchain around `uv` + `ruff` + `pyright` with a committed lockfile. Runtime behavior is identical to v2.0.0 — no adapter code change.
