@@ -13,7 +13,11 @@ jobs:
       # :latest) and `Dockerfile.full` (toolchain-loaded, ships as :latest-full).
       # Pre-v2 the workflow used `target: full/minimal` on a multi-stage single
       # Dockerfile — no longer valid.
-      build_targets: '[{"file":"Dockerfile","tag_suffix":""},{"file":"Dockerfile.full","tag_suffix":"-full"}]'
+      # Dockerfile.full does `FROM psyb0t/claudebox:latest`, so it MUST build
+      # after the base is pushed — stage:1 serializes it behind the stage-0
+      # base build. Without this the -full image inherits the previously
+      # published base (missing this cycle's env/config changes).
+      build_targets: '[{"file":"Dockerfile","tag_suffix":""},{"file":"Dockerfile.full","tag_suffix":"-full","stage":1}]'
 
     secrets:
       dockerhub_username: ${{ secrets.DOCKERHUB_USERNAME }}

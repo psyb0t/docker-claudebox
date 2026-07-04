@@ -4,6 +4,14 @@ All notable changes to **claudebox** (formerly `docker-claude-code`).
 
 Format roughly follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [v2.0.4] — 2026-07-04 — Build latest-full after the base so it inherits base env
+
+The v2.0.3 `CLAUDE_CONFIG_DIR` fix landed only in `Dockerfile` (the `:latest` base). `Dockerfile.full` does `FROM psyb0t/claudebox:latest` and inherits that env — but CI built both images in parallel from the same commit, so `latest-full` layered on the *previously published* base (v2.0.0) and never picked up the fix. Running `claudebox` with `CLAUDEBOX_FULL=1` therefore still re-prompted for theme + login even after v2.0.3 shipped.
+
+### Fixed
+
+- **`.github/workflows/pipeline.yml`**: marked the `Dockerfile.full` build target `"stage": 1` so it builds only after the stage-0 base (`Dockerfile` → `:latest`) has built **and pushed**. `latest-full` now inherits the current base — including `CLAUDE_CONFIG_DIR` and any future base env/config changes — instead of the last published one. Relies on the ordered-build (`stage`) support in the reusable docker-image workflow.
+
 ## [v2.0.3] — 2026-07-04 — Restore CLAUDE_CONFIG_DIR so login + theme persist
 
 Regression from v2.0.0. Running `claudebox` in a fresh directory prompted for theme selection and login every time, instead of opening already logged-in. Claude Code keeps its onboarding state — the selected theme, the onboarding-complete flag, and the `oauthAccount` — in `.claude.json`. Pre-v2 the entrypoint set `CLAUDE_CONFIG_DIR=/home/claude/.claude` (the bind-mounted config dir) so `.claude.json` lived on the mount and persisted across container recreates. The v2.0.0 aicodebox rebase moved the interactive init into `claudebox/init.d/10-claude-json-patch.sh`, which hardcoded `${HOME}/.claude.json` (an unmounted path), and nothing re-set `CLAUDE_CONFIG_DIR`. So every run wrote config to a throwaway path and re-onboarded. `CLAUDE_CONFIG_DIR` is Claude-Code-specific, so only claudebox can set it — the aicodebox base is agent-agnostic.
