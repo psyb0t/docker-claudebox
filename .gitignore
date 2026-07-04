@@ -15,3 +15,7 @@ base/
 desc.txt
 pyrightconfig.json
 .telemetry/
+.prompts/
+.testing/
+tests/.smoke-fixture/
+tests/.smoke-ext-fixture/

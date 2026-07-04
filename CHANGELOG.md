@@ -2,7 +2,43 @@
 
 All notable changes to **claudebox** (formerly `docker-claude-code`).
 
-Format roughly follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versions before `v1.0.0` are pre-release; the rename to `claudebox` at `v1.0.0` is the only breaking change in the project's history.
+Format roughly follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
+
+## [v2.0.0] — 2026-07-04 — REBASED ON `psyb0t/aicodebox`
+
+**Full architectural rebase.** The image is now a thin child of `psyb0t/aicodebox` (same pattern as `psyb0t/pibox`). Every mode (API, Telegram, Cron, MCP) is inherited from the base — future base fixes reach claudebox for free.
+
+### Migration for existing users
+
+- **Endpoint shape**: `POST /run/cancel?runId=…` → `DELETE /run/{run_id}`. `GET /health` → `GET /healthz`. Update client scripts.
+- **MCP tool rename**: `claude_run` → `run_prompt`. Update MCP client configs.
+- **Env vars**: `CLAUDEBOX_MODE_API` → `CLAUDEBOX_API_MODE`, `CLAUDEBOX_MODE_API_TOKEN` → `CLAUDEBOX_API_MODE_TOKEN`, `CLAUDEBOX_MODE_CRON_FILE` → `CLAUDEBOX_CRON_MODE_FILE`, etc. Entrypoint aliases the legacy names forward, so existing configs keep working; the canonical names going forward are the new ones. See `.env.example` for the full list.
+- **Paths**: workspace root `/workspaces` (plural) → `/workspace` (singular). Home dir `/home/claude/.claude` → `/home/aicode/.aicodebox`. The entrypoint installs compat symlinks so existing bind mounts still resolve.
+- **Init.d dir**: `~/.claude/init.d/*.sh` → `/aicodebox-init.d/*.sh`. Move custom scripts.
+- **Cron schedules**: 6-field croniter only. Pre-v2 configs using 5-field entries need `0 ` prepended.
+- **Removed**: Telegram `/bash <cmd>` command (reimplement client-side if needed); `--max-budget-usd` support pending an adapter-level knob.
+- **Full variant**: `make build-full` now layers on top of the minimal image (was a multi-stage build target).
+
+### Added
+
+- `claudebox/adapter.py` — `ClaudecodeAdapter` implementing the aicodebox `AgentAdapter` contract. Ports the pre-v2 `jsonpipe.py` stream-json reassembly (turns + tool_result truncation @ 2000 chars + sha256) into `parse_output` / `parse_events` / `parse_stream_event`.
+- `.always-skills` `SKILL.md` injection every call — the adapter scans `~/.claude/.always-skills` on every invocation and appends every file's contents (with `[Skill file: <path>]` headers) to `--append-system-prompt`. Matches the pre-v2 `entrypoint.sh` behavior.
+- `--permission-mode bypassPermissions` in every default argv (modern equivalent of `--dangerously-skip-permissions`). Callers override via `RunRequest.extra_args`.
+- Init.d scripts: `10-claude-json-patch.sh` (trust dialog + autoUpdater off), `20-workspace-claude-md.sh` (seed workspace CLAUDE.md from image template), `30-always-skills-seed.sh` (ensure the skills dir + system-hint file exist).
+- `claudebox-entrypoint.sh` — aliases `CLAUDEBOX_*` and legacy `CLAUDE_MODE_*` env vars to their `AICODEBOX_*` equivalents, installs compat symlinks, then execs the base entrypoint.
+- 29 pytest unit tests for the adapter (`claudebox/tests/test_adapter.py`).
+- `tests/test_smoke.sh` — 9 containerized smoke tests using a mock claude binary: /healthz, /openai/v1/models, init.d markers, compat symlinks, env aliasing, `.always-skills` injection, `extra_args`, `--permission-mode` default.
+- `.env.example` — canonical `CLAUDEBOX_*` env template.
+- `Dockerfile.full` — toolchain layer (Go, kubectl, terraform, helm, pyenv, Node globals, DB clients, editors) FROM the minimal claudebox image.
+
+### Removed
+
+- `api_server.py`, `telegram_bot.py`, `telegram_utils.py`, `cron.py`, `jsonpipe.py`, `entrypoint.sh` — all replaced by aicodebox's mode dispatchers + the adapter.
+- Pre-v2 monolithic `Dockerfile` with `AS base` / `AS minimal` / `AS full` stages — split into `Dockerfile` (child of aicodebox) + `Dockerfile.full` (layered variant).
+
+### Retained
+
+- `wrapper.sh` + `install.sh` (host-side CLI + installer) — updated for the new env-var namespace and `/workspace` path. Every wrapper subcommand (`setup-token`, `stop`, `clear-session`, `--update`, `--no-continue`, arg whitelist) still works.
 
 ## [v1.14.1] — 2026-07-01
 

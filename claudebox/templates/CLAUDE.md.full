@@ -1,0 +1,46 @@
+# Available Tools in This Container
+
+You are running in a Docker container with full sudo access.
+
+## Languages & Runtimes
+- Go 1.26 — /usr/local/go/bin/go
+- Python 3.12 (system) + uv, pyenv-managed Python 3.12.11 also available
+- Node.js 22 LTS with npm
+
+## Go Tools
+- golangci-lint, gopls, dlv, staticcheck, gomodifytags, impl, gotests, gofumpt
+
+## Python Tools
+- flake8, black, isort, autoflake, pyright, mypy, vulture, pytest, pytest-cov, pipenv, poetry
+
+## Node.js Tools
+- eslint, prettier, typescript, ts-node, yarn, pnpm, nodemon, pm2
+- create-react-app, @vue/cli, @angular/cli, express-generator, newman, http-server, serve, lighthouse, @storybook/cli
+
+## Infrastructure & DevOps
+- terraform, kubectl, helm, docker + compose + buildx, gh
+
+## Databases & Data
+- sqlite3, postgresql-client (psql), mysql-client, redis-tools (redis-cli)
+
+## Shell & System Tools
+- git, curl, wget, httpie, jq
+- tree, fd-find (fdfind), ripgrep (rg), bat, eza, silversearcher-ag (ag)
+- shellcheck, shfmt, tmux, htop
+
+## C/C++ Tools
+- gcc, g++, make, cmake, clang-format, valgrind, gdb, strace, ltrace
+
+## Notes
+- Passwordless sudo access
+- Docker socket may be mounted for docker-in-docker. The workspace path inside
+  the container matches the host path, so `docker run -v "$PWD/data:/data"` from
+  within resolves correctly on the host.
+- pyenv at /usr/local/pyenv, Go tools at /usr/local/bin
+- `~/.claude/bin` is in PATH — drop custom scripts there.
+- `/aicodebox-init.d/*.sh` scripts fire once on first container create.
+
+## IMPORTANT
+If you need to overwrite this CLAUDE.md, first save the container environment
+notes above to `~/.claude/CONTAINER.md` so you don't lose the container-specific
+context. This file is regenerated on first container create only.

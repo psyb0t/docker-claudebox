@@ -32,9 +32,13 @@ else
 	ssh-keygen -t ed25519 -C "claude@claude.ai" -f "$HOME/.ssh/claudebox/id_ed25519" -N ""
 fi
 
+# v2 flipped the variants: `latest` IS the minimal image; `latest-full` layers
+# the toolchain. Pre-v2 users setting CLAUDEBOX_MINIMAL=1 already get the right
+# image (latest), so the flag is a no-op. To opt IN to the full toolchain,
+# set CLAUDEBOX_FULL=1.
 CLAUDE_TAG="latest"
-_minimal="${CLAUDEBOX_MINIMAL:-${CLAUDE_MINIMAL:-}}"
-[ -n "$_minimal" ] && CLAUDE_TAG="latest-minimal"
+_full="${CLAUDEBOX_FULL:-${CLAUDE_FULL:-}}"
+[ -n "$_full" ] && CLAUDE_TAG="latest-full"
 echo "📦 Pulling Claude Code image (tag: $CLAUDE_TAG)..."
 docker pull "psyb0t/claudebox:$CLAUDE_TAG"
 

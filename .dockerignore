@@ -1,9 +1,21 @@
-tests/
-.research_files/
 .git/
 .github/
+.research_files/
+.prompts/
+.testing/
 base/
 *.md
 desc.txt
 git-update.sh
 docker-compose.dev.yaml
+# stale pre-v2 files (removed but the dockerignore hedges in case a stray
+# copy still exists in the working tree).
+api_server.py
+telegram_bot.py
+telegram_utils.py
+cron.py
+jsonpipe.py
+entrypoint.sh
+wrapper.sh
+install.sh
+.telemetry/

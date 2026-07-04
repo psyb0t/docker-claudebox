@@ -38,8 +38,8 @@ DOCKER_ARGS=(
     -e CLAUDEBOX_GIT_EMAIL="$CLAUDE_GIT_EMAIL"
     -e CLAUDEBOX_WORKSPACE="$PWD"
     -e CLAUDEBOX_CONTAINER_NAME="$container_name"
-    -v "$CLAUDE_SSH:/home/claude/.ssh"
-    -v "$CLAUDE_DIR:/home/claude/.claude"
+    -v "$CLAUDE_SSH:/home/aicode/.ssh"
+    -v "$CLAUDE_DIR:/home/aicode/.claude"
     -v "$PWD:$PWD"
     -v /var/run/docker.sock:/var/run/docker.sock
 )
@@ -165,10 +165,11 @@ if [ -n "$_mode_cron" ]; then
     exit 0
 fi
 
-# passthrough commands — run in throwaway container, bypass entrypoint
+# passthrough commands — v2 routes through the claudebox-entrypoint's
+# passthrough fallback (`exec claude "$@"`). No need to override --entrypoint.
 case "${1:-}" in
     -v|--version|doctor|auth|mcp)
-        docker run --rm --entrypoint claude "${DOCKER_ARGS[@]}" $CLAUDE_IMAGE "$@"
+        docker run --rm "${DOCKER_ARGS[@]}" $CLAUDE_IMAGE "$@"
         exit 0
         ;;
 esac
@@ -283,31 +284,28 @@ if [ $# -gt 0 ]; then
         # Programmatic mode — own container, no TTY
         prog_name="${container_name}_prog"
         dbg "prog container: $prog_name"
+        # v2 dropped the client-side jsonpipe.py pipe. Point users at API mode
+        # for structured output — the /run endpoint returns text + events +
+        # usage + session_id assembled by the adapter server-side.
+        if [ -n "$PIPE_MODE" ] && [ "$PIPE_MODE" = "json-verbose" ]; then
+            echo "❌ --output-format json-verbose is v1-only. In v2, use API mode:" >&2
+            echo "   docker run -e CLAUDEBOX_API_MODE=1 -p 8080:8080 $CLAUDE_IMAGE" >&2
+            echo "   curl -X POST http://localhost:8080/run -d '{\"prompt\":\"...\",\"jsonSchema\":{...}}'" >&2
+            exit 2
+        fi
         prog_rc=0
         if ! docker ps -a --format '{{.Names}}' | grep -q "^${prog_name}$"; then
             dbg "prog: container does not exist, creating with docker run"
-            if [ -n "$PIPE_MODE" ]; then
-                docker run --name "$prog_name" "${DOCKER_ARGS[@]}" -e CLAUDEBOX_CONTAINER_NAME="$prog_name" $CLAUDE_IMAGE "${PASS_ARGS[@]}" \
-                    | docker run --rm -i --entrypoint python3 $CLAUDE_IMAGE /home/claude/jsonpipe.py "$PIPE_MODE"
-                prog_rc=${PIPESTATUS[0]}
-            else
-                docker run --name "$prog_name" "${DOCKER_ARGS[@]}" -e CLAUDEBOX_CONTAINER_NAME="$prog_name" $CLAUDE_IMAGE "${PASS_ARGS[@]}"
-                prog_rc=$?
-            fi
+            docker run --name "$prog_name" "${DOCKER_ARGS[@]}" -e CLAUDEBOX_CONTAINER_NAME="$prog_name" $CLAUDE_IMAGE "${PASS_ARGS[@]}"
+            prog_rc=$?
             dbg "prog: docker run exited with $prog_rc"
         else
             dbg "prog: container exists, writing args file and starting"
             trap 'rm -f "$CLAUDE_DIR/.${prog_name}-args"' EXIT
             printf '%q ' "${PASS_ARGS[@]}" > "$CLAUDE_DIR/.${prog_name}-args"
             dbg "prog: docker start -a $prog_name"
-            if [ -n "$PIPE_MODE" ]; then
-                docker start -a "$prog_name" \
-                    | docker run --rm -i --entrypoint python3 $CLAUDE_IMAGE /home/claude/jsonpipe.py "$PIPE_MODE"
-                prog_rc=${PIPESTATUS[0]}
-            else
-                docker start -a "$prog_name"
-                prog_rc=$?
-            fi
+            docker start -a "$prog_name"
+            prog_rc=$?
             dbg "prog: docker start exited with $prog_rc"
         fi
         exit "$prog_rc"

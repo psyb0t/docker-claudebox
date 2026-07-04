@@ -3,7 +3,16 @@
 [![Docker Hub](https://img.shields.io/docker/pulls/psyb0t/claudebox?style=flat-square)](https://hub.docker.com/r/psyb0t/claudebox)
 [![License: WTFPL](https://img.shields.io/badge/License-WTFPL-brightgreen.svg?style=flat-square)](http://www.wtfpl.net/)
 
-A runtime harness for [Claude Code](https://claude.com/product/claude-code) — the agentic coding CLI from Anthropic — running in a fully isolated Docker container with every dev tool pre-installed, passwordless sudo, docker-in-docker support, and `--dangerously-skip-permissions` enabled by default.
+A runtime harness for [Claude Code](https://claude.com/product/claude-code) — the agentic coding CLI from Anthropic — running in a fully isolated Docker container with every dev tool pre-installed, passwordless sudo, docker-in-docker support, and `--permission-mode bypassPermissions` enabled by default.
+
+> **v2.0.0 — rebased on `psyb0t/aicodebox`.** claudebox is now a thin child image of the shared aicodebox base (same pattern as `psyb0t/pibox`). Every mode surface (API / Telegram / Cron / MCP) is inherited from the base and stays in lockstep with future base fixes. See [`CHANGELOG.md`](CHANGELOG.md) for the full migration guide (endpoint shape changes, env-var namespace, path renames — all mitigated by aliases + symlinks so existing configs keep working).
+
+**Runtime hardening (recommended `docker run` flags):**
+- `--cap-drop=ALL --cap-add=NET_BIND_SERVICE` — drop every Linux capability, add back only bind-below-1024 if you actually need it.
+- `--security-opt no-new-privileges:true` — block setuid privilege escalation inside the container.
+- `--memory=2g --cpus=2 --pids-limit=512` — cap runtime resource use so a runaway process can't starve the host.
+- `--read-only --tmpfs /tmp:rw,noexec,nosuid` (only if you don't use `/workspace` for writes — otherwise skip).
+The container drops from root to `aicode` (UID 1000) at boot via `setpriv` in the base entrypoint, so the process running your code is never root even without `--user`.
 
 claudebox wraps Claude Code with several distinct interfaces:
 

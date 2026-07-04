@@ -1,0 +1,29 @@
+# Available Tools in This Container
+
+You are running in a Docker container with full sudo access.
+
+## Pre-installed
+- Node.js 22 LTS with npm
+- Python 3.12 (system) and uv
+- Docker CE with Compose + buildx
+- claude CLI (native install, autoupdate disabled)
+- git, curl, wget, jq
+
+## Minimal Image
+This is the minimal variant — only basic tools are pre-installed.
+Install whatever you need with `sudo apt-get install ...`, `npm install -g ...`,
+`uv pip install --system ...`, etc.
+
+## Notes
+- Passwordless sudo access
+- Docker socket may be mounted for docker-in-docker. The workspace path inside
+  the container matches the host path, so `docker run -v "$PWD/data:/data"` from
+  within resolves correctly on the host.
+- `~/.claude/bin` is in PATH — drop custom scripts there.
+- `/aicodebox-init.d/*.sh` scripts fire once on first container create.
+- Extra host directories may be mounted via `CLAUDEBOX_MOUNT_*` env vars.
+
+## IMPORTANT
+If you need to overwrite this CLAUDE.md, first save the container environment
+notes above to `~/.claude/CONTAINER.md` so you don't lose the container-specific
+context. This file is regenerated on first container create only.

@@ -1,186 +1,45 @@
-FROM ubuntu:24.04 AS base
+# claudebox — Claude Code on the aicodebox base.
+#
+# Build (base lives in ../docker-aicodebox):
+#   docker build -t aicodebox-base:local ../docker-aicodebox/
+#   docker build --build-arg BASE_IMAGE=aicodebox-base:local -t claudebox:local .
+#
+# Minimal variant. The toolchain-loaded `full` variant lives in Dockerfile.full
+# and layers on top of the image this file produces.
+#
+# NOTE on hardening: the base sets `aicode` (UID 1000) as its runtime user via
+# `setpriv` inside `aicodebox-entrypoint`. This Dockerfile switches to root
+# only for the install steps below; runtime drops back to aicode automatically.
+ARG BASE_IMAGE=psyb0t/aicodebox:latest
+FROM ${BASE_IMAGE}
 
-ENV DEBIAN_FRONTEND=noninteractive
-
-# faster apt mirror — Cloudflare
-RUN sed -i 's|http://archive.ubuntu.com|http://cloudflaremirrors.com|g; s|http://security.ubuntu.com|http://cloudflaremirrors.com|g' /etc/apt/sources.list.d/ubuntu.sources || true
-
-# core essentials
-RUN apt-get update && apt-get install -y \
-    git curl wget gnupg ca-certificates sudo \
-    software-properties-common lsb-release jq \
-    && rm -rf /var/lib/apt/lists/*
-
-# node.js (needed for claude CLI)
-RUN curl -fsSL https://deb.nodesource.com/setup_lts.x | bash - && \
-    apt-get install -y nodejs && rm -rf /var/lib/apt/lists/*
-
-# python3 + api server deps (needed for CLAUDE_MODE_API)
-RUN apt-get update && apt-get install -y \
-    python3 python3-pip python3-venv \
-    && rm -rf /var/lib/apt/lists/* \
-    && pip3 install --no-cache-dir --break-system-packages --ignore-installed fastapi uvicorn python-telegram-bot pyyaml mcp croniter
-
-# docker (needed for docker-in-docker)
-RUN curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg && \
-    echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null && \
-    apt-get update && \
-    apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin && \
-    rm -rf /var/lib/apt/lists/*
-
-# create 'claude' user with sudo and docker access (remove ubuntu user that ships at uid 1000)
-RUN userdel -r ubuntu 2>/dev/null || true && \
-    useradd -u 1000 -ms /bin/bash claude && \
-    usermod -aG sudo claude && \
-    usermod -aG docker claude && \
-    mkdir -p /home/claude/.ssh && \
-    ssh-keyscan github.com gitlab.com bitbucket.org >> /home/claude/.ssh/known_hosts 2>/dev/null && \
-    chown -R claude:claude /home/claude
-
-# passwordless sudo
-COPY <<EOF /etc/sudoers.d/claude-nopass
-claude ALL=(ALL) NOPASSWD:ALL
-EOF
-RUN chmod 440 /etc/sudoers.d/claude-nopass
-
-# claude CLI native install (can self-update)
-USER claude
-ARG CLAUDE_VERSION=2.1.197
-RUN curl -fsSL https://claude.ai/install.sh | bash -s -- $CLAUDE_VERSION && \
-    echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.profile && \
-    ~/.local/bin/claude install --yes 2>/dev/null || true
-ENV PATH="/home/claude/.local/bin:$PATH"
-ENV DISABLE_AUTOUPDATER=1
-
-# back to root for entrypoint
 USER root
 
-# copy default claude config to /claude for entrypoint to use as template
-RUN mkdir -p /claude && \
-    cp /home/claude/.claude.json /claude/.claude.json
+# claude-code CLI — pinned npm global install. Runs as npm root so it lands on
+# a shared PATH for both root (init.d) and the aicode user (mode dispatchers).
+ARG CLAUDE_VERSION=2.1.197
+RUN npm install -g --no-audit --no-fund @anthropic-ai/claude-code@${CLAUDE_VERSION}
 
-# workspace
-WORKDIR /workspace
+# claudebox python package (ClaudecodeAdapter). aicodebox already exists in the
+# base's system Python, so --no-deps skips redundant resolution.
+COPY claudebox /opt/claudebox
+RUN uv pip install --system --break-system-packages --no-deps /opt/claudebox
 
-# entrypoint + api server
-COPY entrypoint.sh /home/claude/entrypoint.sh
-COPY api_server.py /home/claude/api_server.py
-COPY telegram_bot.py /home/claude/telegram_bot.py
-COPY telegram_utils.py /home/claude/telegram_utils.py
-COPY cron.py /home/claude/cron.py
-COPY jsonpipe.py /home/claude/jsonpipe.py
-RUN chmod +x /home/claude/entrypoint.sh
+# First-run init scripts — base runs each once, marks completion at
+# ~/.aicodebox/.init-done, then skips on subsequent boots.
+COPY claudebox/init.d/ /aicodebox-init.d/
+RUN chmod +x /aicodebox-init.d/*.sh
 
-ENTRYPOINT ["/home/claude/entrypoint.sh"]
+# Adapter selection — the modes resolve this at runtime.
+ENV AICODEBOX_ADAPTER=claudebox.adapter:ClaudecodeAdapter \
+    AICODEBOX_AGENT_BINARY=claude \
+    DISABLE_AUTOUPDATER=1 \
+    CLAUDEBOX_IMAGE_VARIANT=minimal
 
-# ── minimal ────────────────────────────────────────────────────────────────────
-FROM base AS minimal
-ENV CLAUDEBOX_IMAGE_VARIANT=minimal
+# claudebox-branded entrypoint: aliases CLAUDEBOX_* / legacy CLAUDE_MODE_* env
+# vars to their AICODEBOX_* equivalents, sets up compat symlinks, then exec's
+# the base entrypoint.
+COPY claudebox-entrypoint.sh /usr/local/bin/claudebox-entrypoint
+RUN chmod +x /usr/local/bin/claudebox-entrypoint
 
-# ── full ───────────────────────────────────────────────────────────────────────
-FROM base AS full
-ENV CLAUDEBOX_IMAGE_VARIANT=full
-
-# build tools
-RUN apt-get update && apt-get install -y \
-    build-essential make cmake pkg-config libssl-dev \
-    && rm -rf /var/lib/apt/lists/*
-
-# python base
-RUN apt-get update && apt-get install -y \
-    python3 python3-pip python-is-python3 \
-    && rm -rf /var/lib/apt/lists/*
-
-# editors and terminal
-RUN apt-get update && apt-get install -y \
-    nano vim htop tmux \
-    && rm -rf /var/lib/apt/lists/*
-
-# archive tools
-RUN apt-get update && apt-get install -y \
-    unzip zip tar \
-    && rm -rf /var/lib/apt/lists/*
-
-# networking tools
-RUN apt-get update && apt-get install -y \
-    net-tools iputils-ping dnsutils \
-    && rm -rf /var/lib/apt/lists/*
-
-# cli tools
-RUN apt-get update && apt-get install -y \
-    tree fd-find ripgrep bat eza silversearcher-ag \
-    shellcheck shfmt httpie gh \
-    && rm -rf /var/lib/apt/lists/*
-
-# c/c++ tools
-RUN apt-get update && apt-get install -y \
-    clang-format valgrind gdb strace ltrace \
-    && rm -rf /var/lib/apt/lists/*
-
-# database clients
-RUN apt-get update && apt-get install -y \
-    sqlite3 postgresql-client default-mysql-client redis-tools \
-    && rm -rf /var/lib/apt/lists/*
-
-# pyenv dependencies
-RUN apt-get update && apt-get install -y \
-    libssl-dev zlib1g-dev libbz2-dev libreadline-dev libsqlite3-dev \
-    libncursesw5-dev xz-utils tk-dev libxml2-dev libxmlsec1-dev libffi-dev liblzma-dev \
-    && rm -rf /var/lib/apt/lists/*
-
-# go 1.26.1
-ARG TARGETARCH
-RUN curl -fsSL https://go.dev/dl/go1.26.1.linux-${TARGETARCH}.tar.gz | tar -xzC /usr/local && \
-    echo 'export PATH="$PATH:/usr/local/go/bin"' > /etc/profile.d/go.sh
-ENV PATH=$PATH:/usr/local/go/bin
-
-# go tools
-RUN curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/HEAD/install.sh | sh -s -- -b /usr/local/bin latest
-RUN CGO_ENABLED=0 go install golang.org/x/tools/gopls@latest && mv /root/go/bin/gopls /usr/local/bin/
-RUN CGO_ENABLED=0 go install github.com/go-delve/delve/cmd/dlv@latest && mv /root/go/bin/dlv /usr/local/bin/
-RUN CGO_ENABLED=0 go install honnef.co/go/tools/cmd/staticcheck@latest && mv /root/go/bin/staticcheck /usr/local/bin/
-RUN CGO_ENABLED=0 go install github.com/fatih/gomodifytags@latest && mv /root/go/bin/gomodifytags /usr/local/bin/
-RUN CGO_ENABLED=0 go install github.com/josharian/impl@latest && mv /root/go/bin/impl /usr/local/bin/
-RUN CGO_ENABLED=0 go install github.com/cweill/gotests/gotests@latest && mv /root/go/bin/gotests /usr/local/bin/
-RUN CGO_ENABLED=0 go install mvdan.cc/gofumpt@latest && mv /root/go/bin/gofumpt /usr/local/bin/
-
-# terraform
-RUN curl -fsSL https://apt.releases.hashicorp.com/gpg | gpg --dearmor -o /etc/apt/keyrings/hashicorp.gpg && \
-    echo "deb [signed-by=/etc/apt/keyrings/hashicorp.gpg] https://apt.releases.hashicorp.com $(lsb_release -cs) main" | tee /etc/apt/sources.list.d/hashicorp.list && \
-    apt-get update && apt-get install -y terraform && rm -rf /var/lib/apt/lists/*
-
-# kubectl
-RUN curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.31/deb/Release.key | gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg && \
-    echo "deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.31/deb/ /" | tee /etc/apt/sources.list.d/kubernetes.list && \
-    apt-get update && apt-get install -y kubectl && rm -rf /var/lib/apt/lists/*
-
-# helm
-RUN curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
-
-# node.js tools (global)
-RUN npm install -g eslint prettier typescript ts-node @typescript-eslint/parser @typescript-eslint/eslint-plugin
-RUN npm install -g nodemon pm2 yarn pnpm
-RUN npm install -g create-react-app @vue/cli @angular/cli express-generator
-RUN npm install -g newman http-server serve lighthouse @storybook/cli
-
-# pyenv + python 3.12.11 (system-wide)
-ENV PYENV_ROOT="/usr/local/pyenv"
-ENV PATH="$PYENV_ROOT/shims:$PYENV_ROOT/bin:$PATH"
-RUN curl https://pyenv.run | bash && \
-    eval "$(pyenv init -)" && \
-    pyenv install 3.12.11 && \
-    pyenv global 3.12.11 && \
-    echo 'export PYENV_ROOT="/usr/local/pyenv"' > /etc/profile.d/pyenv.sh && \
-    echo 'export PATH="$PYENV_ROOT/shims:$PYENV_ROOT/bin:$PATH"' >> /etc/profile.d/pyenv.sh
-
-# python linters/formatters
-RUN pip install --no-cache-dir flake8 black isort autoflake pyright mypy vulture
-
-# python testing
-RUN pip install --no-cache-dir pytest pytest-cov
-
-# python libs
-RUN pip install --no-cache-dir requests beautifulsoup4 lxml pyyaml toml
-
-# python package managers
-RUN pip install --no-cache-dir pipenv poetry
+ENTRYPOINT ["/usr/local/bin/claudebox-entrypoint"]
