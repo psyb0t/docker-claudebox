@@ -497,7 +497,14 @@ class ClaudecodeAdapter(AgentAdapter):
 
     def auth_paths(self) -> list[str]:
         home = os.environ.get("HOME", "/home/aicode")
+        # Claude Code keeps .claude.json under CLAUDE_CONFIG_DIR when that's
+        # set (the image sets it to the bind-mounted ~/.claude so config +
+        # login persist); otherwise it's the $HOME/.claude.json default.
+        config_dir = os.environ.get("CLAUDE_CONFIG_DIR")
+        claude_json = (
+            f"{config_dir}/.claude.json" if config_dir else f"{home}/.claude.json"
+        )
         return [
             f"{home}/.claude/.credentials.json",
-            f"{home}/.claude.json",
+            claude_json,
         ]

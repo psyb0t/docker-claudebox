@@ -7,7 +7,12 @@
 # Idempotent — safe to re-run.
 set -euo pipefail
 
-CLAUDE_JSON="${HOME}/.claude.json"
+# Patch the .claude.json that Claude Code actually reads. With
+# CLAUDE_CONFIG_DIR set (to the bind-mounted ~/.claude), Claude Code keeps
+# .claude.json there so it PERSISTS across container recreates — theme,
+# onboarding + oauthAccount survive, so a fresh container opens logged-in.
+# Fall back to $HOME when the var is unset (agent-agnostic / older setups).
+CLAUDE_JSON="${CLAUDE_CONFIG_DIR:-$HOME}/.claude.json"
 SEED_JSON="/claude/.claude.json"
 WORKSPACE_DIR="${AICODEBOX_WORKSPACE:-${AICODE_WORKSPACE:-/workspace}}"
 

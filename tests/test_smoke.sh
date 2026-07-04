@@ -119,7 +119,7 @@ docker exec "${CONTAINER_PREFIX}-api" test -f /home/aicode/.aicodebox/.init-done
 
 patched=$(docker exec "${CONTAINER_PREFIX}-api" jq -r '
     .installMethod + "|" + (.autoUpdates|tostring) + "|" + (.autoUpdatesProtectedForNative|tostring)
-' /home/aicode/.claude.json)
+' /home/aicode/.claude/.claude.json)
 if [ "$patched" != "native|false|true" ]; then
     fail "expected patched keys native|false|true, got: $patched"
 fi

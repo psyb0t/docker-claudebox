@@ -413,9 +413,24 @@ def test_auth_paths_uses_home(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setenv("HOME", "/home/alt")
+    monkeypatch.delenv("CLAUDE_CONFIG_DIR", raising=False)
     paths = adapter.auth_paths()
     assert "/home/alt/.claude/.credentials.json" in paths
     assert "/home/alt/.claude.json" in paths
+
+
+def test_auth_paths_honors_config_dir(
+    adapter: ClaudecodeAdapter,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # With CLAUDE_CONFIG_DIR set (as the image does — to the bind-mounted
+    # ~/.claude), .claude.json lives inside it so it persists across runs.
+    monkeypatch.setenv("HOME", "/home/alt")
+    monkeypatch.setenv("CLAUDE_CONFIG_DIR", "/home/alt/.claude")
+    paths = adapter.auth_paths()
+    assert "/home/alt/.claude/.credentials.json" in paths
+    assert "/home/alt/.claude/.claude.json" in paths
+    assert "/home/alt/.claude.json" not in paths
 
 
 # ── helpers ──────────────────────────────────────────────────────────────────

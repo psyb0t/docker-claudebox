@@ -4,6 +4,21 @@ All notable changes to **claudebox** (formerly `docker-claude-code`).
 
 Format roughly follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [v2.0.3] — 2026-07-04 — Restore CLAUDE_CONFIG_DIR so login + theme persist
+
+Regression from v2.0.0. Running `claudebox` in a fresh directory prompted for theme selection and login every time, instead of opening already logged-in. Claude Code keeps its onboarding state — the selected theme, the onboarding-complete flag, and the `oauthAccount` — in `.claude.json`. Pre-v2 the entrypoint set `CLAUDE_CONFIG_DIR=/home/claude/.claude` (the bind-mounted config dir) so `.claude.json` lived on the mount and persisted across container recreates. The v2.0.0 aicodebox rebase moved the interactive init into `claudebox/init.d/10-claude-json-patch.sh`, which hardcoded `${HOME}/.claude.json` (an unmounted path), and nothing re-set `CLAUDE_CONFIG_DIR`. So every run wrote config to a throwaway path and re-onboarded. `CLAUDE_CONFIG_DIR` is Claude-Code-specific, so only claudebox can set it — the aicodebox base is agent-agnostic.
+
+### Fixed
+
+- **`Dockerfile`**: added `CLAUDE_CONFIG_DIR=/home/aicode/.claude` to the `ENV` block. Claude Code now reads/writes `.claude.json` + credentials inside the bind-mounted `~/.claude` (the wrapper's `-v "$CLAUDE_DIR:/home/aicode/.claude"`), so theme, onboarding, and account persist and a fresh container opens logged-in.
+- **`claudebox/init.d/10-claude-json-patch.sh`**: patch target is now `"${CLAUDE_CONFIG_DIR:-$HOME}/.claude.json"` (falls back to `$HOME` when the var is unset), matching where Claude Code actually reads config.
+- **`claudebox/claudebox/adapter.py`**: `ClaudecodeAdapter.auth_paths()` now resolves `.claude.json` under `CLAUDE_CONFIG_DIR` when set (falling back to `$HOME/.claude.json`), so the headless modes' auth-readiness check points at the file Claude Code actually uses.
+
+### Tests
+
+- `claudebox/tests/test_adapter.py`: added `test_auth_paths_honors_config_dir` covering the `CLAUDE_CONFIG_DIR`-set case; the existing `test_auth_paths_uses_home` now clears `CLAUDE_CONFIG_DIR` to assert the fallback.
+- `tests/test_smoke.sh`: Test 4 now reads the patched config from `/home/aicode/.claude/.claude.json` (its new persisted location).
+
 ## [v2.0.2] — 2026-07-04 — Fix Dockerfile.full BuildKit gpg failure
 
 The v2.0.1 CI push exposed a BuildKit-only failure: `gpg --dearmor` in the terraform + kubectl keyring steps of `Dockerfile.full` failed with `cannot open '/dev/tty': No such device or address`. gpg tries to open the (non-existent) tty for its unused pinentry prompt when running under BuildKit. Local `docker build` didn't hit this because it was falling back to the classic builder.

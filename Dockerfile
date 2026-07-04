@@ -31,10 +31,18 @@ COPY claudebox/init.d/ /aicodebox-init.d/
 RUN chmod +x /aicodebox-init.d/*.sh
 
 # Adapter selection — the modes resolve this at runtime.
+#
+# CLAUDE_CONFIG_DIR points Claude Code at the bind-mounted ~/.claude dir so
+# .claude.json (theme, onboarding, oauthAccount) + credentials live ON the
+# mount and PERSIST across container recreates — otherwise Claude Code
+# writes them to $HOME/.claude.json (unmounted) and re-onboards (theme +
+# login) on every run. Only claudebox knows the payload is Claude Code, so
+# only claudebox can set this (the aicodebox base is agent-agnostic).
 ENV AICODEBOX_ADAPTER=claudebox.adapter:ClaudecodeAdapter \
     AICODEBOX_AGENT_BINARY=claude \
     DISABLE_AUTOUPDATER=1 \
-    CLAUDEBOX_IMAGE_VARIANT=minimal
+    CLAUDEBOX_IMAGE_VARIANT=minimal \
+    CLAUDE_CONFIG_DIR=/home/aicode/.claude
 
 # claudebox-branded entrypoint: aliases CLAUDEBOX_* / legacy CLAUDE_MODE_* env
 # vars to their AICODEBOX_* equivalents, sets up compat symlinks, then exec's
