@@ -10,20 +10,20 @@ services:
     ports:
       - "8080:8080"
     environment:
-      - CLAUDEBOX_MODE_API=1
-      - CLAUDEBOX_MODE_API_TOKEN=your-secret-token
+      - CLAUDEBOX_API_MODE=1
+      - CLAUDEBOX_API_MODE_TOKEN=your-secret-token
       - CLAUDE_CODE_OAUTH_TOKEN=sk-ant-oat01-xxx
     volumes:
-      - ~/.claude:/home/claude/.claude
-      - /your/projects:/workspaces
+      - ~/.claude:/home/aicode/.claude
+      - /your/projects:/workspace
       - /var/run/docker.sock:/var/run/docker.sock
 ```
 
 | Variable                   | Description                                                         | Default  |
 | -------------------------- | ------------------------------------------------------------------- | -------- |
-| `CLAUDEBOX_MODE_API`       | Set to `1` to start in API server mode                              | _(none)_ |
-| `CLAUDEBOX_MODE_API_PORT`  | Port the API server listens on                                      | `8080`   |
-| `CLAUDEBOX_MODE_API_TOKEN` | Bearer token for API authentication (if unset, no auth is required) | _(none)_ |
+| `CLAUDEBOX_API_MODE`       | Set to `1` to start in API server mode                              | _(none)_ |
+| `CLAUDEBOX_API_MODE_PORT`  | Port the API server listens on                                      | `8080`   |
+| `CLAUDEBOX_API_MODE_TOKEN` | Bearer token for API authentication (if unset, no auth is required) | _(none)_ |
 | `DEBUG`                    | Set to `1` or `true` for structured JSON debug logging              | _(none)_ |
 
 > Legacy `CLAUDE_MODE_API`, `CLAUDE_MODE_API_PORT`, `CLAUDE_MODE_API_TOKEN` are still accepted as fallbacks.
@@ -44,7 +44,7 @@ curl -X POST http://localhost:8080/run \
 | Field                | Type   | Description                                                                               | Default         |
 | -------------------- | ------ | ----------------------------------------------------------------------------------------- | --------------- |
 | `prompt`             | string | The prompt to send to Claude Code                                                         | _(required)_    |
-| `workspace`          | string | Subpath under `/workspaces` (e.g., `myproject` resolves to `/workspaces/myproject`)       | `/workspaces`   |
+| `workspace`          | string | Subpath under `/workspace` (e.g., `myproject` resolves to `/workspace/myproject`)       | `/workspace`   |
 | `model`              | string | Model alias or full model name (see [Model Selection](programmatic.md#model-selection))                  | account default |
 | `systemPrompt`       | string | Replace the default system prompt entirely                                                | _(none)_        |
 | `appendSystemPrompt` | string | Append text to the default system prompt without replacing it                             | _(none)_        |
@@ -68,11 +68,11 @@ curl -X POST http://localhost:8080/run \
   -H "Authorization: Bearer token" \
   -H "Content-Type: application/json" \
   -d '{"prompt": "refactor this entire codebase", "workspace": "myproject", "async": true}'
-# → {"runId": "abc123", "workspace": "/workspaces/myproject", "status": "running"}
+# → {"runId": "abc123", "workspace": "/workspace/myproject", "status": "running"}
 
 # poll for the result
 curl "http://localhost:8080/run/result?runId=abc123" -H "Authorization: Bearer token"
-# while running → {"runId": "abc123", "workspace": "/workspaces/myproject", "status": "running"}
+# while running → {"runId": "abc123", "workspace": "/workspace/myproject", "status": "running"}
 # when done    → full result JSON with runId + workspace injected (see below)
 ```
 
@@ -97,7 +97,7 @@ Completed result example:
   "subtype": "success",
   "result": "the response text",
   "runId": "abc123",
-  "workspace": "/workspaces/myproject",
+  "workspace": "/workspace/myproject",
   "usage": { "inputTokens": 100, "outputTokens": 50 },
   "costUsd": 0.003,
   "sessionId": "..."
@@ -131,14 +131,14 @@ File download returns raw file content with appropriate content type.
 ```bash
 curl -X PUT "http://localhost:8080/files/myproject/src/main.py" \
   -H "Authorization: Bearer token" --data-binary @main.py
-# → {"status": "ok", "path": "/workspaces/myproject/src/main.py", "size": 1234}
+# → {"status": "ok", "path": "/workspace/myproject/src/main.py", "size": 1234}
 ```
 
 **`DELETE /files/{path}`** — delete a file:
 
 ```bash
 curl -X DELETE "http://localhost:8080/files/myproject/src/old.py" -H "Authorization: Bearer token"
-# → {"status": "ok", "path": "/workspaces/myproject/src/old.py"}
+# → {"status": "ok", "path": "/workspace/myproject/src/old.py"}
 ```
 
 **`GET /health`** — health check endpoint (no authentication required):
@@ -151,11 +151,11 @@ curl -X DELETE "http://localhost:8080/files/myproject/src/old.py" -H "Authorizat
 
 ```json
 {
-  "busyWorkspaces": ["/workspaces/myproject"],
+  "busyWorkspaces": ["/workspace/myproject"],
   "runs": [
     {
       "runId": "abc123",
-      "workspace": "/workspaces/myproject",
+      "workspace": "/workspace/myproject",
       "status": "running"
     }
   ]
@@ -167,14 +167,14 @@ curl -X DELETE "http://localhost:8080/files/myproject/src/old.py" -H "Authorizat
 ```bash
 # cancel by run ID (preferred)
 curl -X POST "http://localhost:8080/run/cancel?runId=abc123" -H "Authorization: Bearer token"
-# → {"status": "ok", "runId": "abc123", "workspace": "/workspaces/myproject"}
+# → {"status": "ok", "runId": "abc123", "workspace": "/workspace/myproject"}
 
 # cancel by workspace (legacy)
 curl -X POST "http://localhost:8080/run/cancel?workspace=myproject" -H "Authorization: Bearer token"
-# → {"status": "ok", "workspace": "/workspaces/myproject"}
+# → {"status": "ok", "workspace": "/workspace/myproject"}
 ```
 
-All file paths are relative to `/workspaces`. Path traversal attempts outside the workspace root are blocked and return a 400 error.
+All file paths are relative to `/workspace`. Path traversal attempts outside the workspace root are blocked and return a 400 error.
 
 ## OpenAI-Compatible Endpoints
 
@@ -223,7 +223,7 @@ curl -X POST http://localhost:8080/openai/v1/chat/completions \
 
 | Header                          | Description                                                   |
 | ------------------------------- | ------------------------------------------------------------- |
-| `X-Claude-Workspace`            | Workspace subpath under `/workspaces` to run in               |
+| `X-Claude-Workspace`            | Workspace subpath under `/workspace` to run in               |
 | `X-Claude-Continue`             | Set to `1`, `true`, or `yes` to continue the previous session |
 | `X-Claude-Append-System-Prompt` | Text to append to the system prompt for this request          |
 

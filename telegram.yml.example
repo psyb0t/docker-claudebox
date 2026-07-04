@@ -8,7 +8,7 @@ allowed_chats:
   - -987654321      # a group chat
 
 # Default settings for chats not explicitly configured below.
-# Each chat gets its own workspace at /workspaces/chat_<chat_id>.
+# Each chat gets its own workspace at /workspace/chat_<chat_id>.
 default:
   model: sonnet
   effort: high

@@ -47,7 +47,7 @@ You can also pin specific model versions using full model names like `claude-opu
   "isError": false,
   "result": "the response text",
   "runId": "abc123def456",
-  "workspace": "/workspaces/myproject",
+  "workspace": "/workspace/myproject",
   "numTurns": 1,
   "durationMs": 3100,
   "totalCostUsd": 0.156,

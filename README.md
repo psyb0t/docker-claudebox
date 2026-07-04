@@ -51,16 +51,18 @@ Docker installed and running. That's it.
 The install script pulls the Docker image, generates SSH keys for git operations inside the container, downloads the wrapper script, and installs it as a command on your system.
 
 ```bash
-# full image (recommended — all dev tools pre-installed)
+# minimal image — default; Claude installs what it needs on the fly
 curl -fsSL https://raw.githubusercontent.com/psyb0t/docker-claudebox/master/install.sh | bash
 
-# minimal image (just the essentials — Claude installs what it needs on the fly)
-export CLAUDEBOX_MINIMAL=1 && curl -fsSL https://raw.githubusercontent.com/psyb0t/docker-claudebox/master/install.sh | bash
+# full image — every dev tool pre-installed (Go, Python, kubectl, terraform, ...)
+export CLAUDEBOX_FULL=1 && curl -fsSL https://raw.githubusercontent.com/psyb0t/docker-claudebox/master/install.sh | bash
 
 # custom binary name (e.g. if you want to call it 'claude' instead of 'claudebox')
 curl -fsSL https://raw.githubusercontent.com/psyb0t/docker-claudebox/master/install.sh | bash -s -- claude
 # or: export CLAUDEBOX_BIN_NAME=claude && curl -fsSL .../install.sh | bash
 ```
+
+> **v2 note:** the variant naming flipped in v2. `latest` is now the minimal image (was the full image pre-v2); `latest-full` is the toolchain-loaded variant (was `latest` pre-v2). The `CLAUDEBOX_MINIMAL=1` opt-in from v1 is now a no-op — you already get minimal by default. Set `CLAUDEBOX_FULL=1` to opt into the toolchain image.
 
 > **Heads up on env vars:** `VAR=x curl … | bash` does **not** set `VAR` for the install script — bash semantics attach the var to `curl` only. Always `export` the var first (or put it on the `bash` side of the pipe).
 
@@ -78,8 +80,8 @@ ssh-keygen -t ed25519 -C "claude@claude.ai" -f "$HOME/.ssh/claudebox/id_ed25519"
 # then add the public key to GitHub/GitLab/wherever you push code
 
 # 3. pull the image
-docker pull psyb0t/claudebox:latest
-# or: docker pull psyb0t/claudebox:latest-minimal
+docker pull psyb0t/claudebox:latest        # minimal (default)
+# or: docker pull psyb0t/claudebox:latest-full   # toolchain-loaded variant
 
 # 4. grab the wrapper script and install it
 # see install.sh for exactly how the wrapper is set up
@@ -87,28 +89,28 @@ docker pull psyb0t/claudebox:latest
 
 ## Image Variants
 
-### `psyb0t/claudebox:latest` (full)
+### `psyb0t/claudebox:latest` (minimal, default)
 
-Everything pre-installed. Go, Python, Node.js, C/C++ toolchains, Terraform, kubectl, database clients, linters, formatters — the works. Large image, but Claude wakes up and gets to work immediately with zero wait time. This is the recommended variant for most users.
+The default v2 image. Just enough to run Claude Code on top of the aicodebox base: Ubuntu 24.04, git/curl/wget/jq, Node.js 22 LTS + npm, Python 3.12 + uv, Docker CE. Claude has passwordless sudo, so it will install whatever else it needs on the fly via `apt-get`, `pip`, `npm`, etc. Smaller image, faster pull, first run may take longer while Claude sorts out its own tooling.
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/psyb0t/docker-claudebox/master/install.sh | bash
 ```
 
-### `psyb0t/claudebox:latest-minimal`
+Use `/aicodebox-init.d/*.sh` hooks (see [Init Hooks](docs/customization.md#init-hooks-claudeinitd)) to pre-install your tools on first container create so Claude doesn't burn tokens figuring out package management.
 
-Just enough to run Claude: Ubuntu, git, curl, Node.js, and Docker. Claude has passwordless sudo, so it will install whatever else it needs on the fly via `apt-get`, `pip`, `npm`, etc. Smaller image to pull, but the first run takes longer as Claude sorts out its dependencies.
+### `psyb0t/claudebox:latest-full` (toolchain-loaded)
+
+Everything pre-installed. Layered on top of the minimal image: Go 1.26, Python 3.12.11 via pyenv, Node.js dev tools, C/C++ toolchain, terraform, kubectl, helm, gh, database clients (sqlite/postgres/mysql/redis), editors (vim/nano/htop/tmux), linters + formatters (flake8/black/isort/pyright/mypy/ruff/eslint/prettier/gofumpt/…). Larger image but Claude wakes up ready.
 
 ```bash
-export CLAUDEBOX_MINIMAL=1 && curl -fsSL https://raw.githubusercontent.com/psyb0t/docker-claudebox/master/install.sh | bash
+export CLAUDEBOX_FULL=1 && curl -fsSL https://raw.githubusercontent.com/psyb0t/docker-claudebox/master/install.sh | bash
 ```
-
-Use `~/.claude/init.d/*.sh` hooks (see [Init Hooks](docs/customization.md#init-hooks-claudeinitd)) to pre-install your tools on first container create so Claude doesn't burn tokens figuring out package management.
 
 ### Comparison
 
-|                                       | `latest` (full) | `latest-minimal` |
-| ------------------------------------- | :-------------: | :--------------: |
+|                                       | `latest` (minimal) | `latest-full` |
+| ------------------------------------- | :----------------: | :-----------: |
 | Ubuntu 24.04                          |       yes       |       yes        |
 | git, curl, wget, jq                   |       yes       |       yes        |
 | Node.js LTS + npm                     |       yes       |       yes        |
@@ -198,8 +200,8 @@ Run as a long-lived HTTP server. Full REST API for prompts and file ops with wor
 
 ```yaml
 environment:
-  - CLAUDEBOX_MODE_API=1
-  - CLAUDEBOX_MODE_API_TOKEN=your-secret-token
+  - CLAUDEBOX_API_MODE=1
+  - CLAUDEBOX_API_MODE_TOKEN=your-secret-token
 ```
 
 ### [Telegram Mode →](docs/modes/telegram.md)
@@ -208,8 +210,8 @@ Talk to Claude from Telegram. Per-chat isolated workspaces, configurable models/
 
 ```yaml
 environment:
-  - CLAUDEBOX_MODE_TELEGRAM=1
-  - CLAUDEBOX_TELEGRAM_BOT_TOKEN=...
+  - CLAUDEBOX_TELEGRAM_MODE=1
+  - CLAUDEBOX_TELEGRAM_MODE_TOKEN=...
 ```
 
 ### [Cron Mode →](docs/modes/cron.md)
@@ -218,8 +220,8 @@ YAML-defined scheduled jobs. Standard 5-field cron or 6-field for sub-minute res
 
 ```yaml
 environment:
-  - CLAUDEBOX_MODE_CRON=1
-  - CLAUDEBOX_MODE_CRON_FILE=/home/claude/.claude/cron.yaml
+  - CLAUDEBOX_CRON_MODE=1
+  - CLAUDEBOX_CRON_MODE_FILE=/home/aicode/.claude/cron.yaml
 ```
 
 ## Configuration
@@ -229,7 +231,7 @@ environment:
 
 ## Gotchas
 
-- **`--dangerously-skip-permissions`** is always enabled. Claude has full, unrestricted access to the container. That's the entire point.
+- **`--permission-mode bypassPermissions`** is the adapter's default (modern equivalent of the pre-v2 `--dangerously-skip-permissions`). Claude has full, unrestricted access to the container. That's the entire point. Override per-request via `RunRequest.extra_args`.
 - **SSH keys** are mounted from the host for git push/pull inside the container. Do not share your container or image with untrusted parties.
 - **Host paths are preserved** — your project at `/home/you/project` is mounted at the same path inside the container. This means Docker volume mounts that Claude creates from within the container resolve correctly against host paths.
 - **UID/GID matching** — the container's `claude` user UID/GID is automatically adjusted to match the host directory owner on startup. File permissions should just work without manual `chown`.

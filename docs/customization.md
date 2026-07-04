@@ -40,7 +40,7 @@ Skill files placed in `~/.claude/.always-skills/` are automatically injected int
 Each subdirectory should contain a `SKILL.md` file with instructions for Claude. The directory is scanned recursively in alphabetical order, and every `SKILL.md` found is appended to the system prompt with a prefix showing its full file path:
 
 ```
-[Skill file: /home/claude/.claude/.always-skills/caveman/SKILL.md]
+[Skill file: /home/aicode/.claude/.always-skills/caveman/SKILL.md]
 
 <contents of the skill file>
 ```

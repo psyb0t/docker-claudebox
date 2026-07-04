@@ -4,6 +4,33 @@ All notable changes to **claudebox** (formerly `docker-claude-code`).
 
 Format roughly follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [v2.0.1] — 2026-07-04 — CI fix + doc sync + uv/lint hardening
+
+Follow-up to v2.0.0. Fixes the CI pipeline broken by the two-Dockerfile split, brings every user-facing doc in sync with the v2 env-var / path / variant naming, and formalizes the Python dev toolchain around `uv` + `ruff` + `pyright` with a committed lockfile. Runtime behavior is identical to v2.0.0 — no adapter code change.
+
+### Fixed
+
+- **CI**: `.github/workflows/pipeline.yml` was invoking the reusable docker-image-workflow in `target: full/minimal` mode, expecting the pre-v2 multi-stage single Dockerfile. v2.0.0 split the image into `Dockerfile` (minimal) + `Dockerfile.full` (toolchain). Switched the matrix to `file:` mode — `Dockerfile` → `:latest`, `Dockerfile.full` → `:latest-full`.
+
+### Changed — docs
+
+- Env-var renames throughout the docs: `CLAUDEBOX_MODE_API` → `CLAUDEBOX_API_MODE`, `CLAUDEBOX_MODE_TELEGRAM` → `CLAUDEBOX_TELEGRAM_MODE`, `CLAUDEBOX_MODE_CRON` → `CLAUDEBOX_CRON_MODE`, plus the matching `_TOKEN` / `_PORT` / `_FILE` / `_CONFIG` suffixes. Legacy `CLAUDE_MODE_*` names still work — the entrypoint aliases them forward — but the canonical names in the docs are now the v2 shape.
+- Path renames throughout the docs and example YAML comments: `/home/claude/.claude/...` → `/home/aicode/.claude/...` (the entrypoint's compat symlink keeps pre-v2 bind mounts working), `/workspaces` (plural) → `/workspace` (singular).
+- Image variant naming section rewritten. `latest` is now the minimal image (was the full image pre-v2); `latest-full` is the toolchain-loaded variant (was `latest` pre-v2). The `CLAUDEBOX_MINIMAL=1` opt-in is now a no-op; opt into the toolchain with `CLAUDEBOX_FULL=1`.
+- Permission flag reference updated: `--dangerously-skip-permissions` (v1) → `--permission-mode bypassPermissions` (v2, same effect) in the Gotchas section.
+- `CLAUDEBOX_MINIMAL` → `CLAUDEBOX_FULL` in the environment variables table (`docs/environment-variables.md`).
+
+### Changed — Python dev toolchain (uv + ruff + pyright)
+
+- `claudebox/pyproject.toml` — added `[dependency-groups] dev` (PEP 735) declaring `pytest` / `ruff` / `pyright` / `aicodebox` for local dev. `[tool.uv.sources]` points `aicodebox` at the sibling `docker-aicodebox` repo in editable mode so `uv sync --group dev` works without a registry. Docker builds don't touch this group — the image installs the adapter with `--no-deps` against the base's already-present aicodebox.
+- Expanded ruff lint rules from the default set to `E / F / W / I / B / UP / SIM / C4 / ARG` (basics + import sort + bugbear + pyupgrade + simplify + comprehension idioms + unused args). All checks pass.
+- Added `[tool.pytest.ini_options]` for consistent test discovery + output formatting.
+- New `claudebox/uv.lock` committed — every runtime + dev dep pinned by version + hash for reproducibility.
+
+### Changed — shell
+
+- `claudebox-entrypoint.sh` upgraded from `set -e` to `set -euo pipefail` (strict-mode discipline). Every v2-authored shell script (entrypoint + 3 init.d + 2 smoke tests) now passes `shellcheck` clean.
+
 ## [v2.0.0] — 2026-07-04 — REBASED ON `psyb0t/aicodebox`
 
 **Full architectural rebase.** The image is now a thin child of `psyb0t/aicodebox` (same pattern as `psyb0t/pibox`). Every mode (API, Telegram, Cron, MCP) is inherited from the base — future base fixes reach claudebox for free.

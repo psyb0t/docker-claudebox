@@ -9,7 +9,11 @@ jobs:
     with:
       repository_name: psyb0t/claudebox
       target_platforms: "linux/amd64,linux/arm64"
-      build_targets: '[{"target":"full","tag_suffix":""},{"target":"minimal","tag_suffix":"-minimal"}]'
+      # v2 split the image into two Dockerfiles: `Dockerfile` (minimal, ships as
+      # :latest) and `Dockerfile.full` (toolchain-loaded, ships as :latest-full).
+      # Pre-v2 the workflow used `target: full/minimal` on a multi-stage single
+      # Dockerfile — no longer valid.
+      build_targets: '[{"file":"Dockerfile","tag_suffix":""},{"file":"Dockerfile.full","tag_suffix":"-full"}]'
 
     secrets:
       dockerhub_username: ${{ secrets.DOCKERHUB_USERNAME }}

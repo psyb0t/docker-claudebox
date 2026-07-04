@@ -19,3 +19,4 @@ pyrightconfig.json
 .testing/
 tests/.smoke-fixture/
 tests/.smoke-ext-fixture/
+.refactor/

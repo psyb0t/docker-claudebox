@@ -1,8 +1,8 @@
 # Claudebox cron configuration
-# Copy somewhere accessible (e.g. ~/.claude/cron.yaml) and point CLAUDEBOX_MODE_CRON_FILE at it.
+# Copy somewhere accessible (e.g. ~/.claude/cron.yaml) and point CLAUDEBOX_CRON_MODE_FILE at it.
 #
 # Run with:
-#   CLAUDEBOX_MODE_CRON=1 CLAUDEBOX_MODE_CRON_FILE=/home/claude/.claude/cron.yaml claudebox
+#   CLAUDEBOX_CRON_MODE=1 CLAUDEBOX_CRON_MODE_FILE=/home/aicode/.claude/cron.yaml claudebox
 # or via docker-compose (see README).
 #
 # Each job fires `claude -p "<instruction>"` on schedule. Output streams to
@@ -24,7 +24,7 @@
 # Works in: instruction, system_prompt, append_system_prompt
 #
 # Telegram notifications: set telegram_chat_id (root or per-job) + env
-# CLAUDEBOX_TELEGRAM_BOT_TOKEN to send Claude's result to a Telegram chat
+# CLAUDEBOX_TELEGRAM_MODE_TOKEN to send Claude's result to a Telegram chat
 # after each job finishes.
 
 model: haiku                        # default model for all jobs

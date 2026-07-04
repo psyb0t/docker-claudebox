@@ -52,12 +52,12 @@ services:
   claudebox-telegram:
     image: psyb0t/claudebox:latest
     environment:
-      - CLAUDEBOX_MODE_TELEGRAM=1
-      - CLAUDEBOX_TELEGRAM_BOT_TOKEN=123456:ABC-DEF
+      - CLAUDEBOX_TELEGRAM_MODE=1
+      - CLAUDEBOX_TELEGRAM_MODE_TOKEN=123456:ABC-DEF
       - CLAUDE_CODE_OAUTH_TOKEN=sk-ant-oat01-xxx
     volumes:
-      - ~/.claude:/home/claude/.claude
-      - ~/telegram-workspaces:/workspaces
+      - ~/.claude:/home/aicode/.claude
+      - ~/telegram-workspaces:/workspace
       - /var/run/docker.sock:/var/run/docker.sock
 ```
 
@@ -65,9 +65,9 @@ services:
 
 | Variable                       | Description                                         | Default                             |
 | ------------------------------ | --------------------------------------------------- | ----------------------------------- |
-| `CLAUDEBOX_MODE_TELEGRAM`      | Set to `1` to start in Telegram bot mode            | _(none)_                            |
-| `CLAUDEBOX_TELEGRAM_BOT_TOKEN` | Bot token from [@BotFather](https://t.me/BotFather) | _(none)_                            |
-| `CLAUDEBOX_TELEGRAM_CONFIG`    | Path to the YAML config file inside the container   | `/home/claude/.claude/telegram.yml` |
+| `CLAUDEBOX_TELEGRAM_MODE`      | Set to `1` to start in Telegram bot mode            | _(none)_                            |
+| `CLAUDEBOX_TELEGRAM_MODE_TOKEN` | Bot token from [@BotFather](https://t.me/BotFather) | _(none)_                            |
+| `CLAUDEBOX_TELEGRAM_MODE_CONFIG`    | Path to the YAML config file inside the container   | `/home/aicode/.claude/telegram.yml` |
 
 > Legacy `CLAUDE_MODE_TELEGRAM`, `CLAUDE_TELEGRAM_BOT_TOKEN`, `CLAUDE_TELEGRAM_CONFIG` are still accepted as fallbacks.
 
@@ -92,4 +92,4 @@ Claude can send files back by including `[SEND_FILE: relative/path]` in its resp
 
 ## Combined with cron mode
 
-If you also set `CLAUDEBOX_MODE_CRON=1` in the same container, finished cron jobs are posted to Telegram and you can **reply to those messages** to interrogate the run with full job context auto-injected (job name, instruction, result). The whole chat also gets a rolling summary of recent cron runs in its system prompt so Claude can answer cron questions anywhere in the conversation. See [Cron Mode → Combined cron + telegram mode](cron.md#combined-cron--telegram-mode) for the full setup.
+If you also set `CLAUDEBOX_CRON_MODE=1` in the same container, finished cron jobs are posted to Telegram and you can **reply to those messages** to interrogate the run with full job context auto-injected (job name, instruction, result). The whole chat also gets a rolling summary of recent cron runs in its system prompt so Claude can answer cron questions anywhere in the conversation. See [Cron Mode → Combined cron + telegram mode](cron.md#combined-cron--telegram-mode) for the full setup.

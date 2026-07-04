@@ -9,7 +9,7 @@
 #  - /workspaces → /workspace (pre-v2 codebase used the plural)
 #  - /home/aicode/.claude → /home/aicode/.aicodebox (bind mounts of ~/.claude
 #    from pre-v2 users still resolve to the state dir)
-set -e
+set -euo pipefail
 
 # CLAUDEBOX_<suffix> → AICODEBOX_<suffix>. If both are set, AICODEBOX_ wins.
 # Also alias legacy CLAUDE_MODE_* (pre-CLAUDEBOX_ era) forward.

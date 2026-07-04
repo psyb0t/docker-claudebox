@@ -17,8 +17,8 @@ import json
 from pathlib import Path
 
 import pytest
-
 from aicodebox.adapters.base import RunRequest
+
 from claudebox.adapter import (
     DEFAULT_PERMISSION_MODE,
     STREAM_TOOL_RESULT_TRUNCATE,
