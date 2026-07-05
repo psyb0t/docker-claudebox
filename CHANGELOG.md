@@ -4,6 +4,21 @@ All notable changes to **claudebox** (formerly `docker-claude-code`).
 
 Format roughly follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [v2.0.5] — 2026-07-05 — Wrapper honors CLAUDEBOX_FULL so the pulled image is the one that runs
+
+`CLAUDEBOX_FULL=1` was honored by `install.sh` (which pulls `psyb0t/claudebox:latest-full`) but IGNORED by the wrapper, which always launched `psyb0t/claudebox:latest` (the minimal image). So `CLAUDEBOX_FULL=1 claudebox` ran a different image than was pulled — commonly a stale, pre-`CLAUDE_CONFIG_DIR` `latest` — which wrote Claude Code's config to an ephemeral path in the container and re-prompted for theme + login on every run. The full image you pulled was never actually used.
+
+### Fixed
+
+- **`wrapper.sh`**: honors `CLAUDEBOX_FULL` (and the `CLAUDE_FULL` alias) → launches `latest-full`, mirroring `install.sh`'s tag resolution so the wrapper runs the image that was pulled. `CLAUDEBOX_MINIMAL` is now a no-op (resolves to `latest`), matching `install.sh` and the README (in v2, `latest` IS the minimal image); the old `latest-minimal` branch resolved a tag that isn't published. `CLAUDEBOX_IMAGE` still overrides everything.
+- **`wrapper.sh`**: quoted `$CLAUDE_IMAGE` at every `docker run` site and replaced a `sed` pipeline with parameter expansion (shellcheck clean).
+
+### Tests
+
+- **`tests/test_image_select.sh`**: hermetic (fake `docker`, no image build) — asserts the wrapper resolves the correct tag for each flag AND that `install.sh`'s pulled tag equals the wrapper's launched tag (the pull/run consistency the bug violated).
+- **`tests/test_persist.sh`**: boots the image through the real entrypoint and asserts Claude Code reads/writes `.claude.json` on the bind-mounted `~/.claude` (so theme/login/onboarding persist) instead of the ephemeral `$HOME/.claude.json`.
+- **`Makefile`**: `make test-persist` and `make test-image-select` targets.
+
 ## [v2.0.4] — 2026-07-04 — Build latest-full after the base so it inherits base env
 
 The v2.0.3 `CLAUDE_CONFIG_DIR` fix landed only in `Dockerfile` (the `:latest` base). `Dockerfile.full` does `FROM psyb0t/claudebox:latest` and inherits that env — but CI built both images in parallel from the same commit, so `latest-full` layered on the *previously published* base (v2.0.0) and never picked up the fix. Running `claudebox` with `CLAUDEBOX_FULL=1` therefore still re-prompted for theme + login even after v2.0.3 shipped.

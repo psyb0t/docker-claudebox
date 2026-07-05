@@ -8,7 +8,7 @@ TAG        := v$(VERSION)
 BASE_IMAGE ?= psyb0t/aicodebox:latest
 CLAUDE_VERSION ?= 2.1.197
 
-.PHONY: all build build-full build-all pull-base test test-unit test-smoke clean help version
+.PHONY: all build build-full build-all pull-base test test-unit test-smoke test-persist test-image-select clean help version
 
 all: build ## Build the minimal claudebox image on top of the published base
 
@@ -47,6 +47,12 @@ test-unit: ## Run in-process adapter unit tests (no docker required)
 
 test-smoke: build ## Boot the minimal image + probe endpoints
 	bash tests/test_smoke.sh
+
+test-persist: build ## Assert .claude.json (theme/login/onboarding) persists on the bind-mounted ~/.claude
+	IMAGE=$(IMAGE_NAME):latest bash tests/test_persist.sh
+
+test-image-select: ## Assert wrapper.sh resolves the right image (CLAUDEBOX_FULL/MINIMAL/override); no build needed
+	bash tests/test_image_select.sh
 
 test: test-unit ## Alias for test-unit
 

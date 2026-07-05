@@ -6,10 +6,17 @@ DEBUG="${CLAUDEBOX_ENV_DEBUG:-${DEBUG:-}}"
 dbg() { [ "${DEBUG:-}" = "true" ] && echo "[DEBUG $(date +%H:%M:%S.%3N)] $*" >&2; }
 
 CLAUDE_IMAGE="${CLAUDEBOX_IMAGE:-${CLAUDE_IMAGE:-}}"
-_minimal="${CLAUDEBOX_MINIMAL:-${CLAUDE_MINIMAL:-}}"
+# Mirror install.sh's tag resolution EXACTLY so the wrapper launches the image
+# install.sh pulled. v2: `latest` IS the minimal image, so CLAUDEBOX_MINIMAL is
+# a no-op (install.sh treats it the same — kept only for back-compat), and
+# CLAUDEBOX_FULL opts into the toolchain image (latest-full). If these two ever
+# diverge, `CLAUDEBOX_FULL=1 claudebox` runs a DIFFERENT image than was pulled —
+# the original re-onboarding bug (config landed in an image without
+# CLAUDE_CONFIG_DIR). tests/test_image_select.sh guards this consistency.
+_full="${CLAUDEBOX_FULL:-${CLAUDE_FULL:-}}"
 if [ -z "$CLAUDE_IMAGE" ]; then
-    if [ -n "$_minimal" ]; then
-        CLAUDE_IMAGE="psyb0t/claudebox:latest-minimal"
+    if [ -n "$_full" ]; then
+        CLAUDE_IMAGE="psyb0t/claudebox:latest-full"
     else
         CLAUDE_IMAGE="psyb0t/claudebox:latest"
     fi
@@ -95,7 +102,7 @@ set -- "${REMAINING_ARGS[@]}"
 
 # setup-token — throwaway container, token is saved to mounted ~/.claude
 if [ "${1:-}" = "setup-token" ]; then
-    docker run -it --rm --name "${container_name}_setup_$$" "${DOCKER_ARGS[@]}" $CLAUDE_IMAGE setup-token
+    docker run -it --rm --name "${container_name}_setup_$$" "${DOCKER_ARGS[@]}" "$CLAUDE_IMAGE" setup-token
     exit 0
 fi
 
@@ -112,7 +119,7 @@ fi
 
 # clear-session — remove project session files for current workspace
 if [ "${1:-}" = "clear-session" ]; then
-    project_path=$(echo "$PWD" | sed 's|/|-|g')
+    project_path="${PWD//\//-}"
     project_dir="$CLAUDE_DIR/projects/${project_path}"
     if [ -d "$project_dir" ]; then
         rm -rf "$project_dir"
@@ -159,7 +166,7 @@ if [ -n "$_mode_cron" ]; then
         docker start "$cron_name"
     else
         echo "starting cron container ($cron_name)..."
-        docker run -d --name "$cron_name" "${DOCKER_ARGS[@]}" "${CRON_ARGS[@]}" $CLAUDE_IMAGE
+        docker run -d --name "$cron_name" "${DOCKER_ARGS[@]}" "${CRON_ARGS[@]}" "$CLAUDE_IMAGE"
     fi
     echo "  docker logs -f $cron_name"
     exit 0
@@ -169,7 +176,7 @@ fi
 # passthrough fallback (`exec claude "$@"`). No need to override --entrypoint.
 case "${1:-}" in
     -v|--version|doctor|auth|mcp)
-        docker run --rm "${DOCKER_ARGS[@]}" $CLAUDE_IMAGE "$@"
+        docker run --rm "${DOCKER_ARGS[@]}" "$CLAUDE_IMAGE" "$@"
         exit 0
         ;;
 esac
@@ -296,7 +303,7 @@ if [ $# -gt 0 ]; then
         prog_rc=0
         if ! docker ps -a --format '{{.Names}}' | grep -q "^${prog_name}$"; then
             dbg "prog: container does not exist, creating with docker run"
-            docker run --name "$prog_name" "${DOCKER_ARGS[@]}" -e CLAUDEBOX_CONTAINER_NAME="$prog_name" $CLAUDE_IMAGE "${PASS_ARGS[@]}"
+            docker run --name "$prog_name" "${DOCKER_ARGS[@]}" -e CLAUDEBOX_CONTAINER_NAME="$prog_name" "$CLAUDE_IMAGE" "${PASS_ARGS[@]}"
             prog_rc=$?
             dbg "prog: docker run exited with $prog_rc"
         else
@@ -346,5 +353,5 @@ if docker ps -a --format '{{.Names}}' | grep -q "^${container_name}$"; then
     docker start -ai "$container_name"
 else
     echo "🔧 Creating container '$container_name'..."
-    docker run -it --name "$container_name" "${DOCKER_ARGS[@]}" $CLAUDE_IMAGE
+    docker run -it --name "$container_name" "${DOCKER_ARGS[@]}" "$CLAUDE_IMAGE"
 fi
