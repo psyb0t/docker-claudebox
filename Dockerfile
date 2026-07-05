@@ -38,11 +38,21 @@ RUN chmod +x /aicodebox-init.d/*.sh
 # writes them to $HOME/.claude.json (unmounted) and re-onboards (theme +
 # login) on every run. Only claudebox knows the payload is Claude Code, so
 # only claudebox can set this (the aicodebox base is agent-agnostic).
+# AICODEBOX_AGENT_BINARY points the base's passthrough (`exec $AGENT_BINARY
+# "$@"`) at the claudebox launcher instead of `claude` directly. The launcher
+# restores the interactive/one-shot defaults the agent-agnostic base dropped:
+# --continue (resume) with fallback, --permission-mode bypassPermissions, and the
+# system-hint + always-skills --append-system-prompt. Server modes build argv via
+# the adapter (hardcoded "claude") and never go through the launcher.
 ENV AICODEBOX_ADAPTER=claudebox.adapter:ClaudecodeAdapter \
-    AICODEBOX_AGENT_BINARY=claude \
+    AICODEBOX_AGENT_BINARY=claudebox-agent \
     DISABLE_AUTOUPDATER=1 \
     CLAUDEBOX_IMAGE_VARIANT=minimal \
     CLAUDE_CONFIG_DIR=/home/aicode/.claude
+
+# claudebox agent launcher (see claudebox-agent.sh header for the full rationale).
+COPY claudebox-agent.sh /usr/local/bin/claudebox-agent
+RUN chmod +x /usr/local/bin/claudebox-agent
 
 # claudebox-branded entrypoint: aliases CLAUDEBOX_* / legacy CLAUDE_MODE_* env
 # vars to their AICODEBOX_* equivalents, sets up compat symlinks, then exec's

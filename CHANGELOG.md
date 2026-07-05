@@ -4,6 +4,30 @@ All notable changes to **claudebox** (formerly `docker-claude-code`).
 
 Format roughly follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [v2.0.6] — 2026-07-05 — Restore interactive/one-shot defaults (auto-resume, permission bypass, system-hint)
+
+The v2.0.0 aicodebox rebase made the base agent-agnostic: its passthrough runs a
+bare `exec claude "$@"` for interactive (`claudebox`) and one-shot (`claudebox -p`)
+sessions. That dropped every Claude-specific default the pre-v2 entrypoint applied
+— most visibly `--continue`, so `claudebox` no longer resumed a workspace's last
+session and started fresh every open. The `--continue`/`--no-continue`/`--resume`
+"session continuity" the README documents (and the `.<container>-no-continue`
+marker the wrapper still writes) had no effect in interactive mode.
+
+### Fixed
+
+- **New `claudebox-agent.sh` launcher**, wired via `AICODEBOX_AGENT_BINARY` (Dockerfile). The base's passthrough now execs the launcher, which re-adds the defaults for interactive and `-p` sessions:
+  - `--continue` — resume the workspace's last session, with a graceful fallback to a fresh session when there's nothing to resume. Honors the `.<container>-no-continue` marker and `--no-continue` / `--resume` in args.
+  - `--permission-mode bypassPermissions` — no per-tool prompts (the adapter's existing default, applied to the passthrough too).
+  - `--append-system-prompt` = system-hint + always-skills, matching the adapter's `_compose_append_system_prompt` order.
+  - `claude update` when the wrapper's `--update` wrote the `.<container>-update` marker.
+  - `setup-token` / `--version` / `doctor` / `auth` / `mcp` pass through verbatim.
+- Server modes (API / telegram / cron) build argv through the adapter (which spawns the hardcoded `claude`), so they never reach the launcher and are unchanged.
+
+### Tests
+
+- **`tests/test_agent_launcher.sh`** (hermetic, fake `claude`): asserts the launcher adds `--continue` + `--permission-mode bypassPermissions` for interactive and `-p`, passes `--version` through verbatim, honors the no-continue marker and `--no-continue` / `--resume` opt-outs, and falls back to a fresh session when resume fails. `make test-agent-launcher`.
+
 ## [v2.0.5] — 2026-07-05 — Wrapper honors CLAUDEBOX_FULL so the pulled image is the one that runs
 
 `CLAUDEBOX_FULL=1` was honored by `install.sh` (which pulls `psyb0t/claudebox:latest-full`) but IGNORED by the wrapper, which always launched `psyb0t/claudebox:latest` (the minimal image). So `CLAUDEBOX_FULL=1 claudebox` ran a different image than was pulled — commonly a stale, pre-`CLAUDE_CONFIG_DIR` `latest` — which wrote Claude Code's config to an ephemeral path in the container and re-prompted for theme + login on every run. The full image you pulled was never actually used.

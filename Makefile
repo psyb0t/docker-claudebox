@@ -8,7 +8,7 @@ TAG        := v$(VERSION)
 BASE_IMAGE ?= psyb0t/aicodebox:latest
 CLAUDE_VERSION ?= 2.1.197
 
-.PHONY: all build build-full build-all pull-base test test-unit test-smoke test-persist test-image-select clean help version
+.PHONY: all build build-full build-all pull-base test test-unit test-smoke test-persist test-image-select test-agent-launcher clean help version
 
 all: build ## Build the minimal claudebox image on top of the published base
 
@@ -53,6 +53,9 @@ test-persist: build ## Assert .claude.json (theme/login/onboarding) persists on 
 
 test-image-select: ## Assert wrapper.sh resolves the right image (CLAUDEBOX_FULL/MINIMAL/override); no build needed
 	bash tests/test_image_select.sh
+
+test-agent-launcher: ## Assert claudebox-agent.sh restores interactive defaults (--continue/skip-permissions/markers); no build needed
+	bash tests/test_agent_launcher.sh
 
 test: test-unit ## Alias for test-unit
 
