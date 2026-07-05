@@ -82,12 +82,30 @@ RUN curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.31/deb/Release.key \
 RUN curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
 
 # Node.js globals — pre-migration set.
-RUN npm install -g --no-audit --no-fund \
-        eslint prettier typescript ts-node \
-        @typescript-eslint/parser @typescript-eslint/eslint-plugin \
-        nodemon pm2 yarn pnpm \
-        create-react-app @vue/cli @angular/cli express-generator \
-        newman http-server serve lighthouse @storybook/cli
+# This is a large, dependency-heavy install that runs for minutes under arm64
+# emulation, so a single transient registry ECONNRESET used to kill the whole
+# layer and fail CI. Bump npm's own fetch retries/timeouts AND wrap the install
+# in an outer retry loop so a dropped connection self-heals; only a genuine,
+# repeated failure (5 attempts) fails the layer.
+RUN npm config set fetch-retries 5 \
+        fetch-retry-factor 2 \
+        fetch-retry-mintimeout 20000 \
+        fetch-retry-maxtimeout 120000 \
+        fetch-timeout 600000 && \
+    for attempt in 1 2 3 4 5; do \
+        echo "npm global install — attempt ${attempt}/5"; \
+        npm install -g --no-audit --no-fund \
+            eslint prettier typescript ts-node \
+            @typescript-eslint/parser @typescript-eslint/eslint-plugin \
+            nodemon pm2 yarn pnpm \
+            create-react-app @vue/cli @angular/cli express-generator \
+            newman http-server serve lighthouse @storybook/cli \
+        && exit 0; \
+        echo "npm global install attempt ${attempt} failed; retrying after backoff" >&2; \
+        sleep 15; \
+    done; \
+    echo "npm global install failed after 5 attempts" >&2; \
+    exit 1
 
 # pyenv + Python 3.12.11 (system-wide, alongside base's python3).
 ENV PYENV_ROOT=/usr/local/pyenv \

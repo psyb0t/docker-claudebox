@@ -4,6 +4,14 @@ All notable changes to **claudebox** (formerly `docker-claude-code`).
 
 Format roughly follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [v2.0.7] — 2026-07-05 — Make Dockerfile.full npm install resilient to transient registry failures
+
+The `latest-full` CI build intermittently died when the large global `npm install -g` step hit a transient `ECONNRESET` from the registry mid-download — a single dropped connection killed the whole layer, so `:latest-full` stalled while `:latest` advanced. It surfaces mainly under arm64 emulation, where the install runs for minutes.
+
+### Fixed
+
+- **Dockerfile.full**: hardened the Node.js global-tools install against flaky network. Set npm's fetch resilience (`fetch-retries=5`, `fetch-retry-factor=2`, `fetch-retry-mintimeout=20000`, `fetch-retry-maxtimeout=120000`, `fetch-timeout=600000`) and wrapped `npm install -g` in a 5-attempt retry loop with a 15s backoff, so a transient `ECONNRESET` self-heals instead of failing the build. Only a genuine, repeated failure (all 5 attempts) fails the layer.
+
 ## [v2.0.6] — 2026-07-05 — Restore interactive/one-shot defaults (auto-resume, permission bypass, system-hint)
 
 The v2.0.0 aicodebox rebase made the base agent-agnostic: its passthrough runs a
