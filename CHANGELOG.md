@@ -4,6 +4,14 @@ All notable changes to **claudebox** (formerly `docker-claude-code`).
 
 Format roughly follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [v2.0.9] — 2026-07-06 — Put `go` on PATH in the full image's non-login shells
+
+The full image installs Go 1.26.1, but bare `go` didn't resolve in the non-login shell the agent runs in — only in login shells. Go's binary lives in `/usr/local/go/bin`, added via `ENV PATH`, but the base image entrypoint reconstructs a fixed runtime PATH (`/home/aicode/.local/bin:/usr/local/bin:/usr/bin:/bin`) that omits it. The Go dev tools (`dlv`, `gofumpt`, `staticcheck`, …) still worked because the build moves them into `/usr/local/bin`; `go`/`gofmt` were never moved, so they fell off PATH.
+
+### Fixed
+
+- **Dockerfile.full**: symlink `/usr/local/go/bin/go` and `gofmt` into `/usr/local/bin` (which is on the entrypoint's fixed PATH), so `go` resolves in every shell, not just login shells. Symlinked rather than moved so `go` still finds `GOROOT` from its real location under `/usr/local/go`.
+
 ## [v2.0.8] — 2026-07-06 — Persist the CLAUDEBOX_FULL image-variant choice into the installed wrapper
 
 Installing with `CLAUDEBOX_FULL=1` pulled `:latest-full`, but the wrapper picked the image from `CLAUDEBOX_FULL` in the environment at launch time — so unless the var was also exported in the shell that ran `claudebox`, every session launched `:latest` (minimal) and the toolchain (Go, kubectl, terraform, …) was missing. Install-time and run-time selection were decoupled.

@@ -43,7 +43,14 @@ ARG GO_VERSION=1.26.1
 ARG TARGETARCH
 RUN ARCH="${TARGETARCH:-amd64}" && \
     curl -fsSL "https://go.dev/dl/go${GO_VERSION}.linux-${ARCH}.tar.gz" | tar -xzC /usr/local && \
-    echo 'export PATH="$PATH:/usr/local/go/bin"' > /etc/profile.d/go.sh
+    echo 'export PATH="$PATH:/usr/local/go/bin"' > /etc/profile.d/go.sh && \
+    ln -s /usr/local/go/bin/go /usr/local/bin/go && \
+    ln -s /usr/local/go/bin/gofmt /usr/local/bin/gofmt
+# The aicodebox base entrypoint hardcodes PATH to a fixed set that includes
+# /usr/local/bin but NOT /usr/local/go/bin, so the ENV below only helps login
+# shells (via /etc/profile.d/go.sh). Symlink go+gofmt into /usr/local/bin so
+# they resolve in the non-login agent shell too. (Symlink, not move — go finds
+# GOROOT from its real path under /usr/local/go.)
 ENV PATH="/usr/local/go/bin:${PATH}"
 
 # Go tooling — statically linked so binaries don't drag build user's libc into
