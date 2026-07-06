@@ -4,6 +4,14 @@ All notable changes to **claudebox** (formerly `docker-claude-code`).
 
 Format roughly follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [v2.0.8] — 2026-07-06 — Persist the CLAUDEBOX_FULL image-variant choice into the installed wrapper
+
+Installing with `CLAUDEBOX_FULL=1` pulled `:latest-full`, but the wrapper picked the image from `CLAUDEBOX_FULL` in the environment at launch time — so unless the var was also exported in the shell that ran `claudebox`, every session launched `:latest` (minimal) and the toolchain (Go, kubectl, terraform, …) was missing. Install-time and run-time selection were decoupled.
+
+### Fixed
+
+- **install.sh + wrapper.sh**: the installer now bakes the selected variant into the installed wrapper (rewrites the `CLAUDEBOX_INSTALLED_VARIANT` line to `full`/`minimal` based on `CLAUDEBOX_FULL`), and the wrapper falls back to that baked variant when no `CLAUDEBOX_FULL` / `CLAUDE_FULL` env var is set. Installing with `CLAUDEBOX_FULL=1` now sticks for every run without re-exporting the var; setting the env var at runtime still overrides the baked default per-run. Existing containers keep their original image until removed with `docker rm -f <container>`.
+
 ## [v2.0.7] — 2026-07-05 — Make Dockerfile.full npm install resilient to transient registry failures
 
 The `latest-full` CI build intermittently died when the large global `npm install -g` step hit a transient `ECONNRESET` from the registry mid-download — a single dropped connection killed the whole layer, so `:latest-full` stalled while `:latest` advanced. It surfaces mainly under arm64 emulation, where the install runs for minutes.

@@ -62,7 +62,7 @@ curl -fsSL https://raw.githubusercontent.com/psyb0t/docker-claudebox/master/inst
 # or: export CLAUDEBOX_BIN_NAME=claude && curl -fsSL .../install.sh | bash
 ```
 
-> **v2 note:** the variant naming flipped in v2. `latest` is now the minimal image (was the full image pre-v2); `latest-full` is the toolchain-loaded variant (was `latest` pre-v2). The `CLAUDEBOX_MINIMAL=1` opt-in from v1 is now a no-op — you already get minimal by default. Set `CLAUDEBOX_FULL=1` to opt into the toolchain image.
+> **v2 note:** the variant naming flipped in v2. `latest` is now the minimal image (was the full image pre-v2); `latest-full` is the toolchain-loaded variant (was `latest` pre-v2). The `CLAUDEBOX_MINIMAL=1` opt-in from v1 is now a no-op — you already get minimal by default. Set `CLAUDEBOX_FULL=1` to opt into the toolchain image. Installing with `CLAUDEBOX_FULL=1` (as above) bakes the choice into the installed wrapper, so the full variant sticks for every run — you don't need to keep the env var set afterward.
 
 > **Heads up on env vars:** `VAR=x curl … | bash` does **not** set `VAR` for the install script — bash semantics attach the var to `curl` only. Always `export` the var first (or put it on the `bash` side of the pipe).
 

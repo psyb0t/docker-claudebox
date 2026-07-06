@@ -63,6 +63,24 @@ if [ ! -s "$WRAPPER_TMP" ]; then
 	exit 1
 fi
 
+# Bake the selected variant into the wrapper so the choice sticks per install
+# without an env var. Portable rewrite — `sed -i` differs on GNU vs BSD/macOS.
+_variant="minimal"
+[ -n "$_full" ] && _variant="full"
+echo "📝 Baking image variant into wrapper: $_variant"
+if grep -q '^CLAUDEBOX_INSTALLED_VARIANT=' "$WRAPPER_TMP"; then
+	_baked="$(mktemp /tmp/claude-wrapper-baked-XXXXXX.sh)"
+	if sed "s/^CLAUDEBOX_INSTALLED_VARIANT=.*/CLAUDEBOX_INSTALLED_VARIANT=\"$_variant\"/" "$WRAPPER_TMP" > "$_baked" && [ -s "$_baked" ]; then
+		mv "$_baked" "$WRAPPER_TMP"
+	else
+		echo "❌ Failed to bake image variant into wrapper"
+		rm -f "$_baked" "$WRAPPER_TMP"
+		exit 1
+	fi
+else
+	echo "⚠️  wrapper has no CLAUDEBOX_INSTALLED_VARIANT line — using env-var selection only"
+fi
+
 echo "📝 Installing $BIN_NAME to $BIN_PATH..."
 sudo install -m 755 "$WRAPPER_TMP" "$BIN_PATH"
 rm -f "$WRAPPER_TMP"

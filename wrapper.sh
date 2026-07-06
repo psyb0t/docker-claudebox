@@ -1,5 +1,11 @@
 #!/usr/bin/env bash
 
+# --- install-time image variant (install.sh rewrites the value below) ---
+# install.sh sets this to "full" when installed with CLAUDEBOX_FULL=1 so the
+# variant choice sticks for every run without needing an env var. The
+# CLAUDEBOX_FULL / CLAUDE_FULL env vars still override it at runtime.
+CLAUDEBOX_INSTALLED_VARIANT="minimal"
+
 # CLAUDEBOX_* is the canonical prefix. CLAUDE_* names remain supported for backwards compat.
 DEBUG="${CLAUDEBOX_ENV_DEBUG:-${DEBUG:-}}"
 
@@ -14,6 +20,8 @@ CLAUDE_IMAGE="${CLAUDEBOX_IMAGE:-${CLAUDE_IMAGE:-}}"
 # the original re-onboarding bug (config landed in an image without
 # CLAUDE_CONFIG_DIR). tests/test_image_select.sh guards this consistency.
 _full="${CLAUDEBOX_FULL:-${CLAUDE_FULL:-}}"
+# No runtime env override → fall back to the variant baked in at install time.
+[ -z "$_full" ] && [ "$CLAUDEBOX_INSTALLED_VARIANT" = "full" ] && _full=1
 if [ -z "$CLAUDE_IMAGE" ]; then
     if [ -n "$_full" ]; then
         CLAUDE_IMAGE="psyb0t/claudebox:latest-full"

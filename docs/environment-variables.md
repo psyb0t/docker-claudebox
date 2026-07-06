@@ -13,7 +13,7 @@ All wrapper/installer config uses the `CLAUDEBOX_*` prefix. Anything you want av
 | `CLAUDEBOX_INSTALL_DIR`    | Where to install the wrapper binary (install-time only)                                    | `/usr/local/bin`          |
 | `CLAUDEBOX_BIN_NAME`       | Name of the wrapper binary (install-time only)                                             | `claudebox`               |
 | `CLAUDEBOX_IMAGE`          | Override the Docker image used by the wrapper                                              | `psyb0t/claudebox:latest` |
-| `CLAUDEBOX_FULL`           | When set, use the toolchain-loaded (`latest-full`) image variant. Default is `latest` (minimal). Pre-v2 `CLAUDEBOX_MINIMAL=1` is now a no-op. | _(none)_ |
+| `CLAUDEBOX_FULL`           | When set, use the toolchain-loaded (`latest-full`) image variant. Default is `latest` (minimal). Setting it at install time bakes the choice into the installed wrapper, so the full variant sticks for every run without re-exporting the var; setting it at runtime overrides the baked default per-run. Pre-v2 `CLAUDEBOX_MINIMAL=1` is now a no-op. | _(none)_ |
 | `CLAUDEBOX_CONTAINER_NAME` | Override the per-workspace container name                                                  | derived from `$PWD`       |
 | `CLAUDEBOX_ENV_*`          | Forward env vars into the container (prefix stripped: `CLAUDEBOX_ENV_FOO=bar` → `FOO=bar`) | _(none)_                  |
 | `CLAUDEBOX_MOUNT_*`        | Mount extra host directories into the container                                            | _(none)_                  |
