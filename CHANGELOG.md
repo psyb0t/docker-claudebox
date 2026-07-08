@@ -4,6 +4,14 @@ All notable changes to **claudebox** (formerly `docker-claude-code`).
 
 Format roughly follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [v2.0.10] — 2026-07-08 — Fix the false "claude missing or broken" startup warning
+
+`claudebox/init.d/10-claude-json-patch.sh` was writing `installMethod: "native"` into `.claude.json` on every fresh container, even though the image installs Claude Code via `npm install -g` (npm-global, not a native binary install). Claude Code's interactive startup health-check trusted that field, looked for a native install at `~/.local/bin/claude`, didn't find one (the container is npm-global), and printed "claude command at /home/aicode/.local/bin/claude missing or broken — run claude install to repair" on every launch. Claude itself worked fine — the warning was a false alarm caused by a wrong recorded install method.
+
+### Fixed
+
+- **`claudebox/init.d/10-claude-json-patch.sh`**: patch `.claude.json` with `installMethod: "global"` instead of `"native"`, matching how the image actually installs Claude Code. This script runs on every freshly created container (its completion marker lives in the container's own filesystem, not on a bind mount), so the fix self-applies going forward without requiring any config migration.
+
 ## [v2.0.9] — 2026-07-06 — Put `go` on PATH in the full image's non-login shells
 
 The full image installs Go 1.26.1, but bare `go` didn't resolve in the non-login shell the agent runs in — only in login shells. Go's binary lives in `/usr/local/go/bin`, added via `ENV PATH`, but the base image entrypoint reconstructs a fixed runtime PATH (`/home/aicode/.local/bin:/usr/local/bin:/usr/bin:/bin`) that omits it. The Go dev tools (`dlv`, `gofumpt`, `staticcheck`, …) still worked because the build moves them into `/usr/local/bin`; `go`/`gofmt` were never moved, so they fell off PATH.

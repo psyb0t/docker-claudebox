@@ -1,6 +1,10 @@
 #!/bin/bash
 # Patch ~/.claude.json so claude-code runs headless in the container:
-#   installMethod=native  → skip the auto-update chatter
+#   installMethod=global  → the image installs claude-code via `npm install -g`;
+#                            "native" here caused a false "missing or broken /
+#                            run claude install to repair" startup warning
+#                            (claude-code looks for a native ~/.local/bin/claude
+#                            that doesn't exist in this image).
 #   autoUpdates=false     → don't try to self-update (image ships pinned version)
 #   autoUpdatesProtectedForNative=true → belt-and-braces guard
 #   projects.<ws>.hasTrustDialogAccepted=true → don't prompt for trust on -p
@@ -34,7 +38,7 @@ fi
 tmp="$(mktemp)"
 jq \
     --arg dir "$WORKSPACE_DIR" \
-    '.installMethod = "native"
+    '.installMethod = "global"
      | .autoUpdates = false
      | .autoUpdatesProtectedForNative = true
      | .projects[$dir].hasTrustDialogAccepted = true' \
