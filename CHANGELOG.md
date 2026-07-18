@@ -4,6 +4,14 @@ All notable changes to **claudebox** (formerly `docker-claude-code`).
 
 Format roughly follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [v2.0.11] — 2026-07-18 — Stop leaking a root-owned GOPATH into the full image's runtime
+
+`Dockerfile.full` set `GOPATH=/root/go` via `ENV` while installing Go dev tools (`gopls`, `dlv`, `staticcheck`, …) as root. Docker `ENV` isn't build-scoped — it persists into the running container for every user, so the non-root runtime user (`aicode`) also inherited `GOPATH=/root/go`: a directory it doesn't own and that the same build step `rm -rf`s once the tools are installed. Any `go install` / `go get` / `go mod` run as `aicode` (e.g. installing a project's own Go tooling) failed with a permission-denied error against that path.
+
+### Fixed
+
+- **Dockerfile.full**: `GOPATH=/root/go` is now exported inline within the single `RUN` step that needs it, instead of via `ENV`. At runtime `GOPATH` is unset, so Go falls back to its own per-user default (`$HOME/go`), which each user actually owns.
+
 ## [v2.0.10] — 2026-07-08 — Fix the false "claude missing or broken" startup warning
 
 `claudebox/init.d/10-claude-json-patch.sh` was writing `installMethod: "native"` into `.claude.json` on every fresh container, even though the image installs Claude Code via `npm install -g` (npm-global, not a native binary install). Claude Code's interactive startup health-check trusted that field, looked for a native install at `~/.local/bin/claude`, didn't find one (the container is npm-global), and printed "claude command at /home/aicode/.local/bin/claude missing or broken — run claude install to repair" on every launch. Claude itself worked fine — the warning was a false alarm caused by a wrong recorded install method.

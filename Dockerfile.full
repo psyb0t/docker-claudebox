@@ -55,8 +55,14 @@ ENV PATH="/usr/local/go/bin:${PATH}"
 
 # Go tooling — statically linked so binaries don't drag build user's libc into
 # the runtime image; moved to /usr/local/bin for every user.
-ENV GOPATH=/root/go
-RUN curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/HEAD/install.sh | sh -s -- -b /usr/local/bin latest && \
+# GOPATH is exported inline (build-scoped), NOT via ENV — an ENV here would
+# leak /root/go into the runtime image for every user. At runtime, aicode
+# would inherit a GOPATH pointing at a root-owned dir that's rm -rf'd below
+# anyway, so any `go install`/`go get`/`go mod` run as aicode would fail with
+# permission denied. Leaving GOPATH unset at runtime lets Go fall back to its
+# own per-user default ($HOME/go), which each user actually owns.
+RUN export GOPATH=/root/go && \
+    curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/HEAD/install.sh | sh -s -- -b /usr/local/bin latest && \
     CGO_ENABLED=0 go install golang.org/x/tools/gopls@latest && \
     CGO_ENABLED=0 go install github.com/go-delve/delve/cmd/dlv@latest && \
     CGO_ENABLED=0 go install honnef.co/go/tools/cmd/staticcheck@latest && \
