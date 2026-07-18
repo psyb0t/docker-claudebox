@@ -4,6 +4,14 @@ All notable changes to **claudebox** (formerly `docker-claude-code`).
 
 Format roughly follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [v2.0.12] — 2026-07-18 — Pin the aicodebox base image to a version tag
+
+`Dockerfile` built on `psyb0t/aicodebox:latest` — a floating tag that resolves to whatever the base image maintainer most recently pushed, so a rebuild could silently pull in an unreviewed base-image change.
+
+### Changed
+
+- **Dockerfile**: `BASE_IMAGE` now defaults to `psyb0t/aicodebox:v0.13.0` (the current latest release) instead of `:latest`, so builds are reproducible until the pin is deliberately bumped.
+
 ## [v2.0.11] — 2026-07-18 — Stop leaking a root-owned GOPATH into the full image's runtime
 
 `Dockerfile.full` set `GOPATH=/root/go` via `ENV` while installing Go dev tools (`gopls`, `dlv`, `staticcheck`, …) as root. Docker `ENV` isn't build-scoped — it persists into the running container for every user, so the non-root runtime user (`aicode`) also inherited `GOPATH=/root/go`: a directory it doesn't own and that the same build step `rm -rf`s once the tools are installed. Any `go install` / `go get` / `go mod` run as `aicode` (e.g. installing a project's own Go tooling) failed with a permission-denied error against that path.
