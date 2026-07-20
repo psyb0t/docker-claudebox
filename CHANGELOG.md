@@ -4,6 +4,12 @@ All notable changes to **claudebox** (formerly `docker-claude-code`).
 
 Format roughly follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [v2.0.13] — 2026-07-20 — Bump the aicodebox base image to v0.14.0
+
+### Changed
+
+- **Dockerfile**: `BASE_IMAGE` now defaults to `psyb0t/aicodebox:v0.14.0` (was `v0.13.0`). See [psyb0t/docker-aicodebox](https://github.com/psyb0t/docker-aicodebox)'s own CHANGELOG for what changed in that release.
+
 ## [v2.0.12] — 2026-07-18 — Pin the aicodebox base image to a version tag
 
 `Dockerfile` built on `psyb0t/aicodebox:latest` — a floating tag that resolves to whatever the base image maintainer most recently pushed, so a rebuild could silently pull in an unreviewed base-image change.

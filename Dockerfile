@@ -10,7 +10,7 @@
 # NOTE on hardening: the base sets `aicode` (UID 1000) as its runtime user via
 # `setpriv` inside `aicodebox-entrypoint`. This Dockerfile switches to root
 # only for the install steps below; runtime drops back to aicode automatically.
-ARG BASE_IMAGE=psyb0t/aicodebox:v0.13.0
+ARG BASE_IMAGE=psyb0t/aicodebox:v0.14.0
 FROM ${BASE_IMAGE}
 
 USER root
