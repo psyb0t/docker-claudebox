@@ -4,6 +4,12 @@ All notable changes to **claudebox** (formerly `docker-claude-code`).
 
 Format roughly follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [v2.1.0] — 2026-07-21 — Make container memory limit configurable
+
+### Added
+
+- **wrapper.sh**: `CLAUDEBOX_MAX_MEM` environment variable (with legacy `CLAUDE_MAX_MEM` fallback) to override the per-container memory limit. Defaults to `10g`. Set at launch time: `CLAUDEBOX_MAX_MEM=16g claudebox`.
+
 ## [v2.0.13] — 2026-07-20 — Bump the aicodebox base image to v0.14.0
 
 ### Changed

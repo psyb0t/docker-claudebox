@@ -34,6 +34,7 @@ CLAUDE_GIT_NAME="${CLAUDEBOX_GIT_NAME:-${CLAUDE_GIT_NAME:-}}"
 CLAUDE_GIT_EMAIL="${CLAUDEBOX_GIT_EMAIL:-${CLAUDE_GIT_EMAIL:-}}"
 CLAUDE_DIR="${CLAUDEBOX_DATA_DIR:-${CLAUDE_DATA_DIR:-$HOME/.claude}}"
 CLAUDE_SSH="${CLAUDEBOX_SSH_DIR:-${CLAUDE_SSH_DIR:-$HOME/.ssh/claudebox}}"
+CLAUDEBOX_MAX_MEM="${CLAUDEBOX_MAX_MEM:-${CLAUDE_MAX_MEM:-10g}}"
 
 # auth: prefer CLAUDEBOX_ENV_*, fall back to legacy direct vars
 ANTHROPIC_API_KEY="${CLAUDEBOX_ENV_ANTHROPIC_API_KEY:-${ANTHROPIC_API_KEY:-}}"
@@ -358,8 +359,12 @@ fi
 # Interactive — start existing container or create new one
 if docker ps -a --format '{{.Names}}' | grep -q "^${container_name}$"; then
     echo "🔄 Starting container '$container_name'..."
+    docker update --memory="$CLAUDEBOX_MAX_MEM" --memory-swap="$CLAUDEBOX_MAX_MEM" "$container_name" 2>/dev/null || true
     docker start -ai "$container_name"
 else
     echo "🔧 Creating container '$container_name'..."
-    docker run -it --name "$container_name" "${DOCKER_ARGS[@]}" "$CLAUDE_IMAGE"
+    docker run -it --name "$container_name" \
+        --memory="$CLAUDEBOX_MAX_MEM" \
+        --memory-swap="$CLAUDEBOX_MAX_MEM" \
+        "${DOCKER_ARGS[@]}" "$CLAUDE_IMAGE"
 fi
