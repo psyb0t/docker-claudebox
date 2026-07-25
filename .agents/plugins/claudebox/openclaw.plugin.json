@@ -1,0 +1,39 @@
+{
+  "name": "@psyb0t/claudebox",
+  "id": "@psyb0t/claudebox",
+  "version": "0.0.0",
+  "type": "code-plugin",
+  "summary": "Wire an OpenClaw agent to a self-hosted claudebox (Claude Code on the network) instance over MCP.",
+  "description": "A thin stdio<->HTTP bridge that connects an MCP client (OpenClaw, Claude, Cursor, Codex, ...) to a running claudebox instance's MCP endpoint (/mcp), exposing its 5 tools: run_prompt (run a prompt through the containerized Claude Code CLI, with full file/shell/tool access to the workspace), list_files, read_file, write_file, and delete_file. claudebox is self-hosted — you run the container yourself and point this bridge at it. See https://github.com/psyb0t/docker-claudebox.",
+  "extensions": ["./bin/cli.js"],
+  "compat": {
+    "pluginApi": ">=2026.3.24-beta.2"
+  },
+  "build": {
+    "openclawVersion": "2026.3.24-beta.2"
+  },
+  "environment": {
+    "CLAUDEBOX_URL": {
+      "required": true,
+      "description": "Base URL of your running claudebox server, e.g. http://localhost:8080 (the bridge appends /mcp). Requires CLAUDEBOX_API_MODE=1 and CLAUDEBOX_MCP_MODE=1 on the server."
+    },
+    "CLAUDEBOX_MCP_MODE_TOKEN": {
+      "required": false,
+      "description": "Bearer token, only if the claudebox server was started with CLAUDEBOX_MCP_MODE_TOKEN set."
+    }
+  },
+  "configSchema": {
+    "type": "object",
+    "required": ["url"],
+    "properties": {
+      "url": {
+        "type": "string",
+        "description": "Base URL of your running claudebox server, e.g. http://localhost:8080 (the bridge appends /mcp)."
+      },
+      "token": {
+        "type": "string",
+        "description": "Bearer token, only if the claudebox server was started with CLAUDEBOX_MCP_MODE_TOKEN set."
+      }
+    }
+  }
+}

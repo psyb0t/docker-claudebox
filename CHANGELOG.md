@@ -4,6 +4,18 @@ All notable changes to **claudebox** (formerly `docker-claude-code`).
 
 Format roughly follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [v2.2.0] — 2026-07-25 — ClawHub skill + plugin
+
+### Added
+
+- **`claudebox` agent skill** (`.agents/skills/claudebox/`) documenting every mode the box exposes — interactive shell, one-shot exec, the REST API, the OpenAI-compatible chat/completions endpoint, the streamable-HTTP MCP server, the Telegram bot, and the cron scheduler.
+- **`@psyb0t/claudebox` code plugin** (`.agents/plugins/claudebox/`) — a stdio↔HTTP MCP bridge (`mcp-remote`) so an OpenClaw/MCP agent can drive a running box's `/mcp` endpoint. MIT-licensed.
+- CI publishes the skill + plugin to ClawHub on tag pushes via the reusable `clawhub-publish.yml`.
+
+### Changed
+
+- README: dropped the stale `/bash` command from the Telegram-mode command list (no longer supported).
+
 ## [v2.1.2] — 2026-07-25 — Bump the baked-in toolchains and harden the image supply chain
 
 Refreshes the language/tool versions installed into the images and closes two supply-chain gaps: the base image is now pinned by digest, and the Go toolchain tarball is SHA256-verified before it's unpacked.
