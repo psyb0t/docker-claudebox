@@ -38,11 +38,24 @@ RUN install -d /etc/apt/keyrings && \
     apt-get update && apt-get install -y --no-install-recommends gh && \
     rm -rf /var/lib/apt/lists/*
 
-# Go toolchain.
-ARG GO_VERSION=1.26.1
+# Go toolchain. The tarball is SHA256-verified against the checksums published
+# at https://go.dev/dl/ — a bare `curl | tar` streams unverified bytes straight
+# into the image (supply-chain rule: every generic file download is hash-checked
+# before use). Bump both the version and the matching per-arch SHA together.
+ARG GO_VERSION=1.26.5
+ARG GO_SHA256_amd64=5c2c3b16caefa1d968a94c1daca04a7ca301a496d9b086e17ad77bb81393f053
+ARG GO_SHA256_arm64=fe4789e92b1f33358680864bbe8704289e7bb5fc207d80623c308935bd696d49
 ARG TARGETARCH
 RUN ARCH="${TARGETARCH:-amd64}" && \
-    curl -fsSL "https://go.dev/dl/go${GO_VERSION}.linux-${ARCH}.tar.gz" | tar -xzC /usr/local && \
+    case "$ARCH" in \
+        amd64) GO_SHA="${GO_SHA256_amd64}" ;; \
+        arm64) GO_SHA="${GO_SHA256_arm64}" ;; \
+        *) echo "unsupported TARGETARCH: ${ARCH}" >&2; exit 1 ;; \
+    esac && \
+    curl -fsSL "https://go.dev/dl/go${GO_VERSION}.linux-${ARCH}.tar.gz" -o /tmp/go.tar.gz && \
+    echo "${GO_SHA}  /tmp/go.tar.gz" | sha256sum -c - && \
+    tar -xzC /usr/local -f /tmp/go.tar.gz && \
+    rm -f /tmp/go.tar.gz && \
     echo 'export PATH="$PATH:/usr/local/go/bin"' > /etc/profile.d/go.sh && \
     ln -s /usr/local/go/bin/go /usr/local/bin/go && \
     ln -s /usr/local/go/bin/gofmt /usr/local/bin/gofmt
@@ -84,9 +97,9 @@ RUN curl -fsSL https://apt.releases.hashicorp.com/gpg \
     rm -rf /var/lib/apt/lists/*
 
 # kubectl via k8s apt.
-RUN curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.31/deb/Release.key \
+RUN curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.36/deb/Release.key \
         | gpg --batch --no-tty --yes --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg && \
-    echo "deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.31/deb/ /" \
+    echo "deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.36/deb/ /" \
         > /etc/apt/sources.list.d/kubernetes.list && \
     apt-get update && apt-get install -y --no-install-recommends kubectl && \
     rm -rf /var/lib/apt/lists/*
@@ -120,13 +133,13 @@ RUN npm config set fetch-retries 5 \
     echo "npm global install failed after 5 attempts" >&2; \
     exit 1
 
-# pyenv + Python 3.12.11 (system-wide, alongside base's python3).
+# pyenv + Python 3.12.13 (system-wide, alongside base's python3).
 ENV PYENV_ROOT=/usr/local/pyenv \
     PATH="/usr/local/pyenv/shims:/usr/local/pyenv/bin:${PATH}"
 RUN curl -fsSL https://pyenv.run | bash && \
     eval "$(pyenv init -)" && \
-    pyenv install 3.12.11 && \
-    pyenv global 3.12.11 && \
+    pyenv install 3.12.13 && \
+    pyenv global 3.12.13 && \
     { \
         echo 'export PYENV_ROOT="/usr/local/pyenv"'; \
         echo 'export PATH="$PYENV_ROOT/shims:$PYENV_ROOT/bin:$PATH"'; \

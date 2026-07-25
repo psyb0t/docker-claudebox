@@ -10,14 +10,14 @@
 # NOTE on hardening: the base sets `aicode` (UID 1000) as its runtime user via
 # `setpriv` inside `aicodebox-entrypoint`. This Dockerfile switches to root
 # only for the install steps below; runtime drops back to aicode automatically.
-ARG BASE_IMAGE=psyb0t/aicodebox:v0.14.0
+ARG BASE_IMAGE=psyb0t/aicodebox:v0.14.0@sha256:543aec8bf85ebc8a0689c4746d4c9e2ede65599decb50827593db0b3c65bd2a5
 FROM ${BASE_IMAGE}
 
 USER root
 
 # claude-code CLI — pinned npm global install. Runs as npm root so it lands on
 # a shared PATH for both root (init.d) and the aicode user (mode dispatchers).
-ARG CLAUDE_VERSION=2.1.197
+ARG CLAUDE_VERSION=2.1.220
 RUN npm install -g --no-audit --no-fund @anthropic-ai/claude-code@${CLAUDE_VERSION}
 
 # claudebox python package (ClaudecodeAdapter). aicodebox already exists in the

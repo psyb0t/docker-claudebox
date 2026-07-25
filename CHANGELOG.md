@@ -4,6 +4,21 @@ All notable changes to **claudebox** (formerly `docker-claude-code`).
 
 Format roughly follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [v2.1.2] — 2026-07-25 — Bump the baked-in toolchains and harden the image supply chain
+
+Refreshes the language/tool versions installed into the images and closes two supply-chain gaps: the base image is now pinned by digest, and the Go toolchain tarball is SHA256-verified before it's unpacked.
+
+### Changed
+
+- **Dockerfile**: `CLAUDE_VERSION` bumped `2.1.197` → `2.1.220`.
+- **Dockerfile.full**: Go `1.26.1` → `1.26.5`, kubectl apt channel `v1.31` → `v1.36`, pyenv-managed Python `3.12.11` → `3.12.13`.
+- **README.md** and **claudebox/templates/CLAUDE.md.full**: documented toolchain versions synced to match.
+
+### Security
+
+- **Dockerfile**: `BASE_IMAGE` now pins `psyb0t/aicodebox:v0.14.0` by `@sha256:` digest rather than the tag alone. Tags are mutable; a digest is content-addressed, so a rebuild can't silently pull different base-image bytes.
+- **Dockerfile.full**: the Go tarball is downloaded to disk and checked against a per-arch (amd64/arm64) SHA256 via `sha256sum -c` before extraction, replacing the previous unverified `curl … | tar` pipe. A tampered or truncated download now fails the build instead of landing in the image.
+
 ## [v2.1.1] — 2026-07-25 — Fix `claudebox --update` permission-denied on the global claude install
 
 `claudebox --update` writes a `.<container>-update` marker that the agent launcher (`claudebox-agent.sh`) acts on by running `claude update`. That update rewrites the npm global install under `/usr/lib/node_modules`, which is root-owned (the image installs claude-code via `npm install -g` as root), but the launcher runs as the `aicode` user (UID 1000). The bare `claude update` therefore failed with "Insufficient permissions to install update — Try running with sudo or fix npm permissions" and the update never applied.

@@ -3,8 +3,8 @@
 You are running in a Docker container with full sudo access.
 
 ## Languages & Runtimes
-- Go 1.26 — /usr/local/go/bin/go
-- Python 3.12 (system) + uv, pyenv-managed Python 3.12.11 also available
+- Go 1.26.5 — /usr/local/go/bin/go
+- Python 3.12 (system) + uv, pyenv-managed Python 3.12.13 also available
 - Node.js 22 LTS with npm
 
 ## Go Tools

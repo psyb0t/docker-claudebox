@@ -101,7 +101,7 @@ Use `/aicodebox-init.d/*.sh` hooks (see [Init Hooks](docs/customization.md#init-
 
 ### `psyb0t/claudebox:latest-full` (toolchain-loaded)
 
-Everything pre-installed. Layered on top of the minimal image: Go 1.26, Python 3.12.11 via pyenv, Node.js dev tools, C/C++ toolchain, terraform, kubectl, helm, gh, database clients (sqlite/postgres/mysql/redis), editors (vim/nano/htop/tmux), linters + formatters (flake8/black/isort/pyright/mypy/ruff/eslint/prettier/gofumpt/…). Larger image but Claude wakes up ready.
+Everything pre-installed. Layered on top of the minimal image: Go 1.26.5, Python 3.12.13 via pyenv, Node.js dev tools, C/C++ toolchain, terraform, kubectl, helm, gh, database clients (sqlite/postgres/mysql/redis), editors (vim/nano/htop/tmux), linters + formatters (flake8/black/isort/pyright/mypy/ruff/eslint/prettier/gofumpt/…). Larger image but Claude wakes up ready.
 
 ```bash
 export CLAUDEBOX_FULL=1 && curl -fsSL https://raw.githubusercontent.com/psyb0t/docker-claudebox/master/install.sh | bash
@@ -116,8 +116,8 @@ export CLAUDEBOX_FULL=1 && curl -fsSL https://raw.githubusercontent.com/psyb0t/d
 | Node.js LTS + npm                     |       yes       |       yes        |
 | Docker CE + Compose                   |       yes       |       yes        |
 | Claude Code CLI                       |       yes       |       yes        |
-| Go 1.26.1 + tools                     |       yes       |        -         |
-| Python 3.12.11 + tools                |       yes       |        -         |
+| Go 1.26.5 + tools                     |       yes       |        -         |
+| Python 3.12.13 + tools                |       yes       |        -         |
 | Node.js dev tools                     |       yes       |        -         |
 | C/C++ tools                           |       yes       |        -         |
 | DevOps (terraform, kubectl, helm, gh) |       yes       |        -         |
@@ -128,8 +128,8 @@ export CLAUDEBOX_FULL=1 && curl -fsSL https://raw.githubusercontent.com/psyb0t/d
 
 **Languages and runtimes:**
 
-- **Go 1.26.1** with the full toolchain — golangci-lint, gopls, delve, staticcheck, gofumpt, gotests, impl, gomodifytags
-- **Python 3.12.11** via pyenv — flake8, black, isort, autoflake, pyright, mypy, vulture, pytest, poetry, pipenv, plus common libraries (requests, beautifulsoup4, lxml, pyyaml, toml)
+- **Go 1.26.5** with the full toolchain — golangci-lint, gopls, delve, staticcheck, gofumpt, gotests, impl, gomodifytags
+- **Python 3.12.13** via pyenv — flake8, black, isort, autoflake, pyright, mypy, vulture, pytest, poetry, pipenv, plus common libraries (requests, beautifulsoup4, lxml, pyyaml, toml)
 - **Node.js LTS** — eslint, prettier, typescript, ts-node, yarn, pnpm, nodemon, pm2, framework CLIs (React, Vue, Angular), newman, http-server, serve, lighthouse, storybook
 - **C/C++** — gcc, g++, make, cmake, clang-format, valgrind, gdb, strace, ltrace
 
