@@ -67,10 +67,16 @@ flags=(--permission-mode bypassPermissions)
 
 # Update marker: the wrapper's --update touched .<container>-update. Update first,
 # then fall through to the normal launch.
+#
+# `claude update` rewrites the npm global install under /usr/lib/node_modules,
+# which is root-owned (the image installs claude-code via `npm install -g` as
+# root), but the runtime user is aicode (uid 1000). A bare `claude update` dies
+# with "Insufficient permissions to install update". aicode has passwordless
+# sudo, so run the update through sudo to write the root-owned global dir.
 if [ -n "$CONTAINER" ] && [ -f "$CFG/.${CONTAINER}-update" ]; then
-    dbg "update marker present — running claude update"
+    dbg "update marker present — running claude update via sudo"
     rm -f "$CFG/.${CONTAINER}-update"
-    "$CLAUDE_BIN" update || true
+    sudo "$CLAUDE_BIN" update || true
 fi
 
 # Auto-continue unless the caller opted out via --resume / --no-continue, or the

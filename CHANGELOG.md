@@ -4,6 +4,14 @@ All notable changes to **claudebox** (formerly `docker-claude-code`).
 
 Format roughly follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [v2.1.1] — 2026-07-25 — Fix `claudebox --update` permission-denied on the global claude install
+
+`claudebox --update` writes a `.<container>-update` marker that the agent launcher (`claudebox-agent.sh`) acts on by running `claude update`. That update rewrites the npm global install under `/usr/lib/node_modules`, which is root-owned (the image installs claude-code via `npm install -g` as root), but the launcher runs as the `aicode` user (UID 1000). The bare `claude update` therefore failed with "Insufficient permissions to install update — Try running with sudo or fix npm permissions" and the update never applied.
+
+### Fixed
+
+- **claudebox-agent.sh**: run the marker-triggered update as `sudo claude update`. The `aicode` user has passwordless sudo, so the update can write the root-owned global install directory and complete. `--update` now actually updates instead of erroring out.
+
 ## [v2.1.0] — 2026-07-21 — Make container memory limit configurable
 
 ### Added
