@@ -3,10 +3,11 @@ IMAGE_NAME := psyb0t/claudebox
 # is THE truth. Override at build time: `VERSION=2.0.0-rc1 make build`.
 VERSION    ?= $(shell awk -F\" '/^version *= *"/ {print $$2; exit}' claudebox/pyproject.toml)
 TAG        := v$(VERSION)
-# Default to the published aicodebox base — override with `make build BASE_IMAGE=...`
-# to point at a locally-built base image.
-BASE_IMAGE ?= psyb0t/aicodebox:latest
-CLAUDE_VERSION ?= 2.1.197
+# Default to the published aicodebox base, digest-pinned (keep in sync with the
+# ARG default in Dockerfile) — override with `make build BASE_IMAGE=...` to point
+# at a locally-built base image.
+BASE_IMAGE ?= psyb0t/aicodebox:v0.14.0@sha256:543aec8bf85ebc8a0689c4746d4c9e2ede65599decb50827593db0b3c65bd2a5
+CLAUDE_VERSION ?= 2.1.220
 
 .PHONY: all build build-full build-all pull-base test test-unit test-smoke test-persist test-image-select test-agent-launcher clean help version
 

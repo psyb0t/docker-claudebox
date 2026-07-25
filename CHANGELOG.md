@@ -4,6 +4,14 @@ All notable changes to **claudebox** (formerly `docker-claude-code`).
 
 Format roughly follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [v2.2.1] — 2026-07-25 — Make `make build` actually use the pinned base + bumped claude version
+
+v2.1.2 pinned the aicodebox base by digest and bumped `CLAUDE_VERSION` to `2.1.220` in the `Dockerfile`, but the `Makefile` — the canonical build entry point — passes its own `BASE_IMAGE` and `CLAUDE_VERSION` defaults as `--build-arg`, which override the `Dockerfile` `ARG` defaults. Those Makefile defaults still read `psyb0t/aicodebox:latest` and `2.1.197`, so `make build` silently ignored the v2.1.2 pin: it pulled the mutable base tag and installed the old claude-code. This syncs them.
+
+### Fixed
+
+- **Makefile**: sync `BASE_IMAGE` to the digest-pinned `psyb0t/aicodebox:v0.14.0@sha256:…` and `CLAUDE_VERSION` to `2.1.220`, matching the `Dockerfile` `ARG` defaults. `make build` now bakes in the pinned base and the claude-code version v2.1.2 intended, instead of overriding them back to the mutable tag and the old version.
+
 ## [v2.2.0] — 2026-07-25 — ClawHub skill + plugin
 
 ### Added
