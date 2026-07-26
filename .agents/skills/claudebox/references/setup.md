@@ -7,6 +7,22 @@
 
 ## Quick Install (CLI wrapper)
 
+Safer path — download, inspect, then run:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/psyb0t/docker-claudebox/master/install.sh -o install.sh
+less install.sh   # read it before running anything you downloaded
+bash install.sh
+
+# full image variant
+export CLAUDEBOX_FULL=1 && bash install.sh
+
+# custom binary name
+bash install.sh claude
+```
+
+Piping straight into bash (still works, same script, just skips the inspection step):
+
 ```bash
 # minimal image — default; Claude installs what it needs on the fly
 curl -fsSL https://raw.githubusercontent.com/psyb0t/docker-claudebox/master/install.sh | bash
@@ -17,6 +33,8 @@ export CLAUDEBOX_FULL=1 && curl -fsSL https://raw.githubusercontent.com/psyb0t/d
 # custom binary name
 curl -fsSL https://raw.githubusercontent.com/psyb0t/docker-claudebox/master/install.sh | bash -s -- claude
 ```
+
+Piping a remote script straight into bash executes unreviewed remote code as you. Download it, read it, then run it — prefer the download-inspect-run form above, especially in an agent-driven or CI context.
 
 The installer pulls the image, generates an ed25519 SSH key at `~/.ssh/claudebox/id_ed25519` for git operations inside the container, creates `~/.claude`, and installs the wrapper to `/usr/local/bin/claudebox` (override with `CLAUDEBOX_INSTALL_DIR` / `CLAUDEBOX_BIN_NAME`). Add the generated public key to GitHub/GitLab for git push/pull to work from inside the container.
 
@@ -66,6 +84,8 @@ services:
       - /your/projects:/workspace
       - /var/run/docker.sock:/var/run/docker.sock
 ```
+
+Mounting `/var/run/docker.sock` grants host-level container control — anything that can reach the socket (including Claude itself, by design, or an attacker who compromises the API/MCP surface above) can create, inspect, or destroy any container on the host, not just this one. Only mount it on a host you trust, and only if you need docker-in-docker for this workload.
 
 Add `CLAUDEBOX_MCP_MODE=1` + `CLAUDEBOX_MCP_MODE_TOKEN` alongside `CLAUDEBOX_API_MODE=1` to mount MCP on the same port. Set `CLAUDEBOX_TELEGRAM_MODE=1` + `CLAUDEBOX_TELEGRAM_MODE_TOKEN` for the bot, or `CLAUDEBOX_CRON_MODE=1` + `CLAUDEBOX_CRON_MODE_FILE` for the scheduler — any combination can run in the same container (e.g. cron + Telegram share one workspace).
 

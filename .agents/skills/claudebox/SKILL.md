@@ -1,6 +1,6 @@
 ---
 name: claudebox
-description: Claude Code running on the network inside a Docker container (aicodebox-based). Exposes seven ways to drive it — interactive shell (`claudebox`), one-shot exec (`claudebox "prompt"`), an HTTP REST API (`/run`, async run-id polling, `/files` CRUD), an OpenAI-compatible `/openai/v1/chat/completions` adapter (streaming SSE, multi-turn, multimodal), an MCP server (streamable HTTP, gated by CLAUDEBOX_MCP_MODE — mounts at `/mcp` on the API port when API mode is also on, else runs standalone on its own port), a Telegram bot, and a YAML cron scheduler. Auth is per-mode bearer tokens (CLAUDEBOX_API_MODE_TOKEN, CLAUDEBOX_MCP_MODE_TOKEN, CLAUDEBOX_TELEGRAM_MODE_TOKEN) or none if unset. Use when the user wants to run Claude Code headlessly from a script/CI pipeline, expose it as an HTTP/OpenAI/MCP backend for another tool or agent, wire it to Telegram, or schedule recurring Claude jobs.
+description: Claude Code running on the network inside a Docker container (aicodebox-based), managed via the claudebox wrapper/CLI. Exposes seven ways to drive it — interactive shell (`claudebox`), one-shot exec (`claudebox "prompt"`), an HTTP REST API (`/run`, async run-id polling, `/files` CRUD), an OpenAI-compatible `/openai/v1/chat/completions` adapter (streaming SSE, multi-turn, multimodal), an MCP server (streamable HTTP, gated by CLAUDEBOX_MCP_MODE — mounts at `/mcp` on the API port when API mode is also on, else runs standalone on its own port), a Telegram bot, and a YAML cron scheduler. Auth is per-mode bearer tokens (CLAUDEBOX_API_MODE_TOKEN, CLAUDEBOX_MCP_MODE_TOKEN, CLAUDEBOX_TELEGRAM_MODE_TOKEN) or none if unset — unset tokens mean the surface is unauthenticated. Use specifically for installing, configuring, launching, or scripting against a claudebox container/wrapper — not as a generic "run any coding task" tool.
 homepage: https://github.com/psyb0t/docker-claudebox
 user-invocable: true
 metadata:
@@ -10,6 +10,14 @@ metadata:
 # claudebox
 
 Claude Code — the agentic coding CLI from Anthropic — running in an isolated Docker container with dev tools, passwordless sudo, docker-in-docker, and `--permission-mode bypassPermissions` on by default. Built as a thin child image of `psyb0t/aicodebox`; every server-mode surface (API / OpenAI adapter / MCP / Telegram / Cron) is inherited from that base.
+
+## Security & safety
+
+- **No auth when the per-mode token is unset.** `CLAUDEBOX_API_MODE_TOKEN` and `CLAUDEBOX_MCP_MODE_TOKEN` each default to no auth if unset — see [HTTP REST API mode](#http-rest-api-mode) and [MCP server mode](#mcp-server-mode) for details and the exact capability exposed unauthenticated in each case.
+- **`DELETE /files/{path}` is destructive and irreversible** — see [HTTP REST API mode](#http-rest-api-mode).
+- **Mounting `/var/run/docker.sock` grants host-level container control** — see [Server modes (API / OpenAI / MCP / Telegram / Cron)](references/setup.md#server-modes-api--openai--mcp--telegram--cron) in `references/setup.md`, only do this on a host you trust.
+- **`--permission-mode bypassPermissions` is on by default** — Claude has full, unrestricted shell/file/docker access inside the container by design (see [When NOT To Use](#when-not-to-use)). Don't treat the container boundary as a sandbox for untrusted input unless you've isolated the container itself.
+- **Install script is piped from curl into bash by default** — a safer download-inspect-run alternative is documented alongside it; see [references/setup.md](references/setup.md#quick-install-cli-wrapper).
 
 Seven programmatic surfaces, all reachable from the same container image, selected by which `CLAUDEBOX_*_MODE` env flags are set at boot:
 
@@ -90,6 +98,8 @@ claudebox "extract the author and title" --output-format json \
 
 `CLAUDEBOX_API_MODE=1` starts a long-lived FastAPI server (default port `8080`, `CLAUDEBOX_API_MODE_PORT` to override). Bearer auth via `CLAUDEBOX_API_MODE_TOKEN` (unset = no auth).
 
+**No auth when `CLAUDEBOX_API_MODE_TOKEN` is unset.** With it empty the API surface is UNAUTHENTICATED — anyone who can reach it gets full `/run` (arbitrary-prompt agentic execution) and `/files` (read/write/delete anywhere under `/workspace`) access. NEVER expose such an instance on a network or to untrusted agents; set the token and bind to loopback / behind an authenticating proxy.
+
 ```yaml
 environment:
   - CLAUDEBOX_API_MODE=1
@@ -128,6 +138,8 @@ curl "http://localhost:8080/files/myproject/src/main.py" -H "Authorization: Bear
 curl -X PUT "http://localhost:8080/files/myproject/src/main.py" -H "Authorization: Bearer token" --data-binary @main.py
 curl -X DELETE "http://localhost:8080/files/myproject/src/old.py" -H "Authorization: Bearer token"
 ```
+
+**Destructive & irreversible.** `DELETE /files/{path}` removes the target file under `/workspace` with no undo. An agent must NEVER call it unless the user explicitly asked for that exact deletion; confirm the specific target path first; scope it to the current task; never enumerate-then-bulk-delete. On a shared/multi-tenant instance this can destroy another caller's workspace data — treat it as admin-only.
 
 **Introspection and lifecycle:**
 
@@ -191,6 +203,8 @@ print(response.choices[0].message.content)
 
 `CLAUDEBOX_MCP_MODE=1` exposes a [Model Context Protocol](https://modelcontextprotocol.io/) server over streamable HTTP, using `CLAUDEBOX_MCP_MODE_TOKEN` as its bearer token (independent of the API token, no fallback; empty/unset = no auth). Where it listens depends on whether API mode is also on:
 
+**No auth when `CLAUDEBOX_MCP_MODE_TOKEN` is unset.** With it empty the MCP surface is UNAUTHENTICATED — anyone who can reach it gets full tool access: run arbitrary prompts (`run_prompt`) and read/write/delete files (`list_files`, `read_file`, `write_file`, `delete_file`) under `/workspace`. NEVER expose such an instance on a network or to untrusted agents; set the token and bind to loopback / behind an authenticating proxy.
+
 - **`CLAUDEBOX_API_MODE=1` + `CLAUDEBOX_MCP_MODE=1`** (the setup the rest of the README documents) — MCP mounts at `/mcp` on the API port, no extra process.
 - **`CLAUDEBOX_MCP_MODE=1` alone** (or combined with Telegram/Cron/interactive mode) — MCP runs as an independent background process on its own port (`CLAUDEBOX_MCP_MODE_PORT`, default `8081`), serving at the port root, not under `/mcp`.
 
@@ -228,6 +242,8 @@ claude mcp add --transport http claudebox http://localhost:8080/mcp/ \
 | `read_file` | Read a file's text content. |
 | `write_file` | Write content to a file (creates parent dirs). |
 | `delete_file` | Delete a file (refuses directories). |
+
+**`delete_file` is destructive and irreversible.** It removes the target file under `/workspace` with no undo. An agent must NEVER call it unless the user explicitly asked for that exact deletion; confirm the specific target path first; scope it to the current task; never enumerate-then-bulk-delete. On a shared/multi-tenant instance this can destroy another caller's workspace data — treat it as admin-only.
 
 Raw JSON-RPC for debugging (streamable-HTTP handshake — `initialize` then reuse the returned `mcp-session-id`):
 
