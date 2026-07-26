@@ -15,10 +15,15 @@ FROM ${BASE_IMAGE}
 
 USER root
 
-# claude-code CLI — pinned npm global install. Runs as npm root so it lands on
-# a shared PATH for both root (init.d) and the aicode user (mode dispatchers).
+# claude-code CLI — NOT baked into this image. Anthropic's Claude Code is
+# proprietary ("© Anthropic PBC. All rights reserved", Anthropic Commercial
+# Terms) with no redistribution grant, so this published image must not ship
+# it. Instead we pin the version here and the entrypoint installs it (npm
+# global, on the same shared PATH as before) on first container start if it
+# isn't already present — so each user's own container fetches it from npm at
+# runtime rather than us redistributing Anthropic's software.
 ARG CLAUDE_VERSION=2.1.220
-RUN npm install -g --no-audit --no-fund @anthropic-ai/claude-code@${CLAUDE_VERSION}
+ENV CLAUDEBOX_CLAUDE_VERSION=${CLAUDE_VERSION}
 
 # claudebox python package (ClaudecodeAdapter). aicodebox already exists in the
 # base's system Python, so --no-deps skips redundant resolution.

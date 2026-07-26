@@ -4,6 +4,14 @@ All notable changes to **claudebox** (formerly `docker-claude-code`).
 
 Format roughly follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [v2.3.0] — 2026-07-26 — Install Claude Code at first run instead of baking it into the image
+
+**Behavior change.** Claude Code is no longer installed at build time. Anthropic's Claude Code CLI is proprietary ("© Anthropic PBC, all rights reserved", Anthropic Commercial Terms) with no redistribution grant, so the published images must not ship it.
+
+- **Dockerfile**: removed `RUN npm install -g @anthropic-ai/claude-code@${CLAUDE_VERSION}`. The version is still pinned (`ARG CLAUDE_VERSION`, default `2.1.220`) and is now persisted into the image as `ENV CLAUDEBOX_CLAUDE_VERSION` so the entrypoint knows which version to install.
+- **`claudebox-entrypoint.sh`**: on container start, if the `claude` binary isn't present, it runs the same install as before — `npm install -g --no-audit --no-fund @anthropic-ai/claude-code@${CLAUDEBOX_CLAUDE_VERSION}` — while still root, landing on the same shared PATH, before the base entrypoint drops privileges. A fresh container installs once; a warm restart finds it and skips. Override the version with `CLAUDEBOX_CLAUDE_VERSION` at `docker run`.
+- **Net effect**: each user's own container fetches Claude Code straight from npm; the published `psyb0t/claudebox` images redistribute none of Anthropic's software. First container start needs network + a few extra seconds. Added `THIRD_PARTY.md` documenting this and the other image-bundled tools; `.agents/plugins/claudebox` stays MIT and the repo's own code stays WTFPL.
+
 ## [v2.2.3] — 2026-07-26 — De-duplicate the claudebox skill security docs
 
 Documentation only, no behavior change.

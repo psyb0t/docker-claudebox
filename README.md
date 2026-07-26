@@ -93,6 +93,8 @@ docker pull psyb0t/claudebox:latest        # minimal (default)
 
 The default v2 image. Just enough to run Claude Code on top of the aicodebox base: Ubuntu 24.04, git/curl/wget/jq, Node.js 22 LTS + npm, Python 3.12 + uv, Docker CE. Claude has passwordless sudo, so it will install whatever else it needs on the fly via `apt-get`, `pip`, `npm`, etc. Smaller image, faster pull, first run may take longer while Claude sorts out its own tooling.
 
+> **Claude Code is installed on first run, not baked into the image.** Anthropic's Claude Code CLI is proprietary and can't be redistributed, so the image ships only the pinned version (`CLAUDEBOX_CLAUDE_VERSION`, default set at build) and the entrypoint runs `npm install -g @anthropic-ai/claude-code@<version>` from npm the first time a fresh container starts. This means the published image redistributes none of Anthropic's software, and each container pulls Claude Code straight from npm. First container start needs network and takes a few extra seconds; warm restarts skip it. To pin a different version, set `CLAUDEBOX_CLAUDE_VERSION` at `docker run`.
+
 ```bash
 curl -fsSL https://raw.githubusercontent.com/psyb0t/docker-claudebox/master/install.sh | bash
 ```

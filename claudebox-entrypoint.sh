@@ -84,6 +84,22 @@ elif [ ! -e "${AICODE_HOME}/.claude" ]; then
     ln -sfn "${AICODE_HOME}/.aicodebox" "${AICODE_HOME}/.claude" 2>/dev/null || true
 fi
 
+# Claude Code — install on first run if absent. It is deliberately NOT baked
+# into the image (Anthropic's CLI is proprietary and cannot be redistributed),
+# so each container fetches the pinned version from npm at startup. Runs while
+# still root here, so it lands on the shared npm global PATH exactly as the
+# old build-time `RUN npm install -g` did, before the base entrypoint drops
+# privileges. Fresh container installs once; a warm restart finds it and skips.
+# Same install command + flags as the previous Dockerfile step.
+if ! command -v claude >/dev/null 2>&1; then
+    echo "[claudebox] Claude Code not present — installing @anthropic-ai/claude-code@${CLAUDEBOX_CLAUDE_VERSION:-latest} from npm (first run)..." >&2
+    if npm install -g --no-audit --no-fund "@anthropic-ai/claude-code@${CLAUDEBOX_CLAUDE_VERSION:-latest}"; then
+        echo "[claudebox] Claude Code installed." >&2
+    else
+        echo "[claudebox] WARNING: could not install Claude Code (offline or npm error) — modes that need it will fail until it installs; check network and restart." >&2
+    fi
+fi
+
 # Hand off to the base — it owns UID/GID rematch, init.d dispatch, mode
 # selection, MCP sidecar, and the setpriv drop.
 exec /usr/local/bin/aicodebox-entrypoint "$@"
