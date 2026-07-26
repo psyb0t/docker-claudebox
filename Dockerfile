@@ -13,6 +13,9 @@
 ARG BASE_IMAGE=psyb0t/aicodebox:v0.14.0@sha256:543aec8bf85ebc8a0689c4746d4c9e2ede65599decb50827593db0b3c65bd2a5
 FROM ${BASE_IMAGE}
 
+# MCP Registry ownership verification label.
+LABEL io.modelcontextprotocol.server.name="io.github.psyb0t/claudebox"
+
 USER root
 
 # claude-code CLI — NOT baked into this image. Anthropic's Claude Code is

@@ -4,6 +4,10 @@ All notable changes to **claudebox** (formerly `docker-claude-code`).
 
 Format roughly follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [v2.3.1] — 2026-07-26 — List on the official MCP Registry
+
+- Added `server.json` — published to the official Model Context Protocol Registry (`registry.modelcontextprotocol.io`) as `io.github.psyb0t/claudebox`, pointing at the `psyb0t/claudebox` Docker image. Ownership is proven by an `io.modelcontextprotocol.server.name` LABEL on the image; publishing runs on tag pushes via GitHub OIDC (secretless). Also added a `glama.json` maintainer claim.
+
 ## [v2.3.0] — 2026-07-26 — Install Claude Code at first run instead of baking it into the image
 
 **Behavior change.** Claude Code is no longer installed at build time. Anthropic's Claude Code CLI is proprietary ("© Anthropic PBC, all rights reserved", Anthropic Commercial Terms) with no redistribution grant, so the published images must not ship it.
