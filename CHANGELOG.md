@@ -4,6 +4,12 @@ All notable changes to **claudebox** (formerly `docker-claude-code`).
 
 Format roughly follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [v2.2.3] — 2026-07-26 — De-duplicate the claudebox skill security docs
+
+Documentation only, no behavior change.
+
+- Consolidated the repeated no-auth and file-deletion notes in `.agents/skills/claudebox/` to one clear mention each in its natural section, and simplified the install docs to the download-inspect-run flow (dropped the redundant piped one-liner variants). Same guidance, less repetition.
+
 ## [v2.2.2] — 2026-07-26 — Harden the claudebox skill docs with explicit security guardrails
 
 ### Security

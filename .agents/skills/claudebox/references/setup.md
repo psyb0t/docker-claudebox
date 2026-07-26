@@ -21,24 +21,9 @@ export CLAUDEBOX_FULL=1 && bash install.sh
 bash install.sh claude
 ```
 
-Piping straight into bash (still works, same script, just skips the inspection step):
-
-```bash
-# minimal image — default; Claude installs what it needs on the fly
-curl -fsSL https://raw.githubusercontent.com/psyb0t/docker-claudebox/master/install.sh | bash
-
-# full image — every dev tool pre-installed (Go, Python, kubectl, terraform, ...)
-export CLAUDEBOX_FULL=1 && curl -fsSL https://raw.githubusercontent.com/psyb0t/docker-claudebox/master/install.sh | bash
-
-# custom binary name
-curl -fsSL https://raw.githubusercontent.com/psyb0t/docker-claudebox/master/install.sh | bash -s -- claude
-```
-
-Piping a remote script straight into bash executes unreviewed remote code as you. Download it, read it, then run it — prefer the download-inspect-run form above, especially in an agent-driven or CI context.
+Downloading and reading the script before running it is the recommended flow, especially in an agent-driven or CI context — it runs with your privileges.
 
 The installer pulls the image, generates an ed25519 SSH key at `~/.ssh/claudebox/id_ed25519` for git operations inside the container, creates `~/.claude`, and installs the wrapper to `/usr/local/bin/claudebox` (override with `CLAUDEBOX_INSTALL_DIR` / `CLAUDEBOX_BIN_NAME`). Add the generated public key to GitHub/GitLab for git push/pull to work from inside the container.
-
-`VAR=x curl ... | bash` does **not** set `VAR` for the install script — bash attaches env assignments before a pipeline to the first command only (`curl`). Always `export` the var first.
 
 Manual setup without piping to bash: `mkdir -p ~/.claude`, generate the SSH key yourself, `docker pull psyb0t/claudebox:latest` (or `:latest-full`), then fetch `wrapper.sh` and install it as your `claudebox` binary.
 
