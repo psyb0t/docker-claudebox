@@ -1,0 +1,22 @@
+{
+  "name": "claudebox",
+  "description": "Claude Code running in an isolated Docker container, driven via interactive shell, one-shot exec, an HTTP REST API, an OpenAI-compatible chat/completions adapter, an MCP server, a Telegram bot, and a YAML cron scheduler",
+  "author": { "name": "psyb0t", "url": "https://github.com/psyb0t" },
+  "homepage": "https://github.com/psyb0t/docker-claudebox",
+  "license": "WTFPL",
+  "keywords": ["claude-code", "docker", "mcp", "rest-api", "openai-compatible", "telegram-bot", "cron"],
+  "userConfig": {
+    "claudebox_url": {
+      "type": "string",
+      "title": "claudebox server URL",
+      "description": "Base URL of your running claudebox server, e.g. http://localhost:8080 (CLAUDEBOX_URL). Requires CLAUDEBOX_API_MODE=1 and CLAUDEBOX_MCP_MODE=1 on the server.",
+      "required": true
+    },
+    "claudebox_mcp_mode_token": {
+      "type": "string",
+      "title": "claudebox MCP bearer token",
+      "description": "Bearer token (CLAUDEBOX_MCP_MODE_TOKEN), only if the claudebox server was started with CLAUDEBOX_MCP_MODE_TOKEN set.",
+      "sensitive": true
+    }
+  }
+}

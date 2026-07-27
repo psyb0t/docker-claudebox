@@ -39,6 +39,7 @@ Beyond just running Claude Code in Docker, claudebox adds skill injection (auto-
 - [Authentication](#authentication)
 - [Modes](#modes)
 - [Configuration](#configuration)
+- [Agent integrations](#agent-integrations)
 - [Gotchas](#gotchas)
 - [License](#license)
 
@@ -232,6 +233,43 @@ environment:
 
 - **[Environment variables →](docs/environment-variables.md)** — full table of `CLAUDEBOX_*` settings the wrapper and entrypoint understand, plus `CLAUDEBOX_ENV_*` (forward arbitrary vars into the container) and `CLAUDEBOX_MOUNT_*` (extra volume mounts).
 - **[Customization →](docs/customization.md)** — extend Claude's container with custom scripts (`~/.claude/bin`), one-time init hooks (`~/.claude/init.d`), always-active skills auto-injected into every session (`~/.claude/.always-skills`), and MCP server definitions (project `.mcp.json` or global `~/.claude.json`).
+
+## Agent integrations
+
+The [skill](.agents/skills/claudebox) works in any agent that reads `.agents/skills/`, and installs natively in the clients below.
+
+### Claude Code
+
+```bash
+claude plugin marketplace add psyb0t/agents
+claude plugin install claudebox@psyb0t
+```
+
+Claude Code prompts for the claudebox server URL and, if the MCP surface has auth enabled, the bearer token — the token is stored in your OS keychain.
+
+### Codex
+
+```bash
+codex plugin marketplace add psyb0t/agents
+```
+
+Codex also picks the skill up automatically in any repo containing `.agents/skills/`, and invokes it as `$claudebox`.
+
+### OpenClaw
+
+The skill is published to ClawHub on every release:
+
+```bash
+openclaw skills install @psyb0t/claudebox
+```
+
+For MCP clients that speak local stdio, the [`@psyb0t/claudebox`](.agents/plugins/claudebox) plugin bridges to the service's `/mcp` endpoint:
+
+```bash
+openclaw plugins install clawhub:@psyb0t/claudebox
+```
+
+Then set `CLAUDEBOX_URL` (and `CLAUDEBOX_MCP_MODE_TOKEN` if the server requires auth).
 
 ## Gotchas
 

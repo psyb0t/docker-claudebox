@@ -1,0 +1,11 @@
+{
+  "name": "claudebox",
+  "version": "2.3.4",
+  "description": "Claude Code running in an isolated Docker container, driven via interactive shell, one-shot exec, an HTTP REST API, an OpenAI-compatible chat/completions adapter, an MCP server, a Telegram bot, and a YAML cron scheduler",
+  "author": { "name": "psyb0t", "url": "https://github.com/psyb0t" },
+  "homepage": "https://github.com/psyb0t/docker-claudebox",
+  "repository": "https://github.com/psyb0t/docker-claudebox",
+  "license": "WTFPL",
+  "keywords": ["claude-code", "docker", "mcp", "rest-api", "openai-compatible", "telegram-bot", "cron"],
+  "skills": "./skills/"
+}

@@ -4,6 +4,11 @@ All notable changes to **claudebox** (formerly `docker-claude-code`).
 
 Format roughly follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [v2.3.4] — 2026-07-27 — Claude Code and Codex plugin manifests
+
+- Added `.agents/.claude-plugin/plugin.json` and `.agents/.codex-plugin/plugin.json`, making the existing `.agents/skills/claudebox` skill installable as a native plugin in Claude Code (`claude plugin install claudebox@psyb0t`) and Codex (`codex plugin marketplace add psyb0t/agents`). The Claude Code manifest declares `userConfig` for the claudebox server URL and MCP bearer token so the client prompts for and stores them instead of requiring manual env exports.
+- Added an `## Agent integrations` section to the README (linked from the Table of Contents) documenting the install commands for Claude Code, Codex, and OpenClaw, including the existing `.agents/plugins/claudebox` MCP-bridge plugin.
+
 ## [v2.3.3] — 2026-07-27 — README CI badge
 
 - Added a GitHub Actions CI status badge to the README.
