@@ -4,6 +4,11 @@ All notable changes to **claudebox** (formerly `docker-claude-code`).
 
 Format roughly follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [v2.3.5] — 2026-07-27 — Fix missing Codex install command in the README
+
+- The `## Agent integrations` → Codex subsection told readers to run `codex plugin marketplace add psyb0t/agents` and stopped there, never showing the actual install command. Added the missing line: `codex plugin add claudebox@psyb0t`.
+- Clarified the invocation prose: installed via the marketplace, the skill invokes as `$claudebox:claudebox`; picked up automatically (no install) from a repo's own `.agents/skills/`, it invokes as plain `$claudebox`.
+
 ## [v2.3.4] — 2026-07-27 — Claude Code and Codex plugin manifests
 
 - Added `.agents/.claude-plugin/plugin.json` and `.agents/.codex-plugin/plugin.json`, making the existing `.agents/skills/claudebox` skill installable as a native plugin in Claude Code (`claude plugin install claudebox@psyb0t`) and Codex (`codex plugin marketplace add psyb0t/agents`). The Claude Code manifest declares `userConfig` for the claudebox server URL and MCP bearer token so the client prompts for and stores them instead of requiring manual env exports.

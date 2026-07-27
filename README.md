@@ -251,9 +251,10 @@ Claude Code prompts for the claudebox server URL and, if the MCP surface has aut
 
 ```bash
 codex plugin marketplace add psyb0t/agents
+codex plugin add claudebox@psyb0t
 ```
 
-Codex also picks the skill up automatically in any repo containing `.agents/skills/`, and invokes it as `$claudebox`.
+Installed via the marketplace, the skill invokes as `$claudebox:claudebox`. Codex also picks the skill up automatically, with no install, in any repo containing `.agents/skills/` — there it invokes as plain `$claudebox`.
 
 ### OpenClaw
 
