@@ -14,7 +14,17 @@ ENV DEBIAN_FRONTEND=noninteractive \
 # Build essentials, editors, archive, net, CLI tools, C/C++ toolchain, DB
 # clients, and pyenv build deps. Grouped into one apt run so the layer cache
 # is a single unit.
-RUN apt-get update && apt-get install -y --no-install-recommends \
+#
+# The base image installs Node from NodeSource and leaves that apt source
+# behind, so every `apt-get update` here also reaches deb.nodesource.com even
+# though nothing below needs a package from it. That host sits behind a CDN
+# which returns 403 to CI runner address ranges, failing the whole update over
+# a repository this layer never wanted. Node is already installed in the base,
+# so the source has no remaining purpose — drop it first. Removing a
+# third-party apt source also shrinks what a later `apt-get install` trusts.
+RUN rm -f /etc/apt/sources.list.d/nodesource.sources \
+          /etc/apt/sources.list.d/nodesource.list && \
+    apt-get update && apt-get install -y --no-install-recommends \
         build-essential make cmake pkg-config libssl-dev \
         python3-pip python-is-python3 \
         nano vim htop tmux \

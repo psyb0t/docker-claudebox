@@ -4,6 +4,10 @@ All notable changes to **claudebox** (formerly `docker-claude-code`).
 
 Format roughly follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [v2.3.6] — 2026-07-27 — Fix the `-full` image failing to build on an unused apt source
+
+- `Dockerfile.full` now removes the NodeSource apt source before its `apt-get update`. The base image installs Node from NodeSource and leaves that source configured, so every `apt-get update` here also contacted `deb.nodesource.com` — despite nothing in this file installing a package from it. That host began returning `403 Forbidden` to CI runner address ranges, which failed the update and with it the whole `-full` build, so no `-full` image published for v2.3.4 or v2.3.5. Node is already installed in the base and is untouched; only the now-purposeless package source is dropped, which additionally reduces what a later `apt-get install` trusts.
+
 ## [v2.3.5] — 2026-07-27 — Fix missing Codex install command in the README
 
 - The `## Agent integrations` → Codex subsection told readers to run `codex plugin marketplace add psyb0t/agents` and stopped there, never showing the actual install command. Added the missing line: `codex plugin add claudebox@psyb0t`.
