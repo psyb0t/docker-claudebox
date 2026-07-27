@@ -4,6 +4,10 @@ All notable changes to **claudebox** (formerly `docker-claude-code`).
 
 Format roughly follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [v2.3.3] — 2026-07-27 — README CI badge
+
+- Added a GitHub Actions CI status badge to the README.
+
 ## [v2.3.2] — 2026-07-27 — README status badges
 
 - Added self-hosted version and license badges plus a Docker Hub pulls badge; wired a badges job into pipeline.yml.

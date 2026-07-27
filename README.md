@@ -1,5 +1,6 @@
 # claudebox
 
+[![CI](https://github.com/psyb0t/docker-claudebox/actions/workflows/pipeline.yml/badge.svg?branch=master)](https://github.com/psyb0t/docker-claudebox/actions/workflows/pipeline.yml)
 [![version](https://raw.githubusercontent.com/psyb0t/docker-claudebox/badges/version.svg)](https://github.com/psyb0t/docker-claudebox/releases)
 [![license](https://raw.githubusercontent.com/psyb0t/docker-claudebox/badges/license.svg)](LICENSE)
 [![Docker Pulls](https://img.shields.io/docker/pulls/psyb0t/claudebox?style=flat-square)](https://hub.docker.com/r/psyb0t/claudebox)
