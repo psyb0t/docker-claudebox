@@ -4,6 +4,10 @@ All notable changes to **claudebox** (formerly `docker-claude-code`).
 
 Format roughly follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [v2.3.2] — 2026-07-27 — README status badges
+
+- Added self-hosted version and license badges plus a Docker Hub pulls badge; wired a badges job into pipeline.yml.
+
 ## [v2.3.1] — 2026-07-26 — List on the official MCP Registry
 
 - Added `server.json` — published to the official Model Context Protocol Registry (`registry.modelcontextprotocol.io`) as `io.github.psyb0t/claudebox`, pointing at the `psyb0t/claudebox` Docker image. Ownership is proven by an `io.modelcontextprotocol.server.name` LABEL on the image; publishing runs on tag pushes via GitHub OIDC (secretless). Also added a `glama.json` maintainer claim.

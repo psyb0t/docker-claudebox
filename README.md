@@ -1,7 +1,8 @@
 # claudebox
 
-[![Docker Hub](https://img.shields.io/docker/pulls/psyb0t/claudebox?style=flat-square)](https://hub.docker.com/r/psyb0t/claudebox)
-[![License: WTFPL](https://img.shields.io/badge/License-WTFPL-brightgreen.svg?style=flat-square)](http://www.wtfpl.net/)
+[![version](https://raw.githubusercontent.com/psyb0t/docker-claudebox/badges/version.svg)](https://github.com/psyb0t/docker-claudebox/releases)
+[![license](https://raw.githubusercontent.com/psyb0t/docker-claudebox/badges/license.svg)](LICENSE)
+[![Docker Pulls](https://img.shields.io/docker/pulls/psyb0t/claudebox?style=flat-square)](https://hub.docker.com/r/psyb0t/claudebox)
 
 A runtime harness for [Claude Code](https://claude.com/product/claude-code) — the agentic coding CLI from Anthropic — running in a fully isolated Docker container with every dev tool pre-installed, passwordless sudo, docker-in-docker support, and `--permission-mode bypassPermissions` enabled by default.
 
