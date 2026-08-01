@@ -4,6 +4,18 @@ All notable changes to **claudebox** (formerly `docker-claude-code`).
 
 Format roughly follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [v2.3.7] — 2026-08-01 — CI infrastructure: mirroring, archiving, issue pull-back
+
+Infrastructure only. Nothing in the images or the wrapper changed — every
+commit in this release touches `.github/workflows/`.
+
+- The pipeline was split: building and publishing stay in `pipeline.yml`, and
+  everything that leaves the host now lives beside it in `mirror-and-archive.yml`.
+- The repository is mirrored to Codeberg as well as GitLab.
+- It is archived to the Wayback Machine, Software Heritage, and archive.org.
+- Issues opened on either mirror are copied back to GitHub every six hours, and the GitHub copy is closed when the original closes.
+- Pull requests are switched off on both mirrors. They are force-pushed from GitHub, so anything merged on a mirror would be destroyed by the next sync. Issues and forking stay enabled.
+
 ## [v2.3.6] — 2026-07-27 — Fix the `-full` image failing to build on an unused apt source
 
 - `Dockerfile.full` now removes the NodeSource apt source before its `apt-get update`. The base image installs Node from NodeSource and leaves that source configured, so every `apt-get update` here also contacted `deb.nodesource.com` — despite nothing in this file installing a package from it. That host began returning `403 Forbidden` to CI runner address ranges, which failed the update and with it the whole `-full` build, so no `-full` image published for v2.3.4 or v2.3.5. Node is already installed in the base and is untouched; only the now-purposeless package source is dropped, which additionally reduces what a later `apt-get install` trusts.
