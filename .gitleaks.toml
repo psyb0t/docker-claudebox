@@ -1,0 +1,28 @@
+# gitleaks config for docker-claudebox.
+#
+# The default ruleset is kept in full. The allowlist below is deliberately keyed
+# on the SECRET VALUE, not on file paths or rule IDs: the docs, the skill and the
+# smoke tests all show `Authorization: Bearer ...` headers, and blanket-allowing
+# those files (or switching the curl-auth-header rule off) would also wave
+# through a real token pasted into one of them later.
+#
+# So only two shapes are allowed: a shell variable that is expanded at runtime,
+# and the fixed placeholder vocabulary the examples use. Anything else in an auth
+# header still fails the scan.
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Shell interpolations and documentation placeholders, matched by value"
+regexTarget = "secret"
+regexes = [
+  # $TOKEN, ${token}, $CLAUDEBOX_MCP_MODE_TOKEN — resolved at runtime, not a value
+  '''^\$\{?[A-Za-z_][A-Za-z0-9_]*\}?$''',
+  # your-secret, your-secret-token, your-mcp-token, your-mcp-secret
+  '''^(your|my)-[a-z-]*(secret|token|key)[a-z-]*$''',
+  # mcp-token, smoke-token, legacy-token, real-token, test-secret
+  '''^(mcp|smoke|legacy|real|test|fake|example|dummy)-(token|secret|key)$''',
+  # bare words used as stand-ins in assertions and prose
+  '''^(token|secret|auth|wrong|enforcement|mcpsecret|some-long-random-string)$''',
+]

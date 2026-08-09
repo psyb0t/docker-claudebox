@@ -68,6 +68,9 @@ services:
 | `CLAUDEBOX_TELEGRAM_MODE`      | Set to `1` to start in Telegram bot mode            | _(none)_                            |
 | `CLAUDEBOX_TELEGRAM_MODE_TOKEN` | Bot token from [@BotFather](https://t.me/BotFather) | _(none)_                            |
 | `CLAUDEBOX_TELEGRAM_MODE_CONFIG`    | Path to the YAML config file inside the container   | `/home/aicode/.claude/telegram.yml` |
+| `CLAUDEBOX_TELEGRAM_MODE_OVERRIDES` | JSON store for per-chat `/model`, `/effort`, `/system_prompt`, `/append_system_prompt` overrides. Mount it to keep them across restarts | `$HOME/.aicodebox/telegram_overrides.json` |
+| `CLAUDEBOX_AVAILABLE_MODELS`   | Comma-separated list shown by the `/model` picker. Optional — falls back to the adapter's own model list | _(adapter list)_ |
+| `CLAUDEBOX_AVAILABLE_EFFORTS`  | Comma-separated list shown by the `/effort` picker. Optional — falls back to the adapter's own thinking levels | _(adapter list)_ |
 
 > Legacy `CLAUDE_MODE_TELEGRAM`, `CLAUDE_TELEGRAM_BOT_TOKEN`, `CLAUDE_TELEGRAM_CONFIG` are still accepted as fallbacks.
 

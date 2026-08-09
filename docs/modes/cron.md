@@ -165,6 +165,7 @@ jobs:
 | -------------------------- | ------------------------------------------------------------ | ------------ |
 | `CLAUDEBOX_CRON_MODE`      | Set to `1` to start in cron mode                             | _(none)_     |
 | `CLAUDEBOX_CRON_MODE_FILE` | Path inside the container to the cron yaml                   | _(none)_     |
+| `CLAUDEBOX_CRON_MODE_HISTORY_DIR` | Directory the **telegram bot** reads the cron→telegram message inbox (`telegram_messages.json`) from. It does **not** move where the scheduler writes run history — that path is fixed; mount a volume at `$HOME/.aicodebox/cron` instead | `$HOME/.aicodebox/cron` |
 | `CLAUDEBOX_WORKSPACE`      | Absolute path to the workspace directory (cwd for every job) | `/workspace` |
 | `DEBUG`                    | Set to `true` for per-tick + per-line debug logs             | _(none)_     |
 

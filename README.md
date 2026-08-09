@@ -38,6 +38,12 @@ Beyond just running Claude Code in Docker, claudebox adds skill injection (auto-
 - [What's Inside (Full Image)](#whats-inside-full-image)
 - [Authentication](#authentication)
 - [Modes](#modes)
+  - [Interactive mode](docs/modes/interactive.md)
+  - [Programmatic mode](docs/modes/programmatic.md)
+  - [API mode](docs/modes/api.md)
+  - [Telegram mode](docs/modes/telegram.md)
+  - [Cron mode](docs/modes/cron.md)
+  - [MCP mode](docs/modes/mcp.md)
 - [Configuration](#configuration)
 - [Agent integrations](#agent-integrations)
 - [Gotchas](#gotchas)
@@ -227,6 +233,16 @@ YAML-defined scheduled jobs. Standard 5-field cron or 6-field for sub-minute res
 environment:
   - CLAUDEBOX_CRON_MODE=1
   - CLAUDEBOX_CRON_MODE_FILE=/home/aicode/.claude/cron.yaml
+```
+
+### [MCP Mode →](docs/modes/mcp.md)
+
+Expose Claude Code as an [MCP](https://modelcontextprotocol.io/) server over streamable HTTP, so other agents can drive it as a tool — `run_prompt` plus workspace-confined file tools. Not a foreground mode: it runs as a sidecar alongside telegram, cron or interactive on its own port, and is already mounted at `/mcp` on the API port when the foreground is API mode.
+
+```yaml
+environment:
+  - CLAUDEBOX_MCP_MODE=1
+  - CLAUDEBOX_MCP_MODE_TOKEN=your-secret-token
 ```
 
 ## Configuration

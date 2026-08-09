@@ -4,6 +4,18 @@ All notable changes to **claudebox** (formerly `docker-claude-code`).
 
 Format roughly follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [v2.3.8] — 2026-08-09 — MCP mode was shipped but never documented
+
+Documentation only. No image, wrapper, or entrypoint behaviour changed.
+
+- Every other mode had a page under `docs/modes/`; MCP had none. The README mentioned MCP only as an endpoint reachable *inside* API mode, so the standalone mode — the one that coexists with telegram, cron or interactive — was undocumented, along with its own port and its own token. `docs/modes/mcp.md` now covers it, and the README's mode list links to it.
+- The page states two things the entrypoint does that are easy to assume wrong: `CLAUDEBOX_MCP_MODE_TOKEN` has **no** fallback to `CLAUDEBOX_API_MODE_TOKEN`, and an **empty token disables auth entirely** rather than denying access — on a surface whose `run_prompt` tool executes code. Both are read off `aicodebox/modes/api/mcp_server.py`.
+- Documents the five tools (`run_prompt`, `list_files`, `read_file`, `write_file`, `delete_file`), that the four file tools resolve under the workspace root and reject paths escaping it, and that this confinement does not extend to `run_prompt`.
+- The Table of Contents listed `Modes` as a single entry, leaving all six mode pages invisible from it. It now lists each one.
+- Three variables the entrypoint forwards were documented nowhere: `CLAUDEBOX_TELEGRAM_MODE_OVERRIDES` (the per-chat override store — mount it or `/model` and `/effort` reset on restart), `CLAUDEBOX_AVAILABLE_MODELS` and `CLAUDEBOX_AVAILABLE_EFFORTS` (optional here, since the adapter supplies its own lists). All three are now in the telegram page's table.
+- `CLAUDEBOX_CRON_MODE_HISTORY_DIR` is now documented, and documented for what it does: the scheduler's history root is built from `$HOME` and is **not** configurable, so this variable only tells the telegram bot where to read the cron→telegram inbox (`telegram_messages.json`). Relocating run history means mounting a volume at `$HOME/.aicodebox/cron`.
+- `.agents/.codex-plugin/plugin.json` was left at `2.3.5` across two releases. Nothing rewrites this file — the ClawHub workflow only rewrites `.agents/plugins/*/package.json` — so it is bumped by hand and is now back in step with the tag.
+
 ## [v2.3.7] — 2026-08-01 — CI infrastructure: mirroring, archiving, issue pull-back
 
 Infrastructure only. Nothing in the images or the wrapper changed — every
