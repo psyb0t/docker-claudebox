@@ -4,6 +4,14 @@ All notable changes to **claudebox** (formerly `docker-claude-code`).
 
 Format roughly follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [v2.3.9] — 2026-08-13 — Rebuilt on the current aicodebox base; one-command version bumping
+
+Base image refresh plus release-tooling. No claudebox behaviour changed.
+
+- Base image bumped to `psyb0t/aicodebox:v0.14.5`, which fixes the API-mode container restart-looping while an agent request runs — the agent subprocess is now spawned in its own session/process group, so a signal it (or a tool it spawned) delivers no longer reaches the uvicorn PID 1. The fix is inherited from the base; claudebox itself is unchanged.
+- Added `make version V=X.Y.Z`, which sets the version in every place it lives (`claudebox/pyproject.toml`, `claudebox/uv.lock`, `.agents/.codex-plugin/plugin.json`), commits, and tags in one command. `make version` with no argument still prints the current version.
+- Realigned the packaged version metadata with the release tag: `claudebox/pyproject.toml` and `claudebox/uv.lock` had drifted behind the tagged releases (they were still on `2.0.x`) because the published image is tagged from the git tag, not from `pyproject.toml`. `make version` brings them back in step, and future releases keep them in step by construction.
+
 ## [v2.3.8] — 2026-08-09 — MCP mode was shipped but never documented
 
 Documentation only. No image, wrapper, or entrypoint behaviour changed.

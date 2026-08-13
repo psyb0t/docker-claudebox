@@ -1,6 +1,6 @@
 [project]
 name = "claudebox"
-version = "2.0.6"
+version = "2.3.9"
 description = "Claude Code adapter for the aicodebox base image"
 requires-python = ">=3.12"
 authors = [{ name = "psyb0t" }]

@@ -1,4 +1,5 @@
 IMAGE_NAME := psyb0t/claudebox
+PKG        := claudebox
 # Single-source version derivation — claudebox/pyproject.toml [project] version
 # is THE truth. Override at build time: `VERSION=2.0.0-rc1 make build`.
 VERSION    ?= $(shell awk -F\" '/^version *= *"/ {print $$2; exit}' claudebox/pyproject.toml)
@@ -6,15 +7,30 @@ TAG        := v$(VERSION)
 # Default to the published aicodebox base, digest-pinned (keep in sync with the
 # ARG default in Dockerfile) — override with `make build BASE_IMAGE=...` to point
 # at a locally-built base image.
-BASE_IMAGE ?= psyb0t/aicodebox:v0.14.0@sha256:543aec8bf85ebc8a0689c4746d4c9e2ede65599decb50827593db0b3c65bd2a5
+BASE_IMAGE ?= psyb0t/aicodebox:v0.14.5@sha256:35bc16078a5561669564a15277c1931b47cc46c4c0b392c14fbe52c363df9395
 CLAUDE_VERSION ?= 2.1.220
 
 .PHONY: all build build-full build-all pull-base test test-unit test-smoke test-persist test-image-select test-agent-launcher clean help version
 
 all: build ## Build the minimal claudebox image on top of the published base
 
-version: ## Print the version that would be tagged
+version: ## Print version, or set-everywhere+commit+tag: make version V=X.Y.Z
+ifeq ($(strip $(V)),)
 	@echo $(TAG)
+else
+	@echo "$(V)" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+([-+][0-9A-Za-z.]+)?$$' || { echo "V must be semver (X.Y.Z), got '$(V)'" >&2; exit 1; }
+	@set -e; old="$(VERSION)"; \
+	( cd $(PKG) && uv version "$(V)" >/dev/null ); \
+	tmp=$$(mktemp); jq --arg v "$(V)" '.version=$$v' .agents/.codex-plugin/plugin.json >"$$tmp" && mv "$$tmp" .agents/.codex-plugin/plugin.json; \
+	git add $(PKG)/pyproject.toml $(PKG)/uv.lock .agents/.codex-plugin/plugin.json; \
+	git commit -q -m "v$(V)"; \
+	git tag -a "v$(V)" -m "$(PKG) v$(V)"; \
+	echo "[make version] v$$old -> v$(V): bumped pyproject+uv.lock+codex-manifest, committed, tagged"; \
+	if git --no-pager grep -In -e "$$old" -- ':!CHANGELOG.md' ':!uv.lock' ':!*server.json' ':!*package.json' >/dev/null 2>&1; then \
+		echo "⚠ v$$old still appears in tracked files make version does not manage — check for a missed version location:" >&2; \
+		git --no-pager grep -In -e "$$old" -- ':!CHANGELOG.md' ':!uv.lock' ':!*server.json' ':!*package.json' >&2; \
+	fi
+endif
 
 pull-base: ## Pull the aicodebox base image (SKIP_BASE_PULL=1 to use a locally-built base)
 	@if [ "$${SKIP_BASE_PULL:-0}" = "1" ]; then \
