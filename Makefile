@@ -7,10 +7,10 @@ TAG        := v$(VERSION)
 # Default to the published aicodebox base, digest-pinned (keep in sync with the
 # ARG default in Dockerfile) — override with `make build BASE_IMAGE=...` to point
 # at a locally-built base image.
-BASE_IMAGE ?= psyb0t/aicodebox:v0.14.5@sha256:35bc16078a5561669564a15277c1931b47cc46c4c0b392c14fbe52c363df9395
+BASE_IMAGE ?= psyb0t/aicodebox:v0.14.6@sha256:0895ce88281fd1c307fdbbca5cec86989a252a1ca314713d74eec521c7651853
 CLAUDE_VERSION ?= 2.1.220
 
-.PHONY: all build build-full build-all pull-base test test-unit test-smoke test-persist test-image-select test-agent-launcher clean help version
+.PHONY: all build build-full build-all pull-base test test-unit test-smoke test-persist test-image-select test-agent-launcher clean help version pkg-lock
 
 all: build ## Build the minimal claudebox image on top of the published base
 
@@ -31,6 +31,9 @@ else
 		git --no-pager grep -In -e "$$old" -- ':!CHANGELOG.md' ':!uv.lock' ':!*server.json' ':!*package.json' >&2; \
 	fi
 endif
+
+pkg-lock: ## Refresh the Python lockfile under the current dependency pins
+	cd claudebox && uv lock
 
 pull-base: ## Pull the aicodebox base image (SKIP_BASE_PULL=1 to use a locally-built base)
 	@if [ "$${SKIP_BASE_PULL:-0}" = "1" ]; then \
@@ -60,7 +63,7 @@ build-full: build ## Build the toolchain-loaded variant on top of the minimal
 build-all: build build-full ## Build both minimal and full variants
 
 test-unit: ## Run in-process adapter unit tests (no docker required)
-	cd claudebox && python3 -m pytest tests/ -v
+	cd claudebox && uv run --frozen python -m pytest tests/ -v
 
 test-smoke: build ## Boot the minimal image + probe endpoints
 	bash tests/test_smoke.sh

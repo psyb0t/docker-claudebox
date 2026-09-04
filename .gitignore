@@ -2,6 +2,8 @@ CLAUDE.md
 __pycache__
 *.pyc
 .research_files
+AGENTS.md
+CODEX.local.md
 git-update.sh
 docker-compose.dev.yaml
 tests/.env

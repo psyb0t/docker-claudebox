@@ -4,6 +4,15 @@ All notable changes to **claudebox** (formerly `docker-claude-code`).
 
 Format roughly follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [v2.3.10], 2026-09-04: Preserve complete native events in API runs
+
+- Bumped the digest-pinned base image to `psyb0t/aicodebox:v0.14.6`, which adds the independent `eventMode` response control and the stable full-event envelope to `POST /run`.
+- `eventMode: "full"` now enables Claude's partial-message, subagent-text, and hook-event stream flags. The adapter preserves every native `stream-json` record without collapsing turns or truncating tool results.
+- `jsonSchema` now uses Claude Code's native `--json-schema` flag. Structured final output and full event retention can be selected independently.
+- Updated API and programmatic-mode documentation and added adapter regression tests for native schema arguments, full-event arguments, reasoning and tool records, and large tool results.
+- Fixed `make test-unit` to run through the locked `uv` environment so the inherited aicodebox package is available during test collection.
+- Added `make pkg-lock` and refreshed the lockfile against aicodebox v0.14.6.
+
 ## [v2.3.9] — 2026-08-13 — Rebuilt on the current aicodebox base; one-command version bumping
 
 Base image refresh plus release-tooling. No claudebox behaviour changed.

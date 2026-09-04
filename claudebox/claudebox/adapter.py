@@ -16,7 +16,6 @@ claude CLI surface used here:
 
 from __future__ import annotations
 
-import hashlib
 import json
 import logging
 import os
@@ -33,7 +32,6 @@ from aicodebox.adapters.base import (
 logger = logging.getLogger(__name__)
 
 DEFAULT_PERMISSION_MODE = "bypassPermissions"
-STREAM_TOOL_RESULT_TRUNCATE = 2000
 SKILLS_DIR_DEFAULT = "/home/aicode/.claude/.always-skills"
 SYSTEM_HINT_FILE_DEFAULT = "/home/aicode/.claude/system-hint.txt"
 
@@ -42,9 +40,10 @@ CLAUDE_THINKING_LEVELS = ["off", "low", "medium", "high", "xhigh", "max"]
 
 VALID_STOP_REASONS = {"end_turn", "stop_sequence", "max_tokens", "tool_use", "error"}
 
-JSON_SCHEMA_DIRECTIVE = (
-    "You MUST respond with a single JSON document conforming to this JSON "
-    "Schema. No prose, no fences, just JSON.\n\n"
+FULL_EVENT_ARGS = (
+    "--include-partial-messages",
+    "--forward-subagent-text",
+    "--include-hook-events",
 )
 
 
@@ -139,32 +138,6 @@ def _compose_append_system_prompt(caller_value: str | None) -> str | None:
     return "\n\n".join(parts)
 
 
-def _truncate_tool_result(text: str) -> dict[str, Any]:
-    if len(text) <= STREAM_TOOL_RESULT_TRUNCATE:
-        return {"content": text}
-    return {
-        "content": text[:STREAM_TOOL_RESULT_TRUNCATE],
-        "truncated": True,
-        "total_length": len(text),
-        "sha256": hashlib.sha256(text.encode()).hexdigest(),
-    }
-
-
-def _extract_tool_result_text(raw: Any) -> str:
-    if isinstance(raw, str):
-        return raw
-    if isinstance(raw, list):
-        texts = [
-            block.get("text", "")
-            for block in raw
-            if isinstance(block, dict) and block.get("type") == "text"
-        ]
-        if texts:
-            return "\n".join(texts)
-        return str(raw)
-    return str(raw)
-
-
 class ClaudecodeAdapter(AgentAdapter):
     name: ClassVar[str] = "claude"
     binary: ClassVar[str] = "claude"
@@ -185,6 +158,9 @@ class ClaudecodeAdapter(AgentAdapter):
         if req.model:
             argv += ["--model", req.model]
 
+        if req.event_mode == "full":
+            argv += list(FULL_EVENT_ARGS)
+
         combined_append = _compose_append_system_prompt(req.append_system_prompt)
         if combined_append:
             argv += ["--append-system-prompt", combined_append]
@@ -193,8 +169,7 @@ class ClaudecodeAdapter(AgentAdapter):
             argv += ["--system-prompt", req.system_prompt]
 
         if req.json_schema:
-            schema_directive = JSON_SCHEMA_DIRECTIVE + json.dumps(req.json_schema)
-            argv += ["--append-system-prompt", schema_directive]
+            argv += ["--json-schema", json.dumps(req.json_schema)]
 
         session_choice: str
         if req.resume:
@@ -327,17 +302,9 @@ class ClaudecodeAdapter(AgentAdapter):
         )
 
     def parse_events(self, stdout: str, req: RunRequest) -> list[dict[str, Any]]:
-        """Assemble stream-json into structured turns[] for json-verbose output.
-
-        Port of the pre-migration jsonpipe.py _assemble function. Returns one
-        list per turn (assistant text+tool_use blocks, user tool_result blocks
-        with truncation), plus a leading `system` init dict and a trailing
-        `result` dict when present.
-        """
+        """Return every native Claude stream-json record without collapsing it."""
         del req
-        turns: list[dict[str, Any]] = []
-        result_event: dict[str, Any] | None = None
-        system_init: dict[str, Any] | None = None
+        events: list[dict[str, Any]] = []
 
         for raw_line in stdout.splitlines():
             line = raw_line.strip()
@@ -345,93 +312,15 @@ class ClaudecodeAdapter(AgentAdapter):
                 continue
             try:
                 event = json.loads(line)
-            except json.JSONDecodeError:
-                continue
-
-            etype = event.get("type", "")
-
-            if etype == "system" and event.get("subtype") == "init":
-                system_init = {
-                    "type": "system",
-                    "session_id": event.get("session_id", ""),
-                    "model": event.get("model", ""),
-                    "cwd": event.get("cwd", ""),
-                    "tools": event.get("tools", []),
-                }
-                continue
-
-            if etype == "assistant":
-                msg = event.get("message", {})
-                content = msg.get("content", []) if isinstance(msg, dict) else []
-                parts = self._extract_assistant_blocks(content)
-                if parts:
-                    turns.append({"type": "assistant_turn", "content": parts})
-                continue
-
-            if etype == "user":
-                msg = event.get("message", {})
-                content = msg.get("content", []) if isinstance(msg, dict) else []
-                tool_results = self._extract_tool_result_blocks(content)
-                if tool_results:
-                    turns.append({"type": "tool_result_turn", "content": tool_results})
-                continue
-
-            if etype == "result":
-                result_event = event
-
-        events: list[dict[str, Any]] = []
-        if system_init:
-            events.append(system_init)
-        events.extend(turns)
-        if result_event:
-            events.append(result_event)
-
-        return events
-
-    @staticmethod
-    def _extract_assistant_blocks(content: Any) -> list[dict[str, Any]]:
-        if not isinstance(content, list):
-            return []
-        out: list[dict[str, Any]] = []
-        for block in content:
-            if not isinstance(block, dict):
-                continue
-            btype = block.get("type")
-            if btype == "text":
-                text = block.get("text", "")
-                if isinstance(text, str):
-                    out.append({"type": "text", "text": text})
-                continue
-            if btype == "tool_use":
-                out.append(
-                    {
-                        "type": "tool_use",
-                        "id": block.get("id", ""),
-                        "name": block.get("name", ""),
-                        "input": block.get("input", {}),
-                    }
+            except json.JSONDecodeError as err:
+                logger.warning(
+                    "parse_events: malformed stream-json line",
+                    extra={"err": err.msg, "sample": _truncate(line, 80)},
                 )
-        return out
-
-    @staticmethod
-    def _extract_tool_result_blocks(content: Any) -> list[dict[str, Any]]:
-        if not isinstance(content, list):
-            return []
-        out: list[dict[str, Any]] = []
-        for block in content:
-            if not isinstance(block, dict):
                 continue
-            if block.get("type") != "tool_result":
-                continue
-            text = _extract_tool_result_text(block.get("content", ""))
-            entry: dict[str, Any] = {
-                "type": "tool_result",
-                "tool_use_id": block.get("tool_use_id", ""),
-                "is_error": block.get("is_error", False),
-            }
-            entry.update(_truncate_tool_result(text))
-            out.append(entry)
-        return out
+            if isinstance(event, dict):
+                events.append(event)
+        return events
 
     def parse_stream_event(self, line: str, req: RunRequest) -> StreamEvent | None:
         del req
@@ -501,9 +390,7 @@ class ClaudecodeAdapter(AgentAdapter):
         # set (the image sets it to the bind-mounted ~/.claude so config +
         # login persist); otherwise it's the $HOME/.claude.json default.
         config_dir = os.environ.get("CLAUDE_CONFIG_DIR")
-        claude_json = (
-            f"{config_dir}/.claude.json" if config_dir else f"{home}/.claude.json"
-        )
+        claude_json = f"{config_dir}/.claude.json" if config_dir else f"{home}/.claude.json"
         return [
             f"{home}/.claude/.credentials.json",
             claude_json,

@@ -199,7 +199,7 @@ claudebox
 
 ### [Programmatic Mode →](docs/modes/programmatic.md)
 
-Non-interactive prompt → response for scripts, pipelines, and automation. Plain text, JSON, JSON-verbose (with full tool-call history), and stream-json output formats. Model selection, system prompt overrides, JSON-schema-constrained output, session continuation.
+Non-interactive prompt → response for scripts, pipelines, and automation. Plain text, JSON, and native stream-json output formats. Model selection, system prompt overrides, JSON-schema-constrained output, and session continuation. For a stable full-event response, use API mode with `eventMode: "full"`.
 
 ```bash
 claudebox "explain this codebase" --output-format json --model haiku

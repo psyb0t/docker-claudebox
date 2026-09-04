@@ -48,15 +48,20 @@ curl -X POST http://localhost:8080/run \
 | `model`              | string | Model alias or full model name (see [Model Selection](programmatic.md#model-selection))                  | account default |
 | `systemPrompt`       | string | Replace the default system prompt entirely                                                | _(none)_        |
 | `appendSystemPrompt` | string | Append text to the default system prompt without replacing it                             | _(none)_        |
-| `jsonSchema`         | string | A JSON Schema string for structured output — Claude will return JSON matching this schema | _(none)_        |
-| `effort`             | string | Reasoning effort level: `low`, `medium`, `high`, or `max`                                 | _(none)_        |
-| `outputFormat`       | string | Response format: `json` (default) or `json-verbose` (includes full tool call history)     | `json`          |
+| `jsonSchema`         | object | A JSON Schema object for structured output. Claude will return JSON matching this schema | _(none)_        |
+| `thinking`           | string | Accepted by the shared request model. The current Claude adapter does not map it to a CLI flag. | _(none)_        |
+| `eventMode`          | string | `auto`, `none`, or `full`. `full` returns complete native Claude stream records           | `auto`          |
+| `outputFormat`       | string | Legacy compatibility: `json-verbose` selects full events while `eventMode` is `auto`; `text` and `json` do not change the response shape | _(none)_        |
 | `noContinue`         | bool   | If true, start a fresh session instead of continuing the previous one                     | `false`         |
 | `resume`             | string | Resume a specific session by its session ID                                               | _(none)_        |
-| `fireAndForget`      | bool   | If true, the Claude process keeps running even if the HTTP client disconnects             | `false`         |
+| `fireAndForget`      | bool   | Submit in the background and mark the immediate acknowledgement with `fireAndForget: true` | `false`         |
 | `async`              | bool   | If true, return immediately with a `runId` and run in the background                      | `false`         |
 
 Every response includes a `runId` field that uniquely identifies the run.
+
+Set `"eventMode": "full"` to return the complete Claude `stream-json` output, including partial assistant messages, tool use, tool results, hook events, subagent text, and final usage. Each response record has the stable envelope `{sequence, attempt, backend, eventType, event}`. The nested `event` is the original Claude record with no field removal or tool-result truncation. `"eventMode": "none"` returns only the final result. The default `"auto"` keeps the historical behavior of including events for a `jsonSchema` request or `"outputFormat": "json-verbose"`. `"outputFormat": "text"` and `"outputFormat": "json"` remain accepted legacy inputs but do not change the response serialization.
+
+`jsonSchema` validates only the final JSON output and can be combined with either event mode.
 
 Returns `application/json`. Returns **409** if the workspace is already busy with another request.
 
@@ -68,7 +73,7 @@ curl -X POST http://localhost:8080/run \
   -H "Authorization: Bearer token" \
   -H "Content-Type: application/json" \
   -d '{"prompt": "refactor this entire codebase", "workspace": "myproject", "async": true}'
-# → {"runId": "abc123", "workspace": "/workspace/myproject", "status": "running"}
+# → {"runId": "abc123", "workspace": "/workspace/myproject", "status": "running", "fireAndForget": false}
 
 # poll for the result
 curl "http://localhost:8080/run/result?runId=abc123" -H "Authorization: Bearer token"
@@ -93,13 +98,12 @@ Completed result example:
 
 ```json
 {
-  "type": "result",
-  "subtype": "success",
-  "result": "the response text",
   "runId": "abc123",
   "workspace": "/workspace/myproject",
-  "usage": { "inputTokens": 100, "outputTokens": 50 },
-  "costUsd": 0.003,
+  "status": "completed",
+  "exitCode": 0,
+  "text": "the response text",
+  "usage": { "input_tokens": 100, "output_tokens": 50 },
   "sessionId": "..."
 }
 ```
@@ -141,10 +145,10 @@ curl -X DELETE "http://localhost:8080/files/myproject/src/old.py" -H "Authorizat
 # → {"status": "ok", "path": "/workspace/myproject/src/old.py"}
 ```
 
-**`GET /health`** — health check endpoint (no authentication required):
+**`GET /healthz`**: health check endpoint (no authentication required):
 
 ```json
-{ "status": "ok" }
+{ "ok": true, "adapter": "claude" }
 ```
 
 **`GET /status`** — returns busy workspaces and all tracked runs (running, completed, failed, cancelled):
@@ -162,16 +166,11 @@ curl -X DELETE "http://localhost:8080/files/myproject/src/old.py" -H "Authorizat
 }
 ```
 
-**`POST /run/cancel`** — kill a running Claude process by run ID or workspace:
+**`DELETE /run/{runId}`**: cancel a running Claude process by run ID:
 
 ```bash
-# cancel by run ID (preferred)
-curl -X POST "http://localhost:8080/run/cancel?runId=abc123" -H "Authorization: Bearer token"
-# → {"status": "ok", "runId": "abc123", "workspace": "/workspace/myproject"}
-
-# cancel by workspace (legacy)
-curl -X POST "http://localhost:8080/run/cancel?workspace=myproject" -H "Authorization: Bearer token"
-# → {"status": "ok", "workspace": "/workspace/myproject"}
+curl -X DELETE "http://localhost:8080/run/abc123" -H "Authorization: Bearer token"
+# → {"runId": "abc123", "status": "cancelled"}
 ```
 
 All file paths are relative to `/workspace`. Path traversal attempts outside the workspace root are blocked and return a 400 error.
@@ -205,9 +204,13 @@ curl -X POST http://localhost:8080/openai/v1/chat/completions \
 
 **System messages:** messages with `role: "system"` are extracted and passed to Claude Code as `--system-prompt`.
 
-**Reasoning effort:** pass `reasoning_effort` (`low`, `medium`, `high`) in the request body — this maps to Claude Code's `--effort` flag.
+**Reasoning effort:** `reasoning_effort` is accepted by the shared OpenAI request model, but the current Claude adapter does not map it to a Claude Code flag.
 
-**Ignored fields:** `temperature`, `max_tokens`, `tools`, and other OpenAI-specific fields are accepted without error but silently ignored, since Claude Code manages these internally.
+**Client-executed tools:** standard `tools` and `tool_choice` are supported. A tool-call turn returns OpenAI `tool_calls`; the client runs the selected function and sends the `role: "tool"` result in the next request. Internal agent tools default off for that turn. Send `x-aicodebox-no-tools: 0` to keep them enabled.
+
+**Structured output:** standard `response_format` supports `json_object` and `json_schema`. It composes with client-executed tools: tool-call turns are not schema-checked, and the final answer is validated against the requested schema.
+
+**Ignored fields:** `temperature`, `max_tokens`, and unsupported OpenAI fields are accepted without effect.
 
 **Message handling:**
 
@@ -221,11 +224,17 @@ curl -X POST http://localhost:8080/openai/v1/chat/completions \
 
 **Custom headers** for claudebox-specific behavior:
 
-| Header                          | Description                                                   |
-| ------------------------------- | ------------------------------------------------------------- |
-| `X-Claude-Workspace`            | Workspace subpath under `/workspace` to run in               |
-| `X-Claude-Continue`             | Set to `1`, `true`, or `yes` to continue the previous session |
-| `X-Claude-Append-System-Prompt` | Text to append to the system prompt for this request          |
+| Header | Description |
+| --- | --- |
+| `X-Aicodebox-Workspace` | Workspace subpath under `/workspace`. `X-Claude-Workspace` remains an alias. |
+| `X-Aicodebox-Continue` | Set to `1`, `true`, or `yes` to continue the previous session. `X-Claude-Continue` remains an alias. |
+| `X-Aicodebox-Append-System-Prompt` | Text to append to the system prompt. `X-Claude-Append-System-Prompt` remains an alias. |
+| `X-Aicodebox-Json-Schema` | JSON Schema fallback when the request has no `response_format`. |
+| `X-Aicodebox-Resume` | Specific session ID to resume. |
+| `X-Aicodebox-Extra-Args` | JSON array or comma-separated CLI arguments. |
+| `X-Aicodebox-Timeout-Seconds` | Positive timeout in seconds. |
+| `X-Aicodebox-Tools-Allowlist` | JSON array or comma-separated internal tool allowlist. |
+| `X-Aicodebox-No-Tools` | Boolean that disables internal agent tools. |
 
 **LiteLLM integration example:**
 
@@ -264,7 +273,7 @@ If your MCP client does not support custom headers, you can pass the API token a
 
 | Tool          | Description                                                                                                                                                             |
 | ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `claude_run`  | Run a prompt through Claude Code. Parameters: `prompt`, `model`, `system_prompt`, `append_system_prompt`, `json_schema`, `workspace`, `no_continue`, `resume`, `effort` |
+| `claude_run`  | Run a prompt through Claude Code. Parameters: `prompt`, `model`, `system_prompt`, `append_system_prompt`, `json_schema`, `workspace`, `no_continue`, `resume`, `thinking` |
 | `list_files`  | List files and directories in the workspace                                                                                                                             |
 | `read_file`   | Read the contents of a file from the workspace                                                                                                                          |
 | `write_file`  | Write content to a file in the workspace (creates parent directories automatically)                                                                                     |

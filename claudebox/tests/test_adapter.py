@@ -7,7 +7,7 @@ no real claude binary. Covers:
   - build_argv: default flags, permission-mode presence, RunRequest field
     translation, .always-skills injection, system-hint compose order.
   - parse_output: stream-json → text + session + usage.
-  - parse_events: assembled turns[] shape matches the jsonpipe.py contract.
+  - parse_events: complete native stream-json records.
   - parse_stream_event: session / delta / stop line handling.
 """
 
@@ -21,7 +21,7 @@ from aicodebox.adapters.base import RunRequest
 
 from claudebox.adapter import (
     DEFAULT_PERMISSION_MODE,
-    STREAM_TOOL_RESULT_TRUNCATE,
+    FULL_EVENT_ARGS,
     ClaudecodeAdapter,
     _read_always_skills,
     _read_system_hint,
@@ -114,17 +114,23 @@ def test_build_argv_extra_args_appended_last(adapter: ClaudecodeAdapter) -> None
     assert argv[-2:] == ["--foo", "bar"]
 
 
-def test_build_argv_json_schema_appended_as_directive(
+def test_build_argv_json_schema_uses_native_flag(
     adapter: ClaudecodeAdapter,
 ) -> None:
     schema = {"type": "object", "required": ["name"]}
     argv = adapter.build_argv(RunRequest(prompt="hi", json_schema=schema))
 
-    append_indices = [i for i, a in enumerate(argv) if a == "--append-system-prompt"]
-    assert append_indices, "expected at least one --append-system-prompt"
-    last = argv[append_indices[-1] + 1]
-    assert "JSON Schema" in last
-    assert json.dumps(schema) in last
+    schema_idx = argv.index("--json-schema")
+    assert json.loads(argv[schema_idx + 1]) == schema
+
+
+def test_build_argv_full_event_mode_enables_complete_stream(
+    adapter: ClaudecodeAdapter,
+) -> None:
+    argv = adapter.build_argv(RunRequest(prompt="hi", event_mode="full"))
+
+    for arg in FULL_EVENT_ARGS:
+        assert arg in argv
 
 
 # ── always-skills injection ──────────────────────────────────────────────────
@@ -304,20 +310,23 @@ def test_parse_output_empty_stdout(adapter: ClaudecodeAdapter) -> None:
 # ── parse_events ─────────────────────────────────────────────────────────────
 
 
-def test_parse_events_produces_turns(adapter: ClaudecodeAdapter) -> None:
+def test_parse_events_preserves_complete_native_stream(adapter: ClaudecodeAdapter) -> None:
     events = adapter.parse_events(_stream_json_fixture(), RunRequest())
 
     types = [e.get("type") for e in events]
     assert types[0] == "system"
-    assert "assistant_turn" in types
-    assert "tool_result_turn" in types
+    assert "assistant" in types
+    assert "user" in types
     assert types[-1] == "result"
+    tool_result = events[2]["message"]["content"][0]
+    assert tool_result["type"] == "tool_result"
+    assert tool_result["content"] == "file.txt\n"
 
 
-def test_parse_events_truncates_large_tool_result(
+def test_parse_events_preserves_large_tool_result(
     adapter: ClaudecodeAdapter,
 ) -> None:
-    big_output = "x" * (STREAM_TOOL_RESULT_TRUNCATE + 500)
+    big_output = "x" * 2500
     events = [
         {
             "type": "user",
@@ -335,12 +344,8 @@ def test_parse_events_truncates_large_tool_result(
     ]
     stdout = "\n".join(json.dumps(e) for e in events)
     parsed = adapter.parse_events(stdout, RunRequest())
-    tr_turn = next(e for e in parsed if e.get("type") == "tool_result_turn")
-    tr_block = tr_turn["content"][0]
-    assert tr_block["truncated"] is True
-    assert tr_block["total_length"] == len(big_output)
-    assert len(tr_block["content"]) == STREAM_TOOL_RESULT_TRUNCATE
-    assert "sha256" in tr_block
+    tool_result = parsed[0]["message"]["content"][0]
+    assert tool_result["content"] == big_output
 
 
 # ── parse_stream_event ───────────────────────────────────────────────────────
