@@ -100,7 +100,7 @@ docker pull psyb0t/claudebox:latest        # minimal (default)
 
 ### `psyb0t/claudebox:latest` (minimal, default)
 
-The default v2 image. Just enough to run Claude Code on top of the aicodebox base: Ubuntu 24.04, git/curl/wget/jq, Node.js 22 LTS + npm, Python 3.12 + uv, Docker CE. Claude has passwordless sudo, so it will install whatever else it needs on the fly via `apt-get`, `pip`, `npm`, etc. Smaller image, faster pull, first run may take longer while Claude sorts out its own tooling.
+The default v2 image. Just enough to run Claude Code on top of the aicodebox base: Ubuntu 24.04, git/curl/wget/jq, Node.js 24 LTS + npm, Python 3.14 + uv, Docker CE. Claude has passwordless sudo, so it will install whatever else it needs on the fly via `apt-get`, `pip`, `npm`, etc. Smaller image, faster pull, first run may take longer while Claude sorts out its own tooling.
 
 > **Claude Code is installed on first run, not baked into the image.** Anthropic's Claude Code CLI is proprietary and can't be redistributed, so the image ships only the pinned version (`CLAUDEBOX_CLAUDE_VERSION`, default set at build) and the entrypoint runs `npm install -g @anthropic-ai/claude-code@<version>` from npm the first time a fresh container starts. This means the published image redistributes none of Anthropic's software, and each container pulls Claude Code straight from npm. First container start needs network and takes a few extra seconds; warm restarts skip it. To pin a different version, set `CLAUDEBOX_CLAUDE_VERSION` at `docker run`.
 
@@ -112,7 +112,7 @@ Use `/aicodebox-init.d/*.sh` hooks (see [Init Hooks](docs/customization.md#init-
 
 ### `psyb0t/claudebox:latest-full` (toolchain-loaded)
 
-Everything pre-installed. Layered on top of the minimal image: Go 1.26.5, Python 3.12.13 via pyenv, Node.js dev tools, C/C++ toolchain, terraform, kubectl, helm, gh, database clients (sqlite/postgres/mysql/redis), editors (vim/nano/htop/tmux), linters + formatters (flake8/black/isort/pyright/mypy/ruff/eslint/prettier/gofumpt/…). Larger image but Claude wakes up ready.
+Everything pre-installed. Layered on top of the minimal image: Go 1.26.7, Python 3.14.7 via pyenv, Node.js dev tools, C/C++ toolchain, terraform, kubectl, helm, gh, database clients (sqlite/postgres/mysql/redis), editors (vim/nano/htop/tmux), linters + formatters (flake8/black/isort/pyright/mypy/ruff/eslint/prettier/gofumpt/…). Larger image but Claude wakes up ready.
 
 ```bash
 export CLAUDEBOX_FULL=1 && curl -fsSL https://raw.githubusercontent.com/psyb0t/docker-claudebox/master/install.sh | bash
@@ -127,8 +127,8 @@ export CLAUDEBOX_FULL=1 && curl -fsSL https://raw.githubusercontent.com/psyb0t/d
 | Node.js LTS + npm                     |       yes       |       yes        |
 | Docker CE + Compose                   |       yes       |       yes        |
 | Claude Code CLI                       |       yes       |       yes        |
-| Go 1.26.5 + tools                     |       yes       |        -         |
-| Python 3.12.13 + tools                |       yes       |        -         |
+| Go 1.26.7 + tools                     |       yes       |        -         |
+| Python 3.14.7 + tools                 |       yes       |        -         |
 | Node.js dev tools                     |       yes       |        -         |
 | C/C++ tools                           |       yes       |        -         |
 | DevOps (terraform, kubectl, helm, gh) |       yes       |        -         |
@@ -139,8 +139,8 @@ export CLAUDEBOX_FULL=1 && curl -fsSL https://raw.githubusercontent.com/psyb0t/d
 
 **Languages and runtimes:**
 
-- **Go 1.26.5** with the full toolchain — golangci-lint, gopls, delve, staticcheck, gofumpt, gotests, impl, gomodifytags
-- **Python 3.12.13** via pyenv — flake8, black, isort, autoflake, pyright, mypy, vulture, pytest, poetry, pipenv, plus common libraries (requests, beautifulsoup4, lxml, pyyaml, toml)
+- **Go 1.26.7** with the full toolchain: golangci-lint, gopls, delve, staticcheck, gofumpt, gotests, impl, gomodifytags
+- **Python 3.14.7** via pyenv — flake8, black, isort, autoflake, pyright, mypy, vulture, pytest, poetry, pipenv, plus common libraries (requests, beautifulsoup4, lxml, pyyaml, toml)
 - **Node.js LTS** — eslint, prettier, typescript, ts-node, yarn, pnpm, nodemon, pm2, framework CLIs (React, Vue, Angular), newman, http-server, serve, lighthouse, storybook
 - **C/C++** — gcc, g++, make, cmake, clang-format, valgrind, gdb, strace, ltrace
 

@@ -4,6 +4,13 @@ All notable changes to **claudebox** (formerly `docker-claude-code`).
 
 Format roughly follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [v2.3.11], 2026-09-06: Refresh the base image and full toolchain
+
+- Rebuilt on digest-pinned `psyb0t/aicodebox:v0.14.8`, which provides Node.js 24.20.0 and Python 3.14.7.
+- Updated the first-run Claude Code pin to 2.1.251.
+- Updated the full image to Go 1.26.7, Python 3.14.7, pyenv 2.8.4, and pinned Go development tools.
+- Updated the full-image environment template and README so their documented runtimes match the image.
+
 ## [v2.3.10], 2026-09-04: Preserve complete native events in API runs
 
 - Bumped the digest-pinned base image to `psyb0t/aicodebox:v0.14.6`, which adds the independent `eventMode` response control and the stable full-event envelope to `POST /run`.

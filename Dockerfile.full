@@ -15,16 +15,7 @@ ENV DEBIAN_FRONTEND=noninteractive \
 # clients, and pyenv build deps. Grouped into one apt run so the layer cache
 # is a single unit.
 #
-# The base image installs Node from NodeSource and leaves that apt source
-# behind, so every `apt-get update` here also reaches deb.nodesource.com even
-# though nothing below needs a package from it. That host sits behind a CDN
-# which returns 403 to CI runner address ranges, failing the whole update over
-# a repository this layer never wanted. Node is already installed in the base,
-# so the source has no remaining purpose — drop it first. Removing a
-# third-party apt source also shrinks what a later `apt-get install` trusts.
-RUN rm -f /etc/apt/sources.list.d/nodesource.sources \
-          /etc/apt/sources.list.d/nodesource.list && \
-    apt-get update && apt-get install -y --no-install-recommends \
+RUN apt-get update && apt-get install -y --no-install-recommends \
         build-essential make cmake pkg-config libssl-dev \
         python3-pip python-is-python3 \
         nano vim htop tmux \
@@ -52,9 +43,9 @@ RUN install -d /etc/apt/keyrings && \
 # at https://go.dev/dl/ — a bare `curl | tar` streams unverified bytes straight
 # into the image (supply-chain rule: every generic file download is hash-checked
 # before use). Bump both the version and the matching per-arch SHA together.
-ARG GO_VERSION=1.26.5
-ARG GO_SHA256_amd64=5c2c3b16caefa1d968a94c1daca04a7ca301a496d9b086e17ad77bb81393f053
-ARG GO_SHA256_arm64=fe4789e92b1f33358680864bbe8704289e7bb5fc207d80623c308935bd696d49
+ARG GO_VERSION=1.26.7
+ARG GO_SHA256_amd64=ffb5f8de10c62550dfddab66b36b57030721e0a44a3218e9e1181d7b59f121ca
+ARG GO_SHA256_arm64=5a4ec883379d51ee9ce1040d5e87f8d35e20387574dd8c947feb01eabc3c1b37
 ARG TARGETARCH
 RUN ARCH="${TARGETARCH:-amd64}" && \
     case "$ARCH" in \
@@ -85,14 +76,14 @@ ENV PATH="/usr/local/go/bin:${PATH}"
 # permission denied. Leaving GOPATH unset at runtime lets Go fall back to its
 # own per-user default ($HOME/go), which each user actually owns.
 RUN export GOPATH=/root/go && \
-    curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/HEAD/install.sh | sh -s -- -b /usr/local/bin latest && \
-    CGO_ENABLED=0 go install golang.org/x/tools/gopls@latest && \
-    CGO_ENABLED=0 go install github.com/go-delve/delve/cmd/dlv@latest && \
-    CGO_ENABLED=0 go install honnef.co/go/tools/cmd/staticcheck@latest && \
-    CGO_ENABLED=0 go install github.com/fatih/gomodifytags@latest && \
-    CGO_ENABLED=0 go install github.com/josharian/impl@latest && \
-    CGO_ENABLED=0 go install github.com/cweill/gotests/gotests@latest && \
-    CGO_ENABLED=0 go install mvdan.cc/gofumpt@latest && \
+    CGO_ENABLED=0 go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.13.2 && \
+    CGO_ENABLED=0 go install golang.org/x/tools/gopls@v0.23.0 && \
+    CGO_ENABLED=0 go install github.com/go-delve/delve/cmd/dlv@v1.27.1 && \
+    CGO_ENABLED=0 go install honnef.co/go/tools/cmd/staticcheck@v0.8.1 && \
+    CGO_ENABLED=0 go install github.com/fatih/gomodifytags@v1.17.0 && \
+    CGO_ENABLED=0 go install github.com/josharian/impl@v1.5.0 && \
+    CGO_ENABLED=0 go install github.com/cweill/gotests/gotests@v1.9.0 && \
+    CGO_ENABLED=0 go install mvdan.cc/gofumpt@v0.11.0 && \
     mv "${GOPATH}"/bin/* /usr/local/bin/ && \
     rm -rf "${GOPATH}" /root/.cache/go-build
 
@@ -143,13 +134,21 @@ RUN npm config set fetch-retries 5 \
     echo "npm global install failed after 5 attempts" >&2; \
     exit 1
 
-# pyenv + Python 3.12.13 (system-wide, alongside base's python3).
+# pyenv and the full-image Python runtime.
+ARG PYENV_VERSION=2.8.4
+ARG PYENV_SHA256=6f80750a10d20f1b74252d81d543f0543c8f49ba9ea5804de8a82afedb4e3b8c
+ARG PYTHON_VERSION=3.14.7
 ENV PYENV_ROOT=/usr/local/pyenv \
     PATH="/usr/local/pyenv/shims:/usr/local/pyenv/bin:${PATH}"
-RUN curl -fsSL https://pyenv.run | bash && \
-    eval "$(pyenv init -)" && \
-    pyenv install 3.12.13 && \
-    pyenv global 3.12.13 && \
+RUN PYENV_ARCHIVE=/tmp/pyenv.tar.gz && \
+    curl -fsSL "https://github.com/pyenv/pyenv/archive/refs/tags/v${PYENV_VERSION}.tar.gz" \
+        -o "$PYENV_ARCHIVE" && \
+    echo "$PYENV_SHA256  $PYENV_ARCHIVE" | sha256sum -c - && \
+    mkdir -p "$PYENV_ROOT" && \
+    tar -xzf "$PYENV_ARCHIVE" --strip-components=1 -C "$PYENV_ROOT" && \
+    rm -f "$PYENV_ARCHIVE" && \
+    pyenv install "$PYTHON_VERSION" && \
+    pyenv global "$PYTHON_VERSION" && \
     { \
         echo 'export PYENV_ROOT="/usr/local/pyenv"'; \
         echo 'export PATH="$PYENV_ROOT/shims:$PYENV_ROOT/bin:$PATH"'; \
