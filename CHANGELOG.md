@@ -4,6 +4,12 @@ All notable changes to **claudebox** (formerly `docker-claude-code`).
 
 Format roughly follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [v2.4.1], 2026-09-13: Correct wrapper documentation
+
+- Corrects host-wrapper setup and shared-settings documentation.
+- Corrects the documented Node.js and Python runtime versions for the full image.
+- Pins the remote installer to the matching `v2.4.1` wrapper.
+
 ## [v2.4.0], 2026-09-13: Support nested box launches
 
 - Added managed installation into a caller-selected wrapper directory without

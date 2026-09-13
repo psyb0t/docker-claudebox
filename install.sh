@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-readonly CLAUDEBOX_RELEASE_REF="v2.4.0"
+readonly CLAUDEBOX_RELEASE_REF="v2.4.1"
 readonly WRAPPER_URL="https://raw.githubusercontent.com/psyb0t/docker-claudebox/${CLAUDEBOX_INSTALL_REF:-$CLAUDEBOX_RELEASE_REF}/wrapper.sh"
 
 BIN_NAME="${1:-${CLAUDEBOX_BIN_NAME:-${CLAUDE_BIN_NAME:-claudebox}}}"

@@ -25,15 +25,20 @@ Downloading and reading the script before running it is the recommended flow, es
 
 The installer pulls the image, generates an ed25519 SSH key at `~/.ssh/claudebox/id_ed25519` for git operations inside the container, creates `~/.claude`, and installs the wrapper to `/usr/local/bin/claudebox` (override with `CLAUDEBOX_INSTALL_DIR` / `CLAUDEBOX_BIN_NAME`). Add the generated public key to GitHub/GitLab for git push/pull to work from inside the container.
 
+Install `claudebox`, `codexbox`, and `pibox` in the same command directory,
+normally `/usr/local/bin`, when one box needs to launch another. The parent
+mounts only sibling wrapper files read-only. A sibling wrapper then runs through
+the host Docker daemon and mounts its own host data directory.
+
 Manual setup without piping to bash: `mkdir -p ~/.claude`, generate the SSH key yourself, `docker pull psyb0t/claudebox:latest` (or `:latest-full`), then fetch `wrapper.sh` and install it as your `claudebox` binary.
 
 ## Image Variants
 
 | | `psyb0t/claudebox:latest` (minimal, default) | `psyb0t/claudebox:latest-full` |
 | --- | --- | --- |
-| Base | Ubuntu 24.04, git/curl/wget/jq, Node.js 22 LTS, Python 3.12 + uv, Docker CE | same, plus everything below |
+| Base | Ubuntu 24.04, git/curl/wget/jq, Node.js 24 LTS, Python 3.14 + uv, Docker CE | same, plus everything below |
 | Go | — | 1.26 toolchain (golangci-lint, gopls, delve, staticcheck, gofumpt, gotests, impl, gomodifytags) |
-| Python | — | 3.12 via pyenv (flake8, black, isort, pyright, mypy, vulture, pytest, poetry, pipenv) |
+| Python | — | 3.14 via pyenv (flake8, black, isort, pyright, mypy, vulture, pytest, poetry, pipenv) |
 | Node dev tools | — | eslint, prettier, typescript, yarn, pnpm, framework CLIs |
 | C/C++ | — | gcc, g++, make, cmake, clang-format, valgrind, gdb |
 | DevOps | — | terraform, kubectl, helm, gh |

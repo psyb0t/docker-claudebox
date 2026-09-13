@@ -73,7 +73,10 @@ curl -fsSL https://raw.githubusercontent.com/psyb0t/docker-claudebox/master/inst
 
 > **v2 note:** the variant naming flipped in v2. `latest` is now the minimal image (was the full image pre-v2); `latest-full` is the toolchain-loaded variant (was `latest` pre-v2). The `CLAUDEBOX_MINIMAL=1` opt-in from v1 is now a no-op — you already get minimal by default. Set `CLAUDEBOX_FULL=1` to opt into the toolchain image. Installing with `CLAUDEBOX_FULL=1` (as above) bakes the choice into the installed wrapper, so the full variant sticks for every run — you don't need to keep the env var set afterward.
 
-The remote installer downloads `wrapper.sh` from its matching release tag. Managed launchers can set `CLAUDEBOX_INSTALL_DIR`, `CLAUDEBOX_BIN_NAME`, and `AICODEBOX_MANAGED_INSTALL=1` to install into a private wrapper bundle without an SSH-key prompt.
+The remote installer downloads `wrapper.sh` from its matching release tag.
+Automation can set `CLAUDEBOX_INSTALL_DIR`, `CLAUDEBOX_BIN_NAME`, and
+`AICODEBOX_MANAGED_INSTALL=1` when it installs into a different command
+directory without prompting to replace an existing SSH key.
 
 > **Heads up on env vars:** `VAR=x curl … | bash` does **not** set `VAR` for the install script — bash semantics attach the var to `curl` only. Always `export` the var first (or put it on the `bash` side of the pipe).
 
@@ -254,7 +257,15 @@ environment:
 - **[Environment variables →](docs/environment-variables.md)** — full table of `CLAUDEBOX_*` settings the wrapper and entrypoint understand, plus `CLAUDEBOX_ENV_*` (forward arbitrary vars into the container) and `CLAUDEBOX_MOUNT_*` (extra volume mounts).
 - **[Customization →](docs/customization.md)** — extend Claude's container with custom scripts (`~/.claude/bin`), one-time init hooks (`~/.claude/init.d`), always-active skills auto-injected into every session (`~/.claude/.always-skills`), and MCP server definitions (project `.mcp.json` or global `~/.claude.json`).
 
-The wrapper accepts the versioned `AICODEBOX_HOST_*` nested-launch context. In that mode it passes host bind-source paths, available sibling wrappers, `AICODEBOX_ENV_*`, and `AICODEBOX_MOUNT_*` into the child container.
+Install `claudebox`, `codexbox`, and `pibox` in the same command directory,
+normally `/usr/local/bin`, when one box needs to launch another. The wrapper
+finds sibling wrapper files there and mounts them read-only into the container.
+A sibling wrapper then runs through the host Docker daemon and mounts its own
+host data directory. Claudebox does not directly mount another agent's home.
+
+`AICODEBOX_HOST_*` is the versioned nested-launch context used by sibling
+wrappers. It records host bind-source paths and is set automatically by a
+wrapper. Do not set it for an ordinary host launch.
 
 ## Agent integrations
 

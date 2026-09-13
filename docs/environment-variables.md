@@ -2,7 +2,12 @@
 
 Set these on your host (e.g., in `~/.bashrc` or `~/.zshrc`). The wrapper script forwards them into the container automatically. These apply across all modes.
 
-All wrapper/installer config uses the `CLAUDEBOX_*` prefix. Anything you want available **inside** the container goes through `CLAUDEBOX_ENV_*` (prefix stripped on the way in). Legacy `CLAUDE_*` / `CLAUDE_ENV_*` / `CLAUDE_MOUNT_*` and bare `ANTHROPIC_API_KEY` / `CLAUDE_CODE_OAUTH_TOKEN` / `DEBUG` still work for backwards compat.
+Claudebox-specific wrapper and installer settings use the `CLAUDEBOX_*` prefix.
+Anything you want available **inside** the container goes through
+`CLAUDEBOX_ENV_*` with the prefix stripped. `AICODEBOX_ENV_*` and
+`AICODEBOX_MOUNT_*` are shared wrapper settings. Legacy `CLAUDE_*` /
+`CLAUDE_ENV_*` / `CLAUDE_MOUNT_*` and bare `ANTHROPIC_API_KEY` /
+`CLAUDE_CODE_OAUTH_TOKEN` / `DEBUG` still work for backwards compatibility.
 
 | Variable                   | Description                                                                                | Default                   |
 | -------------------------- | ------------------------------------------------------------------------------------------ | ------------------------- |
@@ -18,6 +23,8 @@ All wrapper/installer config uses the `CLAUDEBOX_*` prefix. Anything you want av
 | `CLAUDEBOX_MAX_MEM`        | Override the per-container memory limit (e.g. `16g`, `4g`)                                  | `10g`                     |
 | `CLAUDEBOX_ENV_*`          | Forward env vars into the container (prefix stripped: `CLAUDEBOX_ENV_FOO=bar` → `FOO=bar`) | _(none)_                  |
 | `CLAUDEBOX_MOUNT_*`        | Mount extra host directories into the container                                            | _(none)_                  |
+| `AICODEBOX_ENV_*`          | Forward a shared environment variable into the launched container, with the prefix stripped | _(none)_                  |
+| `AICODEBOX_MOUNT_*`        | Mount a shared host directory into the launched container                                  | _(none)_                  |
 
 Auth and in-container settings go through `CLAUDEBOX_ENV_*`:
 
@@ -49,3 +56,12 @@ CLAUDEBOX_MOUNT_RO=/data:/data:ro claudebox "read the data"                # rea
 ```
 
 If the value contains `:`, it is passed directly as Docker `-v` syntax. Otherwise, the same path is used on both host and container sides.
+
+## Sibling boxes
+
+Install `claudebox`, `codexbox`, and `pibox` in the same command directory,
+normally `/usr/local/bin`, to make the sibling commands available inside a
+box. The parent wrapper mounts only those wrapper files read-only. A sibling
+wrapper then uses the host Docker daemon and its recorded host paths to mount
+its own data directory. `AICODEBOX_HOST_*` is this internal, versioned launch
+context. Leave it unset for an ordinary host launch.
