@@ -1,162 +1,33 @@
-# claudebox:latest-full — the toolchain-loaded variant.
+# claudebox:latest-full. Claude Code on the shared full aicodebox base.
 #
-# Builds on top of the minimal image (Node + Python + uv + Docker + jq + curl +
-# git) and adds language toolchains, editors, DB clients, and infra CLIs that
-# made the pre-migration `full` variant useful for any-language coding sessions.
-ARG BASE_IMAGE=psyb0t/claudebox:latest
+# Keep generic development tooling in aicodebox. This image adds only
+# claudebox's adapter, first-run setup, and Claude-specific entrypoint.
+ARG BASE_IMAGE=psyb0t/aicodebox:v0.15.0-full@sha256:ec4dac99bca4dba648f598af0bd94f1a98185e53d54ea5717db0c2076e12a612
 FROM ${BASE_IMAGE}
+
+LABEL io.modelcontextprotocol.server.name="io.github.psyb0t/claudebox"
 
 USER root
 
-ENV DEBIAN_FRONTEND=noninteractive \
-    CLAUDEBOX_IMAGE_VARIANT=full
+ARG CLAUDE_VERSION=2.1.251
+ENV CLAUDEBOX_CLAUDE_VERSION=${CLAUDE_VERSION}
 
-# Build essentials, editors, archive, net, CLI tools, C/C++ toolchain, DB
-# clients, and pyenv build deps. Grouped into one apt run so the layer cache
-# is a single unit.
-#
-RUN apt-get update && apt-get install -y --no-install-recommends \
-        build-essential make cmake pkg-config libssl-dev \
-        python3-pip python-is-python3 \
-        nano vim htop tmux \
-        unzip zip tar \
-        net-tools iputils-ping dnsutils \
-        tree fd-find ripgrep bat eza silversearcher-ag \
-        shellcheck shfmt httpie \
-        clang-format valgrind gdb strace ltrace \
-        sqlite3 postgresql-client default-mysql-client redis-tools \
-        zlib1g-dev libbz2-dev libreadline-dev libsqlite3-dev \
-        libncursesw5-dev xz-utils tk-dev libxml2-dev libxmlsec1-dev libffi-dev liblzma-dev \
-    && rm -rf /var/lib/apt/lists/*
+COPY claudebox /opt/claudebox
+RUN uv pip install --system --break-system-packages --no-deps /opt/claudebox
 
-# gh (GitHub CLI) via its own apt repo.
-RUN install -d /etc/apt/keyrings && \
-    curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg \
-        -o /etc/apt/keyrings/githubcli-archive-keyring.gpg && \
-    chmod go+r /etc/apt/keyrings/githubcli-archive-keyring.gpg && \
-    echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" \
-        > /etc/apt/sources.list.d/github-cli.list && \
-    apt-get update && apt-get install -y --no-install-recommends gh && \
-    rm -rf /var/lib/apt/lists/*
+COPY claudebox/init.d/ /aicodebox-init.d/
+RUN chmod +x /aicodebox-init.d/*.sh
 
-# Go toolchain. The tarball is SHA256-verified against the checksums published
-# at https://go.dev/dl/ — a bare `curl | tar` streams unverified bytes straight
-# into the image (supply-chain rule: every generic file download is hash-checked
-# before use). Bump both the version and the matching per-arch SHA together.
-ARG GO_VERSION=1.26.7
-ARG GO_SHA256_amd64=ffb5f8de10c62550dfddab66b36b57030721e0a44a3218e9e1181d7b59f121ca
-ARG GO_SHA256_arm64=5a4ec883379d51ee9ce1040d5e87f8d35e20387574dd8c947feb01eabc3c1b37
-ARG TARGETARCH
-RUN ARCH="${TARGETARCH:-amd64}" && \
-    case "$ARCH" in \
-        amd64) GO_SHA="${GO_SHA256_amd64}" ;; \
-        arm64) GO_SHA="${GO_SHA256_arm64}" ;; \
-        *) echo "unsupported TARGETARCH: ${ARCH}" >&2; exit 1 ;; \
-    esac && \
-    curl -fsSL "https://go.dev/dl/go${GO_VERSION}.linux-${ARCH}.tar.gz" -o /tmp/go.tar.gz && \
-    echo "${GO_SHA}  /tmp/go.tar.gz" | sha256sum -c - && \
-    tar -xzC /usr/local -f /tmp/go.tar.gz && \
-    rm -f /tmp/go.tar.gz && \
-    echo 'export PATH="$PATH:/usr/local/go/bin"' > /etc/profile.d/go.sh && \
-    ln -s /usr/local/go/bin/go /usr/local/bin/go && \
-    ln -s /usr/local/go/bin/gofmt /usr/local/bin/gofmt
-# The aicodebox base entrypoint hardcodes PATH to a fixed set that includes
-# /usr/local/bin but NOT /usr/local/go/bin, so the ENV below only helps login
-# shells (via /etc/profile.d/go.sh). Symlink go+gofmt into /usr/local/bin so
-# they resolve in the non-login agent shell too. (Symlink, not move — go finds
-# GOROOT from its real path under /usr/local/go.)
-ENV PATH="/usr/local/go/bin:${PATH}"
+ENV AICODEBOX_ADAPTER=claudebox.adapter:ClaudecodeAdapter \
+    AICODEBOX_AGENT_BINARY=claudebox-agent \
+    DISABLE_AUTOUPDATER=1 \
+    CLAUDEBOX_IMAGE_VARIANT=full \
+    CLAUDE_CONFIG_DIR=/home/aicode/.claude
 
-# Go tooling — statically linked so binaries don't drag build user's libc into
-# the runtime image; moved to /usr/local/bin for every user.
-# GOPATH is exported inline (build-scoped), NOT via ENV — an ENV here would
-# leak /root/go into the runtime image for every user. At runtime, aicode
-# would inherit a GOPATH pointing at a root-owned dir that's rm -rf'd below
-# anyway, so any `go install`/`go get`/`go mod` run as aicode would fail with
-# permission denied. Leaving GOPATH unset at runtime lets Go fall back to its
-# own per-user default ($HOME/go), which each user actually owns.
-RUN export GOPATH=/root/go && \
-    CGO_ENABLED=0 go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.13.2 && \
-    CGO_ENABLED=0 go install golang.org/x/tools/gopls@v0.23.0 && \
-    CGO_ENABLED=0 go install github.com/go-delve/delve/cmd/dlv@v1.27.1 && \
-    CGO_ENABLED=0 go install honnef.co/go/tools/cmd/staticcheck@v0.8.1 && \
-    CGO_ENABLED=0 go install github.com/fatih/gomodifytags@v1.17.0 && \
-    CGO_ENABLED=0 go install github.com/josharian/impl@v1.5.0 && \
-    CGO_ENABLED=0 go install github.com/cweill/gotests/gotests@v1.9.0 && \
-    CGO_ENABLED=0 go install mvdan.cc/gofumpt@v0.11.0 && \
-    mv "${GOPATH}"/bin/* /usr/local/bin/ && \
-    rm -rf "${GOPATH}" /root/.cache/go-build
+COPY claudebox-agent.sh /usr/local/bin/claudebox-agent
+RUN chmod +x /usr/local/bin/claudebox-agent
 
-# Terraform via HashiCorp apt.
-# gpg needs --batch --no-tty --yes because BuildKit has no /dev/tty and old
-# gpg tries to open it for its (unused) pinentry prompt on --dearmor.
-RUN curl -fsSL https://apt.releases.hashicorp.com/gpg \
-        | gpg --batch --no-tty --yes --dearmor -o /etc/apt/keyrings/hashicorp.gpg && \
-    echo "deb [signed-by=/etc/apt/keyrings/hashicorp.gpg] https://apt.releases.hashicorp.com $(lsb_release -cs) main" \
-        > /etc/apt/sources.list.d/hashicorp.list && \
-    apt-get update && apt-get install -y --no-install-recommends terraform && \
-    rm -rf /var/lib/apt/lists/*
+COPY claudebox-entrypoint.sh /usr/local/bin/claudebox-entrypoint
+RUN chmod +x /usr/local/bin/claudebox-entrypoint
 
-# kubectl via k8s apt.
-RUN curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.36/deb/Release.key \
-        | gpg --batch --no-tty --yes --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg && \
-    echo "deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.36/deb/ /" \
-        > /etc/apt/sources.list.d/kubernetes.list && \
-    apt-get update && apt-get install -y --no-install-recommends kubectl && \
-    rm -rf /var/lib/apt/lists/*
-
-# helm via upstream install script.
-RUN curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
-
-# Node.js globals — pre-migration set.
-# This is a large, dependency-heavy install that runs for minutes under arm64
-# emulation, so a single transient registry ECONNRESET used to kill the whole
-# layer and fail CI. Bump npm's own fetch retries/timeouts AND wrap the install
-# in an outer retry loop so a dropped connection self-heals; only a genuine,
-# repeated failure (5 attempts) fails the layer.
-RUN npm config set fetch-retries 5 \
-        fetch-retry-factor 2 \
-        fetch-retry-mintimeout 20000 \
-        fetch-retry-maxtimeout 120000 \
-        fetch-timeout 600000 && \
-    for attempt in 1 2 3 4 5; do \
-        echo "npm global install — attempt ${attempt}/5"; \
-        npm install -g --no-audit --no-fund \
-            eslint prettier typescript ts-node \
-            @typescript-eslint/parser @typescript-eslint/eslint-plugin \
-            nodemon pm2 yarn pnpm \
-            create-react-app @vue/cli @angular/cli express-generator \
-            newman http-server serve lighthouse @storybook/cli \
-        && exit 0; \
-        echo "npm global install attempt ${attempt} failed; retrying after backoff" >&2; \
-        sleep 15; \
-    done; \
-    echo "npm global install failed after 5 attempts" >&2; \
-    exit 1
-
-# pyenv and the full-image Python runtime.
-ARG PYENV_VERSION=2.8.4
-ARG PYENV_SHA256=6f80750a10d20f1b74252d81d543f0543c8f49ba9ea5804de8a82afedb4e3b8c
-ARG PYTHON_VERSION=3.14.7
-ENV PYENV_ROOT=/usr/local/pyenv \
-    PATH="/usr/local/pyenv/shims:/usr/local/pyenv/bin:${PATH}"
-RUN PYENV_ARCHIVE=/tmp/pyenv.tar.gz && \
-    curl -fsSL "https://github.com/pyenv/pyenv/archive/refs/tags/v${PYENV_VERSION}.tar.gz" \
-        -o "$PYENV_ARCHIVE" && \
-    echo "$PYENV_SHA256  $PYENV_ARCHIVE" | sha256sum -c - && \
-    mkdir -p "$PYENV_ROOT" && \
-    tar -xzf "$PYENV_ARCHIVE" --strip-components=1 -C "$PYENV_ROOT" && \
-    rm -f "$PYENV_ARCHIVE" && \
-    pyenv install "$PYTHON_VERSION" && \
-    pyenv global "$PYTHON_VERSION" && \
-    { \
-        echo 'export PYENV_ROOT="/usr/local/pyenv"'; \
-        echo 'export PATH="$PYENV_ROOT/shims:$PYENV_ROOT/bin:$PATH"'; \
-    } > /etc/profile.d/pyenv.sh
-
-# Python linters, testing, HTTP libs, package managers.
-RUN pip install --no-cache-dir --break-system-packages \
-        flake8 black isort autoflake pyright mypy vulture \
-        pytest pytest-cov \
-        requests beautifulsoup4 lxml pyyaml toml \
-        pipenv poetry
+ENTRYPOINT ["/usr/local/bin/claudebox-entrypoint"]

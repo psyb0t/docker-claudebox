@@ -1,6 +1,10 @@
 .git/
 .github/
 .research_files/
+.agent_notes/
+.agent_knowledge/
+AGENTS.md
+CODEX.local.md
 .prompts/
 .testing/
 base/
@@ -19,3 +23,9 @@ entrypoint.sh
 wrapper.sh
 install.sh
 .telemetry/
+
+# agent scratch and local caches, never part of a build
+.refactor/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/

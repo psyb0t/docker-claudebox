@@ -4,6 +4,12 @@ All notable changes to **claudebox** (formerly `docker-claude-code`).
 
 Format roughly follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [v2.3.12], 2026-09-13: Share the Aicodebox full image
+
+- Rebuilt the minimal image on digest-pinned `psyb0t/aicodebox:v0.15.0`.
+- `latest-full` now starts directly from digest-pinned `aicodebox:v0.15.0-full`. It adds only the Claudebox adapter, setup, and entrypoint.
+- Removed the duplicate generic toolchain build from Claudebox. Both image variants now build independently in CI.
+
 ## [v2.3.11], 2026-09-06: Refresh the base image and full toolchain
 
 - Rebuilt on digest-pinned `psyb0t/aicodebox:v0.14.8`, which provides Node.js 24.20.0 and Python 3.14.7.

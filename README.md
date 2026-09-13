@@ -112,7 +112,7 @@ Use `/aicodebox-init.d/*.sh` hooks (see [Init Hooks](docs/customization.md#init-
 
 ### `psyb0t/claudebox:latest-full` (toolchain-loaded)
 
-Everything pre-installed. Layered on top of the minimal image: Go 1.26.7, Python 3.14.7 via pyenv, Node.js dev tools, C/C++ toolchain, terraform, kubectl, helm, gh, database clients (sqlite/postgres/mysql/redis), editors (vim/nano/htop/tmux), linters + formatters (flake8/black/isort/pyright/mypy/ruff/eslint/prettier/gofumpt/…). Larger image but Claude wakes up ready.
+Everything pre-installed. This variant starts from the immutable `aicodebox:v0.15.0-full` base, then adds only Claude-specific code. Aicodebox owns the shared Go, Python, Node, C/C++, DevOps, database, editor, and diagnostic toolchain; claudebox stays ready without rebuilding that stack.
 
 ```bash
 export CLAUDEBOX_FULL=1 && curl -fsSL https://raw.githubusercontent.com/psyb0t/docker-claudebox/master/install.sh | bash
@@ -127,15 +127,17 @@ export CLAUDEBOX_FULL=1 && curl -fsSL https://raw.githubusercontent.com/psyb0t/d
 | Node.js LTS + npm                     |       yes       |       yes        |
 | Docker CE + Compose                   |       yes       |       yes        |
 | Claude Code CLI                       |       yes       |       yes        |
-| Go 1.26.7 + tools                     |       yes       |        -         |
-| Python 3.14.7 + tools                 |       yes       |        -         |
-| Node.js dev tools                     |       yes       |        -         |
-| C/C++ tools                           |       yes       |        -         |
-| DevOps (terraform, kubectl, helm, gh) |       yes       |        -         |
-| Database clients                      |       yes       |        -         |
-| Shell utilities (ripgrep, bat, etc.)  |       yes       |        -         |
+| Go 1.26.7 + tools                     |        -        |       yes       |
+| Python 3.14.7 + tools                 |        -        |       yes       |
+| Node.js dev tools                     |        -        |       yes       |
+| C/C++ tools                           |        -        |       yes       |
+| DevOps (terraform, kubectl, helm, gh) |        -        |       yes       |
+| Database clients                      |        -        |       yes       |
+| Shell utilities (ripgrep, bat, etc.)  |        -        |       yes       |
 
 ## What's Inside (Full Image)
+
+The shared toolchain is defined and released by [aicodebox](https://github.com/psyb0t/docker-aicodebox#full-image). Claudebox adds its own adapter, init hooks, configuration, and first-run Claude Code installation on top.
 
 **Languages and runtimes:**
 
