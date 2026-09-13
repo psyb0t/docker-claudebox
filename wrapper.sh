@@ -6,6 +6,14 @@
 # CLAUDEBOX_FULL / CLAUDE_FULL env vars still override it at runtime.
 CLAUDEBOX_INSTALLED_VARIANT="minimal"
 
+case "${AICODEBOX_LAUNCH_CONTEXT_VERSION:-}" in
+    "" | 1) ;;
+    *)
+        echo "❌ unsupported AICODEBOX_LAUNCH_CONTEXT_VERSION" >&2
+        exit 1
+        ;;
+esac
+
 # CLAUDEBOX_* is the canonical prefix. CLAUDE_* names remain supported for backwards compat.
 DEBUG="${CLAUDEBOX_ENV_DEBUG:-${DEBUG:-}}"
 
@@ -32,9 +40,12 @@ fi
 
 CLAUDE_GIT_NAME="${CLAUDEBOX_GIT_NAME:-${CLAUDE_GIT_NAME:-}}"
 CLAUDE_GIT_EMAIL="${CLAUDEBOX_GIT_EMAIL:-${CLAUDE_GIT_EMAIL:-}}"
-CLAUDE_DIR="${CLAUDEBOX_DATA_DIR:-${CLAUDE_DATA_DIR:-$HOME/.claude}}"
-CLAUDE_SSH="${CLAUDEBOX_SSH_DIR:-${CLAUDE_SSH_DIR:-$HOME/.ssh/claudebox}}"
+HOST_HOME="${AICODEBOX_HOST_HOME:-$HOME}"
+HOST_WORKSPACE="$PWD"
+CLAUDE_DIR="${CLAUDEBOX_DATA_DIR:-${CLAUDE_DATA_DIR:-${AICODEBOX_HOST_CLAUDE_HOME:-$HOST_HOME/.claude}}}"
+CLAUDE_SSH="${CLAUDEBOX_SSH_DIR:-${CLAUDE_SSH_DIR:-$HOST_HOME/.ssh/claudebox}}"
 CLAUDEBOX_MAX_MEM="${CLAUDEBOX_MAX_MEM:-${CLAUDE_MAX_MEM:-10g}}"
+WRAPPER_DIR="${AICODEBOX_HOST_WRAPPER_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)}"
 
 # auth: prefer CLAUDEBOX_ENV_*, fall back to legacy direct vars
 ANTHROPIC_API_KEY="${CLAUDEBOX_ENV_ANTHROPIC_API_KEY:-${ANTHROPIC_API_KEY:-}}"
@@ -48,54 +59,95 @@ dbg "CLAUDE_DIR=$CLAUDE_DIR"
 dbg "CLAUDE_SSH=$CLAUDE_SSH"
 dbg "PWD=$PWD"
 
+if [ -z "${AICODEBOX_LAUNCH_CONTEXT_VERSION:-}" ]; then
+    mkdir -p "$CLAUDE_DIR" "$CLAUDE_SSH"
+fi
+
 DOCKER_ARGS=(
     --network host
     -e CLAUDEBOX_GIT_NAME="$CLAUDE_GIT_NAME"
     -e CLAUDEBOX_GIT_EMAIL="$CLAUDE_GIT_EMAIL"
-    -e CLAUDEBOX_WORKSPACE="$PWD"
+    -e CLAUDEBOX_WORKSPACE="$HOST_WORKSPACE"
     -e CLAUDEBOX_CONTAINER_NAME="$container_name"
+    -e AICODEBOX_LAUNCH_CONTEXT_VERSION=1
+    -e "AICODEBOX_HOST_HOME=$HOST_HOME"
+    -e "AICODEBOX_HOST_WORKSPACE=$HOST_WORKSPACE"
+    -e "AICODEBOX_HOST_CODEX_HOME=${AICODEBOX_HOST_CODEX_HOME:-$HOST_HOME/.codex}"
+    -e "AICODEBOX_HOST_CLAUDE_HOME=$CLAUDE_DIR"
+    -e "AICODEBOX_HOST_PI_HOME=${AICODEBOX_HOST_PI_HOME:-$HOST_HOME/.pi}"
+    -e "AICODEBOX_HOST_WRAPPER_DIR=$WRAPPER_DIR"
+    -e "AICODEBOX_HOST_CODEX_WRAPPER=${AICODEBOX_HOST_CODEX_WRAPPER:-$WRAPPER_DIR/codexbox}"
+    -e "AICODEBOX_HOST_CLAUDE_WRAPPER=${AICODEBOX_HOST_CLAUDE_WRAPPER:-$WRAPPER_DIR/claudebox}"
+    -e "AICODEBOX_HOST_PI_WRAPPER=${AICODEBOX_HOST_PI_WRAPPER:-$WRAPPER_DIR/pibox}"
     -v "$CLAUDE_SSH:/home/aicode/.ssh"
     -v "$CLAUDE_DIR:/home/aicode/.claude"
-    -v "$PWD:$PWD"
+    -v "$HOST_WORKSPACE:$HOST_WORKSPACE"
     -v /var/run/docker.sock:/var/run/docker.sock
 )
+
+for wrapper_name in codexbox claudebox pibox; do
+    case "$wrapper_name" in
+        codexbox) wrapper_path="${AICODEBOX_HOST_CODEX_WRAPPER:-$WRAPPER_DIR/codexbox}" ;;
+        claudebox) wrapper_path="${AICODEBOX_HOST_CLAUDE_WRAPPER:-$WRAPPER_DIR/claudebox}" ;;
+        pibox) wrapper_path="${AICODEBOX_HOST_PI_WRAPPER:-$WRAPPER_DIR/pibox}" ;;
+    esac
+    [ -f "$wrapper_path" ] || continue
+    DOCKER_ARGS+=(
+        --mount "type=bind,src=$wrapper_path,dst=/usr/local/bin/$wrapper_name,readonly"
+    )
+done
 
 # forward env vars to the container
 [ -n "$ANTHROPIC_API_KEY" ] && DOCKER_ARGS+=(-e "ANTHROPIC_API_KEY=$ANTHROPIC_API_KEY")
 [ -n "$CLAUDE_CODE_OAUTH_TOKEN" ] && DOCKER_ARGS+=(-e "CLAUDE_CODE_OAUTH_TOKEN=$CLAUDE_CODE_OAUTH_TOKEN")
 [ "$DEBUG" = "true" ] && DOCKER_ARGS+=(-e "DEBUG=true")
 
-
 # forward CLAUDEBOX_ENV_* / CLAUDE_ENV_* vars (strip prefix: FOO=bar)
 while IFS='=' read -r name value; do
     case "$name" in
         CLAUDEBOX_ENV_*) stripped="${name#CLAUDEBOX_ENV_}" ;;
-        CLAUDE_ENV_*)    stripped="${name#CLAUDE_ENV_}" ;;
+        CLAUDE_ENV_*) stripped="${name#CLAUDE_ENV_}" ;;
         *) continue ;;
     esac
     DOCKER_ARGS+=(-e "$stripped=$value")
     dbg "forwarding env: $stripped"
 done < <(env | grep -E "^(CLAUDEBOX_ENV_|CLAUDE_ENV_)")
 
+while IFS='=' read -r name value; do
+    stripped="${name#AICODEBOX_ENV_}"
+    DOCKER_ARGS+=(-e "$stripped=$value")
+    dbg "forwarding common env: $stripped"
+done < <(env | grep -E "^AICODEBOX_ENV_")
+
 # mount extra volumes via CLAUDEBOX_MOUNT_* / CLAUDE_MOUNT_*
 while IFS='=' read -r name value; do
     case "$value" in
         *:*) DOCKER_ARGS+=(-v "$value") ;;
-        *)   DOCKER_ARGS+=(-v "$value:$value") ;;
+        *) DOCKER_ARGS+=(-v "$value:$value") ;;
     esac
     dbg "mounting volume: $value"
 done < <(env | grep -E "^(CLAUDEBOX_MOUNT_|CLAUDE_MOUNT_)")
 
+while IFS='=' read -r _name value; do
+    case "$value" in
+        *:*) DOCKER_ARGS+=(-v "$value") ;;
+        *) DOCKER_ARGS+=(-v "$value:$value") ;;
+    esac
+    dbg "mounting common volume: $value"
+done < <(env | grep -E "^AICODEBOX_MOUNT_")
+
 dbg "ANTHROPIC_API_KEY set: $([ -n "$ANTHROPIC_API_KEY" ] && echo yes || echo no)"
 dbg "CLAUDE_CODE_OAUTH_TOKEN set: $([ -n "$CLAUDE_CODE_OAUTH_TOKEN" ] && echo yes || echo no)"
-AUTH_CONTENT=$(printf '%s\n' "ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}" "CLAUDE_CODE_OAUTH_TOKEN=${CLAUDE_CODE_OAUTH_TOKEN:-}")
-echo "$AUTH_CONTENT" > "$CLAUDE_DIR/.${container_name}-auth"
-chmod 600 "$CLAUDE_DIR/.${container_name}-auth"
-echo "$AUTH_CONTENT" > "$CLAUDE_DIR/.${container_name}_prog-auth"
-chmod 600 "$CLAUDE_DIR/.${container_name}_prog-auth"
-echo "$AUTH_CONTENT" > "$CLAUDE_DIR/.${container_name}_cron-auth"
-chmod 600 "$CLAUDE_DIR/.${container_name}_cron-auth"
-dbg "wrote auth files"
+if [ -z "${AICODEBOX_LAUNCH_CONTEXT_VERSION:-}" ]; then
+    AUTH_CONTENT=$(printf '%s\n' "ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}" "CLAUDE_CODE_OAUTH_TOKEN=${CLAUDE_CODE_OAUTH_TOKEN:-}")
+    echo "$AUTH_CONTENT" >"$CLAUDE_DIR/.${container_name}-auth"
+    chmod 600 "$CLAUDE_DIR/.${container_name}-auth"
+    echo "$AUTH_CONTENT" >"$CLAUDE_DIR/.${container_name}_prog-auth"
+    chmod 600 "$CLAUDE_DIR/.${container_name}_prog-auth"
+    echo "$AUTH_CONTENT" >"$CLAUDE_DIR/.${container_name}_cron-auth"
+    chmod 600 "$CLAUDE_DIR/.${container_name}_cron-auth"
+    dbg "wrote auth files"
+fi
 
 # updates are disabled by default; pass --update to opt in
 DO_UPDATE=0
@@ -168,7 +220,7 @@ if [ -n "$_mode_cron" ]; then
         -e "CLAUDEBOX_CONTAINER_NAME=$cron_name"
     )
     [ -n "$_mode_cron_file" ] && CRON_ARGS+=(-e "CLAUDEBOX_MODE_CRON_FILE=$_mode_cron_file")
-    [ "$DEBUG" = "true" ]     && CRON_ARGS+=(-e "DEBUG=true")
+    [ "$DEBUG" = "true" ] && CRON_ARGS+=(-e "DEBUG=true")
 
     if docker ps -a --format '{{.Names}}' | grep -q "^${cron_name}$"; then
         echo "restarting cron container ($cron_name)..."
@@ -184,7 +236,7 @@ fi
 # passthrough commands — v2 routes through the claudebox-entrypoint's
 # passthrough fallback (`exec claude "$@"`). No need to override --entrypoint.
 case "${1:-}" in
-    -v|--version|doctor|auth|mcp)
+    -v | --version | doctor | auth | mcp)
         docker run --rm "${DOCKER_ARGS[@]}" "$CLAUDE_IMAGE" "$@"
         exit 0
         ;;
@@ -206,13 +258,19 @@ if [ $# -gt 0 ]; then
                 --output-format)
                     HAS_OUTPUT_FORMAT=1
                     case "$arg" in
-                        text|json) ;;
+                        text | json) ;;
                         stream-json) NEEDS_VERBOSE=1 ;;
-                        json-verbose) JSON_VERBOSE=1; NEEDS_VERBOSE=1 ;;
-                        *) echo "❌ Invalid output format: $arg (allowed: text, json, json-verbose, stream-json)"; exit 1 ;;
+                        json-verbose)
+                            JSON_VERBOSE=1
+                            NEEDS_VERBOSE=1
+                            ;;
+                        *)
+                            echo "❌ Invalid output format: $arg (allowed: text, json, json-verbose, stream-json)"
+                            exit 1
+                            ;;
                     esac
                     ;;
-                --model|--system-prompt|--append-system-prompt|--json-schema|--effort|--resume) ;;
+                --model | --system-prompt | --append-system-prompt | --json-schema | --effort | --resume) ;;
             esac
             PASS_ARGS+=("$EXPECT_VALUE" "$arg")
             EXPECT_VALUE=""
@@ -220,28 +278,34 @@ if [ $# -gt 0 ]; then
         fi
 
         case "$arg" in
-            -p|--print)
+            -p | --print)
                 HAS_PRINT=1
                 ;;
             --no-continue)
                 HAS_NO_CONTINUE=1
                 PASS_ARGS+=("$arg")
                 ;;
-            --output-format|--model|--system-prompt|--append-system-prompt|--json-schema|--effort|--resume)
+            --output-format | --model | --system-prompt | --append-system-prompt | --json-schema | --effort | --resume)
                 EXPECT_VALUE="$arg"
                 ;;
             --output-format=*)
                 HAS_OUTPUT_FORMAT=1
                 fmt="${arg#--output-format=}"
                 case "$fmt" in
-                    text|json) ;;
+                    text | json) ;;
                     stream-json) NEEDS_VERBOSE=1 ;;
-                    json-verbose) JSON_VERBOSE=1; NEEDS_VERBOSE=1 ;;
-                    *) echo "❌ Invalid output format: $fmt (allowed: text, json, json-verbose, stream-json)"; exit 1 ;;
+                    json-verbose)
+                        JSON_VERBOSE=1
+                        NEEDS_VERBOSE=1
+                        ;;
+                    *)
+                        echo "❌ Invalid output format: $fmt (allowed: text, json, json-verbose, stream-json)"
+                        exit 1
+                        ;;
                 esac
                 PASS_ARGS+=("$arg")
                 ;;
-            --model=*|--system-prompt=*|--append-system-prompt=*|--json-schema=*|--effort=*|--resume=*)
+            --model=* | --system-prompt=* | --append-system-prompt=* | --json-schema=* | --effort=* | --resume=*)
                 PASS_ARGS+=("$arg")
                 ;;
             -*)
@@ -288,8 +352,8 @@ if [ $# -gt 0 ]; then
             # detect json or stream-json in args
             for a in "${PASS_ARGS[@]}"; do
                 case "$a" in
-                    json|--output-format=json) PIPE_MODE="json" ;;
-                    stream-json|--output-format=stream-json) PIPE_MODE="stream-json" ;;
+                    json | --output-format=json) PIPE_MODE="json" ;;
+                    stream-json | --output-format=stream-json) PIPE_MODE="stream-json" ;;
                 esac
             done
         fi
@@ -309,6 +373,12 @@ if [ $# -gt 0 ]; then
             echo "   curl -X POST http://localhost:8080/run -d '{\"prompt\":\"...\",\"jsonSchema\":{...}}'" >&2
             exit 2
         fi
+        if [ -n "${AICODEBOX_LAUNCH_CONTEXT_VERSION:-}" ]; then
+            docker run --rm "${DOCKER_ARGS[@]}" \
+                -e CLAUDEBOX_CONTAINER_NAME="$prog_name" \
+                "$CLAUDE_IMAGE" "${PASS_ARGS[@]}"
+            exit $?
+        fi
         prog_rc=0
         if ! docker ps -a --format '{{.Names}}' | grep -q "^${prog_name}$"; then
             dbg "prog: container does not exist, creating with docker run"
@@ -318,7 +388,7 @@ if [ $# -gt 0 ]; then
         else
             dbg "prog: container exists, writing args file and starting"
             trap 'rm -f "$CLAUDE_DIR/.${prog_name}-args"' EXIT
-            printf '%q ' "${PASS_ARGS[@]}" > "$CLAUDE_DIR/.${prog_name}-args"
+            printf '%q ' "${PASS_ARGS[@]}" >"$CLAUDE_DIR/.${prog_name}-args"
             dbg "prog: docker start -a $prog_name"
             docker start -a "$prog_name"
             prog_rc=$?
@@ -329,6 +399,14 @@ if [ $# -gt 0 ]; then
 
     # flag-only args (no prompt): fall through to interactive mode
     [ "$HAS_NO_CONTINUE" = "1" ] && touch "$CLAUDE_DIR/.${container_name}-no-continue"
+fi
+
+if [ -n "${AICODEBOX_LAUNCH_CONTEXT_VERSION:-}" ]; then
+    docker run -it --rm --name "$container_name" \
+        --memory="$CLAUDEBOX_MAX_MEM" \
+        --memory-swap="$CLAUDEBOX_MAX_MEM" \
+        "${DOCKER_ARGS[@]}" "$CLAUDE_IMAGE"
+    exit $?
 fi
 
 # signal update via file (env vars don't work with docker start)

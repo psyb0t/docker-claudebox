@@ -4,6 +4,14 @@ All notable changes to **claudebox** (formerly `docker-claude-code`).
 
 Format roughly follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [v2.4.0], 2026-09-13: Support nested box launches
+
+- Added managed installation into a caller-selected wrapper directory without
+  replacing existing SSH keys.
+- Added nested box launches with host-path propagation, sibling wrapper mounts,
+  and shared `AICODEBOX_ENV_*` and `AICODEBOX_MOUNT_*` settings.
+- The installer now downloads `wrapper.sh` from the matching immutable release tag.
+
 ## [v2.3.12], 2026-09-13: Share the Aicodebox full image
 
 - Rebuilt the minimal image on digest-pinned `psyb0t/aicodebox:v0.15.0`.

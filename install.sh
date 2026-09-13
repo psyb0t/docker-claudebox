@@ -1,35 +1,52 @@
 #!/usr/bin/env bash
 
+readonly CLAUDEBOX_RELEASE_REF="v2.4.0"
+readonly WRAPPER_URL="https://raw.githubusercontent.com/psyb0t/docker-claudebox/${CLAUDEBOX_INSTALL_REF:-$CLAUDEBOX_RELEASE_REF}/wrapper.sh"
+
 BIN_NAME="${1:-${CLAUDEBOX_BIN_NAME:-${CLAUDE_BIN_NAME:-claudebox}}}"
 INSTALL_DIR="${CLAUDEBOX_INSTALL_DIR:-${CLAUDE_INSTALL_DIR:-/usr/local/bin}}"
 BIN_PATH="$INSTALL_DIR/$BIN_NAME"
+HOST_HOME="${AICODEBOX_HOST_HOME:-$HOME}"
+
+case "${AICODEBOX_MANAGED_INSTALL:-${CLAUDEBOX_MANAGED_INSTALL:-0}}" in
+    0) readonly MANAGED_INSTALL=false ;;
+    1) readonly MANAGED_INSTALL=true ;;
+    *)
+        echo "❌ AICODEBOX_MANAGED_INSTALL must be 0 or 1" >&2
+        exit 1
+        ;;
+esac
 
 echo "🚀 Starting Claude Code setup (binary: $BIN_NAME)..."
 
 # Check for Docker
 if ! command -v docker &>/dev/null; then
-	echo "❌ Docker is not installed. Please install Docker first."
-	exit 1
+    echo "❌ Docker is not installed. Please install Docker first."
+    exit 1
 fi
 
 echo "📁 Creating ~/.claude directory..."
-mkdir -p ~/.claude
+mkdir -p "$HOST_HOME/.claude"
 
 echo "🔐 Creating SSH directory for Claude Code..."
-mkdir -p "$HOME/.ssh/claudebox"
+mkdir -p "$HOST_HOME/.ssh/claudebox"
 
-if [ -f "$HOME/.ssh/claudebox/id_ed25519" ]; then
-	echo "🔑 SSH key already exists at $HOME/.ssh/claudebox/id_ed25519"
-	read -rp "   Replace existing key? [y/N] " response
-	if [[ "$response" =~ ^[Yy]$ ]]; then
-		echo "🗝️ Generating new SSH key for Claude..."
-		ssh-keygen -t ed25519 -C "claude@claude.ai" -f "$HOME/.ssh/claudebox/id_ed25519" -N ""
-	else
-		echo "   Keeping existing key."
-	fi
+if [ -f "$HOST_HOME/.ssh/claudebox/id_ed25519" ]; then
+    echo "🔑 SSH key already exists at $HOST_HOME/.ssh/claudebox/id_ed25519"
+    if [ "$MANAGED_INSTALL" = false ]; then
+        read -rp "   Replace existing key? [y/N] " response
+    else
+        response=n
+    fi
+    if [[ "${response:-n}" =~ ^[Yy]$ ]]; then
+        echo "🗝️ Generating new SSH key for Claude..."
+        ssh-keygen -t ed25519 -C "claude@claude.ai" -f "$HOST_HOME/.ssh/claudebox/id_ed25519" -N ""
+    else
+        echo "   Keeping existing key."
+    fi
 else
-	echo "🗝️ Generating SSH key for Claude..."
-	ssh-keygen -t ed25519 -C "claude@claude.ai" -f "$HOME/.ssh/claudebox/id_ed25519" -N ""
+    echo "🗝️ Generating SSH key for Claude..."
+    ssh-keygen -t ed25519 -C "claude@claude.ai" -f "$HOST_HOME/.ssh/claudebox/id_ed25519" -N ""
 fi
 
 # v2 flipped the variants: `latest` IS the minimal image; `latest-full` layers
@@ -46,21 +63,21 @@ docker pull "psyb0t/claudebox:$CLAUDE_TAG"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-/dev/null}")" 2>/dev/null && pwd)"
 WRAPPER_TMP="$(mktemp /tmp/claude-wrapper-XXXXXX.sh)"
 if [ -f "$SCRIPT_DIR/wrapper.sh" ]; then
-	echo "📝 Using local wrapper.sh..."
-	cp "$SCRIPT_DIR/wrapper.sh" "$WRAPPER_TMP"
+    echo "📝 Using local wrapper.sh..."
+    cp "$SCRIPT_DIR/wrapper.sh" "$WRAPPER_TMP"
 else
-	echo "📝 Downloading wrapper.sh..."
-	if ! curl -fsSL "https://raw.githubusercontent.com/psyb0t/docker-claudebox/master/wrapper.sh" -o "$WRAPPER_TMP"; then
-		echo "❌ Failed to download wrapper.sh"
-		rm -f "$WRAPPER_TMP"
-		exit 1
-	fi
+    echo "📝 Downloading wrapper.sh..."
+    if ! curl -fsSL "$WRAPPER_URL" -o "$WRAPPER_TMP"; then
+        echo "❌ Failed to download wrapper.sh"
+        rm -f "$WRAPPER_TMP"
+        exit 1
+    fi
 fi
 
 if [ ! -s "$WRAPPER_TMP" ]; then
-	echo "❌ wrapper.sh is empty — download failed"
-	rm -f "$WRAPPER_TMP"
-	exit 1
+    echo "❌ wrapper.sh is empty — download failed"
+    rm -f "$WRAPPER_TMP"
+    exit 1
 fi
 
 # Bake the selected variant into the wrapper so the choice sticks per install
@@ -69,23 +86,24 @@ _variant="minimal"
 [ -n "$_full" ] && _variant="full"
 echo "📝 Baking image variant into wrapper: $_variant"
 if grep -q '^CLAUDEBOX_INSTALLED_VARIANT=' "$WRAPPER_TMP"; then
-	_baked="$(mktemp /tmp/claude-wrapper-baked-XXXXXX.sh)"
-	if sed "s/^CLAUDEBOX_INSTALLED_VARIANT=.*/CLAUDEBOX_INSTALLED_VARIANT=\"$_variant\"/" "$WRAPPER_TMP" > "$_baked" && [ -s "$_baked" ]; then
-		mv "$_baked" "$WRAPPER_TMP"
-	else
-		echo "❌ Failed to bake image variant into wrapper"
-		rm -f "$_baked" "$WRAPPER_TMP"
-		exit 1
-	fi
+    _baked="$(mktemp /tmp/claude-wrapper-baked-XXXXXX.sh)"
+    if sed "s/^CLAUDEBOX_INSTALLED_VARIANT=.*/CLAUDEBOX_INSTALLED_VARIANT=\"$_variant\"/" "$WRAPPER_TMP" >"$_baked" && [ -s "$_baked" ]; then
+        mv "$_baked" "$WRAPPER_TMP"
+    else
+        echo "❌ Failed to bake image variant into wrapper"
+        rm -f "$_baked" "$WRAPPER_TMP"
+        exit 1
+    fi
 else
-	echo "⚠️  wrapper has no CLAUDEBOX_INSTALLED_VARIANT line — using env-var selection only"
+    echo "⚠️  wrapper has no CLAUDEBOX_INSTALLED_VARIANT line — using env-var selection only"
 fi
 
 echo "📝 Installing $BIN_NAME to $BIN_PATH..."
+sudo install -d -m 755 "$INSTALL_DIR"
 sudo install -m 755 "$WRAPPER_TMP" "$BIN_PATH"
 rm -f "$WRAPPER_TMP"
 
 echo "✅ Claude Code setup complete! You can now use '$BIN_NAME' command from any directory."
 echo ""
 echo "🔑 Don't forget to add your public key to GitHub:"
-echo "   $HOME/.ssh/claudebox/id_ed25519.pub"
+echo "   $HOST_HOME/.ssh/claudebox/id_ed25519.pub"

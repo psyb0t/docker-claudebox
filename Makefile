@@ -11,7 +11,7 @@ BASE_IMAGE ?= psyb0t/aicodebox:v0.15.0@sha256:937dc2df9a89cc78b59bc27c021155ad3f
 FULL_BASE_IMAGE ?= psyb0t/aicodebox:v0.15.0-full@sha256:ec4dac99bca4dba648f598af0bd94f1a98185e53d54ea5717db0c2076e12a612
 CLAUDE_VERSION ?= 2.1.251
 
-.PHONY: all build build-full build-all pull-base pull-full-base test test-unit test-smoke test-persist test-image-select test-agent-launcher clean help version pkg-lock
+.PHONY: all build build-full build-all pull-base pull-full-base test test-unit test-smoke test-persist test-image-select test-agent-launcher test-managed-nested clean help version pkg-lock
 
 all: build ## Build the minimal claudebox image on top of the published base
 
@@ -87,6 +87,9 @@ test-image-select: ## Assert wrapper.sh resolves the right image (CLAUDEBOX_FULL
 
 test-agent-launcher: ## Assert claudebox-agent.sh restores interactive defaults (--continue/skip-permissions/markers); no build needed
 	bash tests/test_agent_launcher.sh
+
+test-managed-nested: ## Verify managed install and nested wrapper propagation without Docker
+	bash tests/test_managed_nested.sh
 
 test: test-unit ## Alias for test-unit
 
