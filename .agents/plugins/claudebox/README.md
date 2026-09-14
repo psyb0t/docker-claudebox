@@ -16,6 +16,22 @@ instance and authenticates with your bearer token when the server requires one.
 > connects to a claudebox instance that **you** run. See the
 > [claudebox repo](https://github.com/psyb0t/docker-claudebox) to stand one up.
 
+## Start a local server
+
+Install `claudebox` first, then start the service through its wrapper from the
+workspace you want to expose. Set both bearer tokens before publishing a port.
+
+```bash
+CLAUDEBOX_ENV_CLAUDEBOX_API_MODE=1 \
+CLAUDEBOX_ENV_CLAUDEBOX_MCP_MODE=1 \
+CLAUDEBOX_ENV_CLAUDEBOX_API_MODE_TOKEN=your-api-token \
+CLAUDEBOX_ENV_CLAUDEBOX_MCP_MODE_TOKEN=your-mcp-token \
+claudebox
+```
+
+The plugin connects to `http://localhost:8080/mcp`. It does not launch the
+container for you. See the repository README for a remote deployment.
+
 ## Tools
 
 The 5 claudebox MCP tools become available to your agent: `run_prompt` (run a

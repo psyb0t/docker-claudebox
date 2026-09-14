@@ -1,6 +1,6 @@
 ---
 name: claudebox
-description: Claude Code running on the network inside a Docker container (aicodebox-based), managed via the claudebox wrapper/CLI. Exposes seven ways to drive it: interactive shell (`claudebox`), one-shot exec (`claudebox -p "prompt"`), an HTTP REST API (`/run`, async run-id polling, `/files` CRUD), an OpenAI-compatible `/openai/v1/chat/completions` adapter (streaming SSE, multi-turn, multimodal), an MCP server (streamable HTTP, gated by CLAUDEBOX_MCP_MODE, mounts at `/mcp` on the API port when API mode is also on, else runs standalone on its own port), a Telegram bot, and a YAML cron scheduler. Auth is per-mode bearer tokens (CLAUDEBOX_API_MODE_TOKEN, CLAUDEBOX_MCP_MODE_TOKEN, CLAUDEBOX_TELEGRAM_MODE_TOKEN) or none if unset. Use specifically for installing, configuring, launching, or scripting against a claudebox container/wrapper, not as a generic "run any coding task" tool.
+description: "Install, configure, or run Claude Code through the claudebox wrapper, or connect to its HTTP, MCP, Telegram, or cron surfaces."
 homepage: https://github.com/psyb0t/docker-claudebox
 user-invocable: true
 metadata:
@@ -10,6 +10,48 @@ metadata:
 # claudebox
 
 Claude Code — the agentic coding CLI from Anthropic — running in an isolated Docker container with dev tools, passwordless sudo, docker-in-docker, and `--permission-mode bypassPermissions` on by default. Built as a thin child image of `psyb0t/aicodebox`; every server-mode surface (API / OpenAI adapter / MCP / Telegram / Cron) is inherited from that base.
+
+## Agent execution
+
+Use `claudebox` when it is on `PATH`. Run it from the workspace the user
+named. Do not assemble a new `docker run` command for routine interactive or
+one-shot work. The wrapper owns the workspace mount, `~/.claude`, SSH state,
+image selection, and session lifecycle.
+
+```bash
+claudebox                                      # interactive Claude Code
+claudebox -p "inspect this workspace"          # one-shot work
+claudebox -p "emit events" --output-format stream-json
+CLAUDEBOX_FULL=1 claudebox -p "run the full suite"
+```
+
+For a wrapper-started server, prefix container variables with
+`CLAUDEBOX_ENV_`. For example,
+`CLAUDEBOX_ENV_CLAUDEBOX_API_MODE=1 claudebox` passes
+`CLAUDEBOX_API_MODE=1` into the container. Bare `CLAUDEBOX_API_MODE` is not
+forwarded and does not start the server.
+
+Start a local API and MCP server only when the user asks for one. Authenticate
+Claude first, then use distinct bearer tokens for the two surfaces:
+
+```bash
+CLAUDEBOX_ENV_CLAUDEBOX_API_MODE=1 \
+CLAUDEBOX_ENV_CLAUDEBOX_MCP_MODE=1 \
+CLAUDEBOX_ENV_CLAUDEBOX_API_MODE_TOKEN=your-api-token \
+CLAUDEBOX_ENV_CLAUDEBOX_MCP_MODE_TOKEN=your-mcp-token \
+claudebox
+```
+
+Use an HTTP or MCP endpoint only when the user asks for a service or provides
+an already-running remote URL. MCP plugins connect to a server. They do not
+replace the local wrapper.
+
+If `claudebox`, `codexbox`, and `pibox` were installed in the same command
+directory, a box can invoke a sibling command directly. The parent wrapper
+passes the real host paths and the sibling wrapper file. Do not set
+`AICODEBOX_HOST_*`, copy wrapper files, or manually mount another box's state
+directory. If the sibling command is absent, ask the user to install it or to
+choose another approach.
 
 ## Security & safety
 

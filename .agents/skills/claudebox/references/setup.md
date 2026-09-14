@@ -5,6 +5,10 @@
 - Docker installed and running. That's it — the wrapper handles the rest.
 - An Anthropic credential: `CLAUDE_CODE_OAUTH_TOKEN` (via `claudebox setup-token`) or `ANTHROPIC_API_KEY`.
 
+For ordinary agent work, use the installed `claudebox` command from the target
+workspace. Do not replace it with a hand-written Docker invocation. The
+wrapper handles the workspace, state, SSH, image, and nested launch context.
+
 ## Quick Install (CLI wrapper)
 
 Safer path — download, inspect, then run:
@@ -24,6 +28,16 @@ bash install.sh claude
 Downloading and reading the script before running it is the recommended flow, especially in an agent-driven or CI context — it runs with your privileges.
 
 The installer pulls the image, generates an ed25519 SSH key at `~/.ssh/claudebox/id_ed25519` for git operations inside the container, creates `~/.claude`, and installs the wrapper to `/usr/local/bin/claudebox` (override with `CLAUDEBOX_INSTALL_DIR` / `CLAUDEBOX_BIN_NAME`). Add the generated public key to GitHub/GitLab for git push/pull to work from inside the container.
+
+```bash
+claudebox                                  # interactive
+claudebox -p "inspect this workspace"      # one-shot
+CLAUDEBOX_FULL=1 claudebox -p "run tests"  # temporary full image
+```
+
+For a wrapper-started server, use `CLAUDEBOX_ENV_` before every variable that
+must reach the container. For example,
+`CLAUDEBOX_ENV_CLAUDEBOX_API_MODE=1 claudebox` starts API mode.
 
 Install `claudebox`, `codexbox`, and `pibox` in the same command directory,
 normally `/usr/local/bin`, when one box needs to launch another. The parent

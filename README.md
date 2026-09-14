@@ -125,6 +125,25 @@ use `claudebox setup-token` once. Use `claudebox -p "prompt"` for a direct
 programmatic run. See [Configuration](#configuration) for `CLAUDEBOX_ENV_*`,
 `CLAUDEBOX_MOUNT_*`, image selection, and mode settings.
 
+### Agent use and nested launches
+
+The installed wrapper is the normal interface for people and agents. An agent
+should run `claudebox` from the requested workspace instead of constructing a
+new `docker run` command. The wrapper preserves the workspace path, Claude
+state, SSH state, image choice, and container lifecycle.
+
+```bash
+claudebox -p "inspect this workspace and report the failing tests"
+CLAUDEBOX_FULL=1 claudebox -p "run the full test suite"
+claudebox -p "emit machine-readable events" --output-format stream-json
+```
+
+When one box needs another, install `claudebox`, `codexbox`, and `pibox` in
+the same command directory. A running box can call the sibling command
+directly. The parent wrapper passes the host launch context and mounts only
+the sibling wrapper file. Do not set `AICODEBOX_HOST_*`, copy a wrapper, or
+manually mount another box's state directory.
+
 ## Image Variants
 
 ### `psyb0t/claudebox:latest` (minimal, default)
@@ -293,7 +312,7 @@ wrapper. Do not set it for an ordinary host launch.
 
 ## Agent integrations
 
-The [skill](.agents/skills/claudebox) works in any agent that reads `.agents/skills/`, and installs natively in the clients below.
+The [skill](.agents/skills/claudebox) works in any agent that reads `.agents/skills/`. It tells agents to use the installed wrapper for local work and to use MCP only for an already-running remote server. It installs natively in the clients below.
 
 ### Claude Code
 
