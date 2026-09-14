@@ -46,6 +46,11 @@ CLAUDE_DIR="${CLAUDEBOX_DATA_DIR:-${CLAUDE_DATA_DIR:-${AICODEBOX_HOST_CLAUDE_HOM
 CLAUDE_SSH="${CLAUDEBOX_SSH_DIR:-${CLAUDE_SSH_DIR:-$HOST_HOME/.ssh/claudebox}}"
 CLAUDEBOX_MAX_MEM="${CLAUDEBOX_MAX_MEM:-${CLAUDE_MAX_MEM:-10g}}"
 WRAPPER_DIR="${AICODEBOX_HOST_WRAPPER_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)}"
+FULL_STREAM_ARGS=(
+    --include-partial-messages
+    --forward-subagent-text
+    --include-hook-events
+)
 
 # auth: prefer CLAUDEBOX_ENV_*, fall back to legacy direct vars
 ANTHROPIC_API_KEY="${CLAUDEBOX_ENV_ANTHROPIC_API_KEY:-${ANTHROPIC_API_KEY:-}}"
@@ -250,6 +255,7 @@ if [ $# -gt 0 ]; then
     HAS_PRINT=0
     HAS_NO_CONTINUE=0
     JSON_VERBOSE=0
+    FULL_STREAM_REQUESTED=0
     PASS_ARGS=(-p)
     EXPECT_VALUE=""
     for arg in "$@"; do
@@ -284,6 +290,10 @@ if [ $# -gt 0 ]; then
             --no-continue)
                 HAS_NO_CONTINUE=1
                 PASS_ARGS+=("$arg")
+                ;;
+            --include-partial-messages | --forward-subagent-text | --include-hook-events)
+                # Added automatically for stream-json below.
+                FULL_STREAM_REQUESTED=1
                 ;;
             --output-format | --model | --system-prompt | --append-system-prompt | --json-schema | --effort | --resume)
                 EXPECT_VALUE="$arg"
@@ -356,6 +366,15 @@ if [ $# -gt 0 ]; then
                     stream-json | --output-format=stream-json) PIPE_MODE="stream-json" ;;
                 esac
             done
+        fi
+
+        if [ "$FULL_STREAM_REQUESTED" = "1" ] && [ "$PIPE_MODE" != "stream-json" ]; then
+            echo "❌ Native event flags require --output-format stream-json" >&2
+            exit 1
+        fi
+
+        if [ "$PIPE_MODE" = "stream-json" ]; then
+            PASS_ARGS+=("${FULL_STREAM_ARGS[@]}")
         fi
 
         dbg "PASS_ARGS: ${PASS_ARGS[*]}"

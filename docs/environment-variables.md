@@ -41,7 +41,7 @@ The `CLAUDEBOX_ENV_` prefix injects arbitrary env vars into the container. The p
 
 ```bash
 # inside the container these become: GITHUB_TOKEN=xxx, MY_VAR=hello
-CLAUDEBOX_ENV_GITHUB_TOKEN=xxx CLAUDEBOX_ENV_MY_VAR=hello claudebox "do stuff"
+CLAUDEBOX_ENV_GITHUB_TOKEN=xxx CLAUDEBOX_ENV_MY_VAR=hello claudebox -p "do stuff"
 ```
 
 ## Extra volume mounts
@@ -49,10 +49,10 @@ CLAUDEBOX_ENV_GITHUB_TOKEN=xxx CLAUDEBOX_ENV_MY_VAR=hello claudebox "do stuff"
 The `CLAUDEBOX_MOUNT_` prefix mounts additional host directories into the container:
 
 ```bash
-CLAUDEBOX_MOUNT_DATA=/data claudebox "process the data"                    # same path inside container
-CLAUDEBOX_MOUNT_1=/opt/configs CLAUDEBOX_MOUNT_2=/var/logs claudebox "go"  # mount multiple directories
-CLAUDEBOX_MOUNT_STUFF=/host/path:/container/path claudebox "do stuff"      # explicit source:dest mapping
-CLAUDEBOX_MOUNT_RO=/data:/data:ro claudebox "read the data"                # read-only mount
+CLAUDEBOX_MOUNT_DATA=/data claudebox -p "process the data"                    # same path inside container
+CLAUDEBOX_MOUNT_1=/opt/configs CLAUDEBOX_MOUNT_2=/var/logs claudebox -p "go"  # mount multiple directories
+CLAUDEBOX_MOUNT_STUFF=/host/path:/container/path claudebox -p "do stuff"      # explicit source:dest mapping
+CLAUDEBOX_MOUNT_RO=/data:/data:ro claudebox -p "read the data"                # read-only mount
 ```
 
 If the value contains `:`, it is passed directly as Docker `-v` syntax. Otherwise, the same path is used on both host and container sides.

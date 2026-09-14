@@ -99,7 +99,7 @@ services:
       - CLAUDEBOX_CRON_MODE=1
       - CLAUDEBOX_CRON_MODE_FILE=/home/aicode/.claude/cron.yaml
       - CLAUDEBOX_WORKSPACE=/workspace
-      - CLAUDE_CODE_OAUTH_TOKEN=sk-ant-oat01-xxx
+      - CLAUDE_CODE_OAUTH_TOKEN=your-oauth-token
       - DEBUG=true # optional, verbose per-tick logs
     volumes:
       - ./cron.yaml:/home/aicode/.claude/cron.yaml:ro
@@ -138,7 +138,7 @@ services:
       - CLAUDEBOX_CRON_MODE_FILE=/home/aicode/.claude/cron.yaml
       - CLAUDEBOX_WORKSPACE=/workspace
       - CLAUDEBOX_TELEGRAM_MODE_TOKEN=123456:ABC-DEF
-      - CLAUDE_CODE_OAUTH_TOKEN=sk-ant-oat01-xxx
+      - CLAUDE_CODE_OAUTH_TOKEN=your-oauth-token
     volumes:
       - ./cron.yaml:/home/aicode/.claude/cron.yaml:ro
       - ./workspace:/workspace

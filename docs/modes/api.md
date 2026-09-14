@@ -12,7 +12,7 @@ services:
     environment:
       - CLAUDEBOX_API_MODE=1
       - CLAUDEBOX_API_MODE_TOKEN=your-secret-token
-      - CLAUDE_CODE_OAUTH_TOKEN=sk-ant-oat01-xxx
+      - CLAUDE_CODE_OAUTH_TOKEN=your-oauth-token
     volumes:
       - ~/.claude:/home/aicode/.claude
       - /your/projects:/workspace
@@ -59,7 +59,16 @@ curl -X POST http://localhost:8080/run \
 
 Every response includes a `runId` field that uniquely identifies the run.
 
-Set `"eventMode": "full"` to return the complete Claude `stream-json` output, including partial assistant messages, tool use, tool results, hook events, subagent text, and final usage. Each response record has the stable envelope `{sequence, attempt, backend, eventType, event}`. The nested `event` is the original Claude record with no field removal or tool-result truncation. `"eventMode": "none"` returns only the final result. The default `"auto"` keeps the historical behavior of including events for a `jsonSchema` request or `"outputFormat": "json-verbose"`. `"outputFormat": "text"` and `"outputFormat": "json"` remain accepted legacy inputs but do not change the response serialization.
+The Claude adapter always requests its complete native stream, including partial
+assistant messages, tool use, tool results, hook events, subagent text, and
+final usage. Set `"eventMode": "full"` to return those records. Each response
+record has the stable envelope `{sequence, attempt, backend, eventType, event}`.
+The nested `event` is the original Claude record with no field removal or
+tool-result truncation. `"eventMode": "none"` returns only the final result.
+The default `"auto"` keeps the historical behavior of including events for a
+`jsonSchema` request or `"outputFormat": "json-verbose"`. `"outputFormat":
+"text"` and `"outputFormat": "json"` remain accepted legacy inputs but do not
+change the response serialization.
 
 `jsonSchema` validates only the final JSON output and can be combined with either event mode.
 
@@ -219,6 +228,13 @@ curl -X POST http://localhost:8080/openai/v1/chat/completions \
 - **Multimodal content** — base64-encoded images and image URLs in message content are automatically downloaded or decoded and saved to the workspace. The content blocks are replaced with local file paths so Claude Code can access the images directly.
 
 **Streaming:** when `"stream": true` is set, the response is returned as standard SSE (Server-Sent Events). Content arrives in message-level chunks rather than character-by-character deltas, since Claude Code assembles complete messages internally.
+
+To receive every Claude native stream record too, add
+`"stream_options": {"include_aicodebox_events": true}`. The response emits a
+named `aicodebox.native` SSE event before normal OpenAI chunks. Its JSON payload
+is `{sequence, attempt, backend, eventType, event}` and does not alter the
+standard OpenAI chunk data. This remains opt-in so strict OpenAI SSE parsers can
+continue consuming only standard chunks.
 
 **File workflow tip:** for best performance with large inputs or outputs, upload files via `PUT /files/...`, reference them by path in your prompt, and then download output files via `GET /files/...`. This is significantly faster than embedding large content directly in message bodies.
 

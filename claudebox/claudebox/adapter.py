@@ -27,6 +27,7 @@ from aicodebox.adapters.base import (
     RunRequest,
     RunResult,
     StreamEvent,
+    parse_native_event_lines,
 )
 
 logger = logging.getLogger(__name__)
@@ -158,8 +159,10 @@ class ClaudecodeAdapter(AgentAdapter):
         if req.model:
             argv += ["--model", req.model]
 
-        if req.event_mode == "full":
-            argv += list(FULL_EVENT_ARGS)
+        # Claude otherwise omits partial messages, hook records, and
+        # subagent text from its stream. The adapter always runs stream-json,
+        # so request the complete native stream for every invocation.
+        argv += list(FULL_EVENT_ARGS)
 
         combined_append = _compose_append_system_prompt(req.append_system_prompt)
         if combined_append:
@@ -304,23 +307,7 @@ class ClaudecodeAdapter(AgentAdapter):
     def parse_events(self, stdout: str, req: RunRequest) -> list[dict[str, Any]]:
         """Return every native Claude stream-json record without collapsing it."""
         del req
-        events: list[dict[str, Any]] = []
-
-        for raw_line in stdout.splitlines():
-            line = raw_line.strip()
-            if not line:
-                continue
-            try:
-                event = json.loads(line)
-            except json.JSONDecodeError as err:
-                logger.warning(
-                    "parse_events: malformed stream-json line",
-                    extra={"err": err.msg, "sample": _truncate(line, 80)},
-                )
-                continue
-            if isinstance(event, dict):
-                events.append(event)
-        return events
+        return parse_native_event_lines(stdout)
 
     def parse_stream_event(self, line: str, req: RunRequest) -> StreamEvent | None:
         del req

@@ -11,11 +11,11 @@ running.
 | Component | Kind | License (SPDX) | Source | Where it lives | Note |
 |---|---|---|---|---|---|
 | [`@anthropic-ai/claude-code`](https://www.npmjs.com/package/@anthropic-ai/claude-code) | first-run install (NOT in the image) | **Proprietary** — Anthropic Commercial Terms | https://www.anthropic.com/legal | installed at container startup by `claudebox-entrypoint.sh` | **Not baked into or redistributed by the published image.** Anthropic's CLI is proprietary ("all rights reserved") with no redistribution grant, so the image ships only the pinned version number (`CLAUDEBOX_CLAUDE_VERSION`) and the entrypoint runs `npm install -g @anthropic-ai/claude-code@<version>` from npm on first run — i.e. each user's own container fetches it directly from Anthropic/npm. The image itself carries none of Anthropic's software. |
-| [HashiCorp Terraform](https://www.terraform.io/) | inherited image package | `BUSL-1.1` (source-available, non-compete) | https://github.com/hashicorp/terraform | `aicodebox:v0.15.0-full` only | `latest-full` image only; not in `latest`. |
+| [HashiCorp Terraform](https://www.terraform.io/) | inherited image package | `BUSL-1.1` (source-available, non-compete) | https://github.com/hashicorp/terraform | `aicodebox:v0.15.1-full` only | `latest-full` image only; not in `latest`. |
 | [`mcp-remote`](https://www.npmjs.com/package/mcp-remote) | npm dependency of the bundled plugin | `MIT` | https://www.npmjs.com/package/mcp-remote | `.agents/plugins/claudebox/package.json` | Dependency of the `@psyb0t/claudebox` MIT plugin, not baked into the Docker image. |
-| [GitHub CLI (`gh`)](https://cli.github.com/) | inherited image package | `MIT` | https://github.com/cli/cli | `aicodebox:v0.15.0-full` only | `latest-full` image only; not in `latest`. |
-| [`kubectl`](https://kubernetes.io/docs/reference/kubectl/) | inherited image package | `Apache-2.0` | https://github.com/kubernetes/kubectl | `aicodebox:v0.15.0-full` only | `latest-full` image only; not in `latest`. License text: [`LICENSES/Apache-2.0.txt`](LICENSES/Apache-2.0.txt). |
-| [Helm](https://helm.sh/) | inherited image package | `Apache-2.0` | https://github.com/helm/helm | `aicodebox:v0.15.0-full` only | `latest-full` image only; not in `latest`. License text: [`LICENSES/Apache-2.0.txt`](LICENSES/Apache-2.0.txt). |
+| [GitHub CLI (`gh`)](https://cli.github.com/) | inherited image package | `MIT` | https://github.com/cli/cli | `aicodebox:v0.15.1-full` only | `latest-full` image only; not in `latest`. |
+| [`kubectl`](https://kubernetes.io/docs/reference/kubectl/) | inherited image package | `Apache-2.0` | https://github.com/kubernetes/kubectl | `aicodebox:v0.15.1-full` only | `latest-full` image only; not in `latest`. License text: [`LICENSES/Apache-2.0.txt`](LICENSES/Apache-2.0.txt). |
+| [Helm](https://helm.sh/) | inherited image package | `Apache-2.0` | https://github.com/helm/helm | `aicodebox:v0.15.1-full` only | `latest-full` image only; not in `latest`. License text: [`LICENSES/Apache-2.0.txt`](LICENSES/Apache-2.0.txt). |
 
 No license text is bundled for the proprietary Claude Code CLI — see
 Anthropic's own terms at the link above.

@@ -10,7 +10,7 @@
 # NOTE on hardening: the base sets `aicode` (UID 1000) as its runtime user via
 # `setpriv` inside `aicodebox-entrypoint`. This Dockerfile switches to root
 # only for the install steps below; runtime drops back to aicode automatically.
-ARG BASE_IMAGE=psyb0t/aicodebox:v0.15.0@sha256:937dc2df9a89cc78b59bc27c021155ad3f7d96617d26238fb9617c5c2a2d03c7
+ARG BASE_IMAGE=psyb0t/aicodebox:v0.15.1@sha256:624f1014fd65c191ffc1730d35778a045d8612661bbe4848bbeba0e0a3f9f50f
 FROM ${BASE_IMAGE}
 
 # MCP Registry ownership verification label.
@@ -25,7 +25,7 @@ USER root
 # global, on the same shared PATH as before) on first container start if it
 # isn't already present — so each user's own container fetches it from npm at
 # runtime rather than us redistributing Anthropic's software.
-ARG CLAUDE_VERSION=2.1.251
+ARG CLAUDE_VERSION=2.1.263
 ENV CLAUDEBOX_CLAUDE_VERSION=${CLAUDE_VERSION}
 
 # claudebox python package (ClaudecodeAdapter). aicodebox already exists in the

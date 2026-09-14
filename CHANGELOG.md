@@ -4,6 +4,14 @@ All notable changes to **claudebox** (formerly `docker-claude-code`).
 
 Format roughly follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [v2.4.2], 2026-09-13: Document the installed wrapper
+
+- Documents the installed `claudebox` command as the normal interactive and
+  one-shot entry point, including authentication, session, and maintenance
+  commands.
+- Updates the first-run Claude Code pin to `2.1.263`.
+- Rebuilds both variants on digest-pinned Aicodebox `v0.15.1`.
+
 ## [v2.4.1], 2026-09-13: Correct wrapper documentation
 
 - Corrects host-wrapper setup and shared-settings documentation.

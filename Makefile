@@ -7,9 +7,9 @@ TAG        := v$(VERSION)
 # Default to the published aicodebox base, digest-pinned (keep in sync with the
 # ARG default in Dockerfile) — override with `make build BASE_IMAGE=...` to point
 # at a locally-built base image.
-BASE_IMAGE ?= psyb0t/aicodebox:v0.15.0@sha256:937dc2df9a89cc78b59bc27c021155ad3f7d96617d26238fb9617c5c2a2d03c7
-FULL_BASE_IMAGE ?= psyb0t/aicodebox:v0.15.0-full@sha256:ec4dac99bca4dba648f598af0bd94f1a98185e53d54ea5717db0c2076e12a612
-CLAUDE_VERSION ?= 2.1.251
+BASE_IMAGE ?= psyb0t/aicodebox:v0.15.1@sha256:624f1014fd65c191ffc1730d35778a045d8612661bbe4848bbeba0e0a3f9f50f
+FULL_BASE_IMAGE ?= psyb0t/aicodebox:v0.15.1-full@sha256:249e9fcea7b9bf0f7cf19e9b91e501875ead642f03d447846367d38b27225a7e
+CLAUDE_VERSION ?= 2.1.263
 
 .PHONY: all build build-full build-all pull-base pull-full-base test test-unit test-smoke test-persist test-image-select test-agent-launcher test-managed-nested clean help version pkg-lock
 

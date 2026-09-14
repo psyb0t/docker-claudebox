@@ -77,7 +77,7 @@ services:
       - CLAUDEBOX_CRON_MODE_FILE=/home/aicode/.claude/cron.yaml
       - CLAUDEBOX_MCP_MODE=1
       - CLAUDEBOX_MCP_MODE_TOKEN=some-long-random-string
-      - CLAUDE_CODE_OAUTH_TOKEN=sk-ant-oat01-xxx
+      - CLAUDE_CODE_OAUTH_TOKEN=your-oauth-token
     volumes:
       - ~/.claude:/home/aicode/.claude
       - ~/workspaces:/workspace
@@ -100,7 +100,7 @@ services:
     environment:
       - CLAUDEBOX_API_MODE=1
       - CLAUDEBOX_API_MODE_TOKEN=some-long-random-string
-      - CLAUDE_CODE_OAUTH_TOKEN=sk-ant-oat01-xxx
+      - CLAUDE_CODE_OAUTH_TOKEN=your-oauth-token
 ```
 
 Reachable at `http://host:8080/mcp`. The auth split above still applies: the mounted MCP surface reads `CLAUDEBOX_MCP_MODE_TOKEN`, so set it if you want `/mcp` protected. See [api.md](api.md) for the rest of the API surface.

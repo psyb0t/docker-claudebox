@@ -111,18 +111,18 @@ All wrapper/installer config uses the `CLAUDEBOX_*` prefix; the entrypoint alias
 Auth/in-container settings route through `CLAUDEBOX_ENV_*`:
 
 ```bash
-CLAUDEBOX_ENV_ANTHROPIC_API_KEY=sk-... claudebox "do stuff"
-CLAUDEBOX_ENV_CLAUDE_CODE_OAUTH_TOKEN=<YOUR_OAUTH_TOKEN> claudebox "do stuff"
-CLAUDEBOX_ENV_DEBUG=true claudebox "do stuff"          # structured JSON debug logging
+CLAUDEBOX_ENV_ANTHROPIC_API_KEY=your-api-key claudebox -p "do stuff"
+CLAUDEBOX_ENV_CLAUDE_CODE_OAUTH_TOKEN=<YOUR_OAUTH_TOKEN> claudebox -p "do stuff"
+CLAUDEBOX_ENV_DEBUG=true claudebox -p "do stuff"          # structured JSON debug logging
 ```
 
 Extra mounts:
 
 ```bash
-CLAUDEBOX_MOUNT_DATA=/data claudebox "process the data"                   # same path both sides
-CLAUDEBOX_MOUNT_1=/opt/configs CLAUDEBOX_MOUNT_2=/var/logs claudebox "go" # multiple mounts
-CLAUDEBOX_MOUNT_STUFF=/host/path:/container/path claudebox "do stuff"     # explicit src:dst
-CLAUDEBOX_MOUNT_RO=/data:/data:ro claudebox "read the data"               # read-only
+CLAUDEBOX_MOUNT_DATA=/data claudebox -p "process the data"                   # same path both sides
+CLAUDEBOX_MOUNT_1=/opt/configs CLAUDEBOX_MOUNT_2=/var/logs claudebox -p "go" # multiple mounts
+CLAUDEBOX_MOUNT_STUFF=/host/path:/container/path claudebox -p "do stuff"     # explicit src:dst
+CLAUDEBOX_MOUNT_RO=/data:/data:ro claudebox -p "read the data"               # read-only
 ```
 
 ### Server modes

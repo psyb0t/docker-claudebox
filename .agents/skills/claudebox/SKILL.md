@@ -1,6 +1,6 @@
 ---
 name: claudebox
-description: Claude Code running on the network inside a Docker container (aicodebox-based), managed via the claudebox wrapper/CLI. Exposes seven ways to drive it — interactive shell (`claudebox`), one-shot exec (`claudebox "prompt"`), an HTTP REST API (`/run`, async run-id polling, `/files` CRUD), an OpenAI-compatible `/openai/v1/chat/completions` adapter (streaming SSE, multi-turn, multimodal), an MCP server (streamable HTTP, gated by CLAUDEBOX_MCP_MODE — mounts at `/mcp` on the API port when API mode is also on, else runs standalone on its own port), a Telegram bot, and a YAML cron scheduler. Auth is per-mode bearer tokens (CLAUDEBOX_API_MODE_TOKEN, CLAUDEBOX_MCP_MODE_TOKEN, CLAUDEBOX_TELEGRAM_MODE_TOKEN) or none if unset — unset tokens mean the surface is unauthenticated. Use specifically for installing, configuring, launching, or scripting against a claudebox container/wrapper — not as a generic "run any coding task" tool.
+description: Claude Code running on the network inside a Docker container (aicodebox-based), managed via the claudebox wrapper/CLI. Exposes seven ways to drive it: interactive shell (`claudebox`), one-shot exec (`claudebox -p "prompt"`), an HTTP REST API (`/run`, async run-id polling, `/files` CRUD), an OpenAI-compatible `/openai/v1/chat/completions` adapter (streaming SSE, multi-turn, multimodal), an MCP server (streamable HTTP, gated by CLAUDEBOX_MCP_MODE, mounts at `/mcp` on the API port when API mode is also on, else runs standalone on its own port), a Telegram bot, and a YAML cron scheduler. Auth is per-mode bearer tokens (CLAUDEBOX_API_MODE_TOKEN, CLAUDEBOX_MCP_MODE_TOKEN, CLAUDEBOX_TELEGRAM_MODE_TOKEN) or none if unset. Use specifically for installing, configuring, launching, or scripting against a claudebox container/wrapper, not as a generic "run any coding task" tool.
 homepage: https://github.com/psyb0t/docker-claudebox
 user-invocable: true
 metadata:
@@ -22,7 +22,7 @@ Claude Code — the agentic coding CLI from Anthropic — running in an isolated
 Seven programmatic surfaces, all reachable from the same container image, selected by which `CLAUDEBOX_*_MODE` env flags are set at boot:
 
 - **Interactive shell** — `claudebox` drops you into the native `claude` CLI, container-backed, with automatic session resumption.
-- **One-shot exec** — `claudebox "prompt" [flags]` — non-interactive, prompt in / structured output out, for scripts and CI.
+- **One-shot exec**: `claudebox -p "prompt" [flags]`, non-interactive, prompt in / structured output out, for scripts and CI.
 - **HTTP REST API** — `CLAUDEBOX_API_MODE=1`. `POST /run`, async runs polled via `GET /run/result?runId=`, `GET/PUT/DELETE /files/{path}`, workspace isolation.
 - **OpenAI-compatible endpoint** — same API-mode server, `/openai/v1/chat/completions` + `/openai/v1/models`. Streaming SSE, multi-turn, multimodal image input.
 - **MCP server** — `CLAUDEBOX_MCP_MODE=1`, 5 tools over streamable HTTP. Mounts at `/mcp` on the API port when `CLAUDEBOX_API_MODE=1` is also set; otherwise runs standalone as a sidecar process on its own port (`CLAUDEBOX_MCP_MODE_PORT`, default `8081`), coexisting with Telegram/Cron/interactive mode.
@@ -33,7 +33,7 @@ For installation and configuration, see [references/setup.md](references/setup.m
 
 ## When To Use
 
-- Run Claude Code from a script, Makefile target, or CI pipeline without a TTY (`claudebox "explain this diff" --output-format json`).
+- Run Claude Code from a script, Makefile target, or CI pipeline without a TTY (`claudebox -p "explain this diff" --output-format json`).
 - Expose Claude Code as an HTTP backend other services can `POST /run` against, with workspace isolation for multi-tenant use.
 - Point an OpenAI SDK / LiteLLM at a self-hosted agentic backend instead of a plain model API — every completion runs the full Claude Code CLI (file I/O, shell, tools), not just text generation.
 - Let another MCP-aware agent (Claude Desktop, another Claude Code instance, an agent framework) use this Claude Code instance as a tool over `/mcp`.
@@ -73,26 +73,29 @@ No mode flag needed — this is the default when you run `claudebox` with no `CL
 
 ## One-shot exec mode
 
-Non-interactive prompt-in/response-out. The `-p` flag is added automatically — works from scripts, CI, cron, anywhere without a TTY:
+Non-interactive prompt-in/response-out. Pass `-p` for scripts, CI, cron, or
+anywhere without a TTY:
 
 ```bash
-claudebox "explain this codebase"                                       # plain text (default)
-claudebox "explain this codebase" --output-format json                  # structured JSON
-claudebox "list all TODOs" --output-format json-verbose | jq .          # JSON + full tool-call history
-claudebox "list all TODOs" --output-format stream-json | jq .           # streaming NDJSON
-claudebox "explain this codebase" --model opus                          # pick a model
-claudebox "review this" --system-prompt "You are a security auditor"    # replace system prompt
-claudebox "review this" --append-system-prompt "Focus on SQL injection" # append to system prompt
-claudebox "debug this" --effort max                                     # max reasoning effort
-claudebox "start over" --no-continue                                    # fresh session
-claudebox "keep going" --resume abc123-def456                           # resume a specific session
+claudebox -p "explain this codebase"                                       # plain text (default)
+claudebox -p "explain this codebase" --output-format json                  # structured JSON
+claudebox -p "list all TODOs" --output-format stream-json | jq .           # complete native NDJSON
+claudebox -p "explain this codebase" --model opus                          # pick a model
+claudebox -p "review this" --system-prompt "You are a security auditor"    # replace system prompt
+claudebox -p "review this" --append-system-prompt "Focus on SQL injection" # append to system prompt
+claudebox -p "debug this" --effort max                                     # max reasoning effort
+claudebox -p "start over" --no-continue                                    # fresh session
+claudebox -p "keep going" --resume abc123-def456                           # resume a specific session
 
 # JSON-schema-constrained output
-claudebox "extract the author and title" --output-format json \
+claudebox -p "extract the author and title" --output-format json \
   --json-schema '{"type":"object","properties":{"author":{"type":"string"},"title":{"type":"string"}},"required":["author","title"]}'
 ```
 
-`--continue` is applied automatically so successive runs in the same workspace share context — use `--no-continue` for a clean slate or `--resume <session_id>` for a specific one. Model aliases: `haiku`, `sonnet`, `opus`, `opusplan`, `sonnet[1m]`. Same env/no mode-flag requirement as interactive mode — the wrapper detects the non-TTY case and adds `-p`.
+`--continue` is applied automatically so successive runs in the same workspace
+share context. Use `--no-continue` for a clean slate or `--resume <session_id>`
+for a specific one. Model aliases: `haiku`, `sonnet`, `opus`, `opusplan`,
+`sonnet[1m]`. The wrapper requires `-p` to select this mode.
 
 ## HTTP REST API mode
 
@@ -114,7 +117,17 @@ curl -X POST http://localhost:8080/run \
   -d '{"prompt": "what does this repo do", "workspace": "myproject"}'
 ```
 
-Key `/run` body fields: `prompt` (required), `workspace` (subpath under `/workspace`), `model`, `systemPrompt`, `appendSystemPrompt`, `jsonSchema`, `noContinue`, `resume`, `fireAndForget`, `async`, `includeRaw` (include raw stdout/stderr), `extraArgs`, `toolsAllowlist`, `noTools`, `timeoutSeconds`. Response shape is derived automatically from whether `jsonSchema` is set (schema → full event-verbose result; no schema → lean text) — there's no separate `outputFormat` request field. `thinking` is accepted but has no effect on claudebox (see [OpenAI-compatible endpoint mode](#openai-compatible-endpoint-mode)). Every response carries a `runId`. Returns `409` if the target workspace is already busy.
+Key `/run` body fields: `prompt` (required), `workspace` (subpath under
+`/workspace`), `model`, `systemPrompt`, `appendSystemPrompt`, `jsonSchema`,
+`eventMode`, `outputFormat` (legacy), `noContinue`, `resume`,
+`fireAndForget`, `async`, `includeRaw` (raw stdout/stderr), `extraArgs`,
+`toolsAllowlist`, `noTools`, and `timeoutSeconds`. The Claude adapter always
+requests complete native records. Use `"eventMode": "full"` to return them in
+the stable `{sequence, attempt, backend, eventType, event}` envelope.
+`thinking` is accepted but has no effect on claudebox (see
+[OpenAI-compatible endpoint mode](#openai-compatible-endpoint-mode)). Every
+response carries a `runId`. Returns `409` if the target workspace is already
+busy.
 
 **Async runs** — `"async": true` returns immediately with a `runId`; poll it:
 
@@ -168,6 +181,12 @@ curl -X POST http://localhost:8080/openai/v1/chat/completions \
 ```
 
 Model aliases match the CLI (`haiku`/`sonnet`/`opus`/`opusplan`); provider prefixes are stripped (`claudebox/haiku` → `haiku`). `role: "system"` messages become `--system-prompt`. Single-user-message requests are the fast path (sent directly as the prompt); multi-turn conversations are serialized to a JSON file under `_oai_uploads/` in the workspace so Claude Code can read the full history. Multimodal `image_url` content (data URLs or `http(s)://`) is downloaded/decoded to the workspace and referenced by path.
+
+For every native Claude record in an OpenAI stream, send
+`"stream_options": {"include_aicodebox_events": true}`. Claudebox emits a
+named `aicodebox.native` SSE event before normal OpenAI chunks. Its payload is
+`{sequence, attempt, backend, eventType, event}`. Standard chunks remain
+unchanged, so the extension stays opt-in for strict OpenAI SSE clients.
 
 `temperature`, `max_tokens`, and `reasoning_effort` are accepted for OpenAI-client compatibility but have no effect on this adapter — claudebox's Claude Code adapter doesn't wire a reasoning-effort flag into the underlying CLI invocation for API/OpenAI/MCP-mode calls (unlike the `--effort` flag on the interactive/exec CLI, which is a native `claude` CLI flag, not adapter-built).
 
@@ -332,9 +351,9 @@ Interactive/exec/cron/CLI-driven modes need an Anthropic credential:
 
 ```bash
 claudebox setup-token                                        # interactive OAuth setup, one-time
-CLAUDE_CODE_OAUTH_TOKEN=<YOUR_OAUTH_TOKEN> claudebox "do stuff" # then reuse the token
+CLAUDE_CODE_OAUTH_TOKEN=<YOUR_OAUTH_TOKEN> claudebox -p "do stuff" # then reuse the token
 # or
-ANTHROPIC_API_KEY=<YOUR_API_KEY> claudebox "do stuff"
+ANTHROPIC_API_KEY=<YOUR_API_KEY> claudebox -p "do stuff"
 ```
 
 Server modes gate their own HTTP surface independently, each with its own bearer token (unset = open):
@@ -352,7 +371,7 @@ All of these still need the underlying Anthropic credential (`CLAUDE_CODE_OAUTH_
 ### Pipe a code review through CI
 
 ```bash
-claudebox "review this diff for security issues" --output-format json --model sonnet | jq -r .result
+claudebox -p "review this diff for security issues" --output-format json --model sonnet | jq -r .result
 ```
 
 ### Drive claudebox from another agent over MCP

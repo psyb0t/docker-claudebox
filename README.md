@@ -34,6 +34,7 @@ Beyond just running Claude Code in Docker, claudebox adds skill injection (auto-
 
 - [Requirements](#requirements)
 - [Quick Start](#quick-start)
+- [Using the `claudebox` wrapper](#using-the-claudebox-wrapper)
 - [Image Variants](#image-variants)
 - [What's Inside (Full Image)](#whats-inside-full-image)
 - [Authentication](#authentication)
@@ -101,6 +102,29 @@ docker pull psyb0t/claudebox:latest        # minimal (default)
 # see install.sh for exactly how the wrapper is set up
 ```
 
+## Using the `claudebox` wrapper
+
+Run `claudebox` from the directory you want Claude to work in. The wrapper
+mounts that directory at the same absolute path inside the container, persists
+`~/.claude` and `~/.ssh/claudebox`, and resumes the directory's interactive
+session by default.
+
+```bash
+claudebox                                  # interactive Claude in this directory
+claudebox --no-continue                    # interactive session without resuming
+claudebox -p "explain this codebase"        # one prompt, then exit
+claudebox setup-token                      # save OAuth credentials in ~/.claude
+claudebox doctor                           # passthrough to Claude Code diagnostics
+claudebox --version                        # passthrough to Claude Code
+claudebox stop                             # stop this directory's running container
+claudebox clear-session                    # remove saved sessions, keep auth/config
+```
+
+Set `ANTHROPIC_API_KEY` or `CLAUDE_CODE_OAUTH_TOKEN` on the host for a run, or
+use `claudebox setup-token` once. Use `claudebox -p "prompt"` for a direct
+programmatic run. See [Configuration](#configuration) for `CLAUDEBOX_ENV_*`,
+`CLAUDEBOX_MOUNT_*`, image selection, and mode settings.
+
 ## Image Variants
 
 ### `psyb0t/claudebox:latest` (minimal, default)
@@ -117,7 +141,7 @@ Use `/aicodebox-init.d/*.sh` hooks (see [Init Hooks](docs/customization.md#init-
 
 ### `psyb0t/claudebox:latest-full` (toolchain-loaded)
 
-Everything pre-installed. This variant starts from the immutable `aicodebox:v0.15.0-full` base, then adds only Claude-specific code. Aicodebox owns the shared Go, Python, Node, C/C++, DevOps, database, editor, and diagnostic toolchain; claudebox stays ready without rebuilding that stack.
+Everything pre-installed. This variant starts from the immutable `aicodebox:v0.15.1-full` base, then adds only Claude-specific code. Aicodebox owns the shared Go, Python, Node, C/C++, DevOps, database, editor, and diagnostic toolchain; claudebox stays ready without rebuilding that stack.
 
 ```bash
 export CLAUDEBOX_FULL=1 && curl -fsSL https://raw.githubusercontent.com/psyb0t/docker-claudebox/master/install.sh | bash
@@ -132,7 +156,7 @@ export CLAUDEBOX_FULL=1 && curl -fsSL https://raw.githubusercontent.com/psyb0t/d
 | Node.js LTS + npm                     |       yes       |       yes        |
 | Docker CE + Compose                   |       yes       |       yes        |
 | Claude Code CLI                       |       yes       |       yes        |
-| Go 1.26.7 + tools                     |        -        |       yes       |
+| Go 1.26.8 + tools                     |        -        |       yes       |
 | Python 3.14.7 + tools                 |        -        |       yes       |
 | Node.js dev tools                     |        -        |       yes       |
 | C/C++ tools                           |        -        |       yes       |
@@ -146,7 +170,7 @@ The shared toolchain is defined and released by [aicodebox](https://github.com/p
 
 **Languages and runtimes:**
 
-- **Go 1.26.7** with the full toolchain: golangci-lint, gopls, delve, staticcheck, gofumpt, gotests, impl, gomodifytags
+- **Go 1.26.8** with the full toolchain: golangci-lint, gopls, delve, staticcheck, gofumpt, gotests, impl, gomodifytags
 - **Python 3.14.7** via pyenv — flake8, black, isort, autoflake, pyright, mypy, vulture, pytest, poetry, pipenv, plus common libraries (requests, beautifulsoup4, lxml, pyyaml, toml)
 - **Node.js LTS** — eslint, prettier, typescript, ts-node, yarn, pnpm, nodemon, pm2, framework CLIs (React, Vue, Angular), newman, http-server, serve, lighthouse, storybook
 - **C/C++** — gcc, g++, make, cmake, clang-format, valgrind, gdb, strace, ltrace
@@ -186,10 +210,10 @@ You need either an Anthropic API key or an OAuth token. Set up once, use everywh
 claudebox setup-token
 
 # then use the token for programmatic and headless runs
-CLAUDE_CODE_OAUTH_TOKEN=sk-ant-oat01-xxx claudebox "do stuff"
+CLAUDE_CODE_OAUTH_TOKEN=your-oauth-token claudebox -p "do stuff"
 
 # or use an API key directly
-ANTHROPIC_API_KEY=sk-ant-api03-xxx claudebox "do stuff"
+ANTHROPIC_API_KEY=your-api-key claudebox -p "do stuff"
 ```
 
 ## Modes
@@ -209,7 +233,7 @@ claudebox
 Non-interactive prompt → response for scripts, pipelines, and automation. Plain text, JSON, and native stream-json output formats. Model selection, system prompt overrides, JSON-schema-constrained output, and session continuation. For a stable full-event response, use API mode with `eventMode: "full"`.
 
 ```bash
-claudebox "explain this codebase" --output-format json --model haiku
+claudebox -p "explain this codebase" --output-format json --model haiku
 ```
 
 ### [API Mode →](docs/modes/api.md)

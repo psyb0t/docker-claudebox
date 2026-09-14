@@ -73,7 +73,7 @@ HOME="$TMP_ROOT/home" PATH="$FAKE_BIN:$PATH" \
     bash "$TMP_ROOT/remote/install.sh" </dev/null >/dev/null
 [[ -x "$TMP_ROOT/wrappers/claudebox" ]] || fail "managed installer target"
 curl_call="$(cat "$TMP_ROOT/curl.log")"
-[[ "$curl_call" == *"/v2.4.1/wrapper.sh"* ]] || fail "wrapper download is not release-pinned"
+[[ "$curl_call" == *"/v2.4.2/wrapper.sh"* ]] || fail "wrapper download is not release-pinned"
 
 if AICODEBOX_LAUNCH_CONTEXT_VERSION=2 bash "$REPO/wrapper.sh" --version >/dev/null 2>&1; then
     fail "unsupported nested-launch context was accepted"

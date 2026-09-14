@@ -74,6 +74,41 @@ wrapper_image() {
     image_token "$(grep -m1 'run --name' "$TMPROOT/docker.log" || true)"
 }
 
+wrapper_programmatic_args() {
+    : > "$TMPROOT/docker.log"
+    (
+        cd "$TMPROOT"
+        PATH="$FAKEBIN:$PATH" \
+            CLAUDEBOX_DATA_DIR="$TMPROOT/claude" \
+            CLAUDEBOX_SSH_DIR="$TMPROOT/ssh" \
+            bash "$WRAPPER" -p "hi" --output-format stream-json \
+                >/dev/null 2>&1
+    ) || true
+    grep -m1 'run --name' "$TMPROOT/docker.log" || true
+}
+
+assert_native_event_flags_require_stream_json() {
+    local output status
+    set +e
+    output="$(
+        cd "$TMPROOT"
+        PATH="$FAKEBIN:$PATH" \
+            CLAUDEBOX_DATA_DIR="$TMPROOT/claude" \
+            CLAUDEBOX_SSH_DIR="$TMPROOT/ssh" \
+            bash "$WRAPPER" -p "hi" --output-format json \
+                --include-partial-messages 2>&1
+    )"
+    status=$?
+    set -e
+
+    [ "$status" -eq 1 ] \
+        || fail "native event flags with json exited $status, expected 1"
+    case "$output" in
+        *"require --output-format stream-json"*) ;;
+        *) fail "native event flag error did not explain the required stream format" ;;
+    esac
+}
+
 # Run install.sh under an env-assignment string in a throwaway HOME (no existing
 # ssh key -> no interactive prompt); echo the image it PULLED.
 install_image() {
@@ -111,6 +146,24 @@ for tc in "${WRAPPER_CASES[@]}"; do
         || fail "A/$name: wrapper resolved '$got', expected '$want'"
     log INFO "  PASS ($got)"
 done
+
+# A stream-json caller needs every native Claude record. The wrapper must add
+# these itself so a caller cannot accidentally omit partial, hook, or subagent
+# messages while still receiving a syntactically valid stream.
+stream_args="$(wrapper_programmatic_args)"
+for required_flag in \
+    --include-partial-messages \
+    --forward-subagent-text \
+    --include-hook-events; do
+    case "$stream_args" in
+        *"$required_flag"*) ;;
+        *) fail "stream-json missing native event flag: $required_flag" ;;
+    esac
+done
+log INFO "A/stream-json-native-events PASS"
+
+assert_native_event_flags_require_stream_json
+log INFO "A/native-event-flags-require-stream-json PASS"
 
 # ── Phase B — install.sh PULL tag == wrapper.sh RUN tag ──────────────────────
 # Only the flags install.sh actually honors; CLAUDEBOX_IMAGE is a wrapper-only

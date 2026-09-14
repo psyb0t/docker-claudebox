@@ -54,7 +54,7 @@ services:
     environment:
       - CLAUDEBOX_TELEGRAM_MODE=1
       - CLAUDEBOX_TELEGRAM_MODE_TOKEN=123456:ABC-DEF
-      - CLAUDE_CODE_OAUTH_TOKEN=sk-ant-oat01-xxx
+      - CLAUDE_CODE_OAUTH_TOKEN=your-oauth-token
     volumes:
       - ~/.claude:/home/aicode/.claude
       - ~/telegram-workspaces:/workspace

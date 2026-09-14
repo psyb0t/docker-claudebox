@@ -58,6 +58,8 @@ def test_build_argv_seeds_defaults(adapter: ClaudecodeAdapter) -> None:
     assert "--verbose" in argv
     pm_idx = argv.index("--permission-mode")
     assert argv[pm_idx + 1] == DEFAULT_PERMISSION_MODE
+    for arg in FULL_EVENT_ARGS:
+        assert arg in argv
 
 
 def test_build_argv_continue_default(adapter: ClaudecodeAdapter) -> None:
@@ -124,7 +126,7 @@ def test_build_argv_json_schema_uses_native_flag(
     assert json.loads(argv[schema_idx + 1]) == schema
 
 
-def test_build_argv_full_event_mode_enables_complete_stream(
+def test_build_argv_full_event_mode_keeps_complete_stream_enabled(
     adapter: ClaudecodeAdapter,
 ) -> None:
     argv = adapter.build_argv(RunRequest(prompt="hi", event_mode="full"))
@@ -321,6 +323,20 @@ def test_parse_events_preserves_complete_native_stream(adapter: ClaudecodeAdapte
     tool_result = events[2]["message"]["content"][0]
     assert tool_result["type"] == "tool_result"
     assert tool_result["content"] == "file.txt\n"
+
+
+def test_parse_events_preserves_non_json_native_line(
+    adapter: ClaudecodeAdapter,
+) -> None:
+    events = adapter.parse_events(
+        '{"type":"thinking_delta","text":"reasoning"}\nprovider diagnostic\n',
+        RunRequest(),
+    )
+
+    assert events == [
+        {"type": "thinking_delta", "text": "reasoning"},
+        {"line": "provider diagnostic"},
+    ]
 
 
 def test_parse_events_preserves_large_tool_result(
