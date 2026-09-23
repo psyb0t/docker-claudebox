@@ -4,6 +4,11 @@ All notable changes to **claudebox** (formerly `docker-claude-code`).
 
 Format roughly follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [v2.4.5], 2026-09-23: Rebuild on Aicodebox v0.16.0
+
+- Rebuilds both variants on digest-pinned Aicodebox `v0.16.0`.
+- Makes the documented `stream_options.include_aicodebox_events` streaming option work. It has been documented since v2.4.2, but images before this release were built on an Aicodebox base that did not support it.
+
 ## [v2.4.4], 2026-09-23: Update the Claude Code pin
 
 - Updates the first-run Claude Code pin to `2.1.280` for both image variants.

@@ -160,7 +160,7 @@ Use `/aicodebox-init.d/*.sh` hooks (see [Init Hooks](docs/customization.md#init-
 
 ### `psyb0t/claudebox:latest-full` (toolchain-loaded)
 
-Everything pre-installed. This variant starts from the immutable `aicodebox:v0.15.1-full` base, then adds only Claude-specific code. Aicodebox owns the shared Go, Python, Node, C/C++, DevOps, database, editor, and diagnostic toolchain; claudebox stays ready without rebuilding that stack.
+Everything pre-installed. This variant starts from the immutable `aicodebox:v0.16.0-full` base, then adds only Claude-specific code. Aicodebox owns the shared Go, Python, Node, C/C++, DevOps, database, editor, and diagnostic toolchain; claudebox stays ready without rebuilding that stack.
 
 ```bash
 export CLAUDEBOX_FULL=1 && curl -fsSL https://raw.githubusercontent.com/psyb0t/docker-claudebox/master/install.sh | bash
