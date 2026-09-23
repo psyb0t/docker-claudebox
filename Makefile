@@ -9,7 +9,7 @@ TAG        := v$(VERSION)
 # at a locally-built base image.
 BASE_IMAGE ?= psyb0t/aicodebox:v0.15.1@sha256:624f1014fd65c191ffc1730d35778a045d8612661bbe4848bbeba0e0a3f9f50f
 FULL_BASE_IMAGE ?= psyb0t/aicodebox:v0.15.1-full@sha256:249e9fcea7b9bf0f7cf19e9b91e501875ead642f03d447846367d38b27225a7e
-CLAUDE_VERSION ?= 2.1.263
+CLAUDE_VERSION ?= 2.1.280
 
 .PHONY: all build build-full build-all pull-base pull-full-base test test-unit test-smoke test-persist test-image-select test-agent-launcher test-managed-nested clean help version pkg-lock
 

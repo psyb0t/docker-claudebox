@@ -25,7 +25,7 @@ USER root
 # global, on the same shared PATH as before) on first container start if it
 # isn't already present — so each user's own container fetches it from npm at
 # runtime rather than us redistributing Anthropic's software.
-ARG CLAUDE_VERSION=2.1.263
+ARG CLAUDE_VERSION=2.1.280
 ENV CLAUDEBOX_CLAUDE_VERSION=${CLAUDE_VERSION}
 
 # claudebox python package (ClaudecodeAdapter). aicodebox already exists in the

@@ -4,6 +4,10 @@ All notable changes to **claudebox** (formerly `docker-claude-code`).
 
 Format roughly follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [v2.4.4], 2026-09-23: Update the Claude Code pin
+
+- Updates the first-run Claude Code pin to `2.1.280` for both image variants.
+
 ## [v2.4.3], 2026-09-14: Clarify wrapper and agent use
 
 - Documents the wrapper-first path for interactive, one-shot, full-image, and

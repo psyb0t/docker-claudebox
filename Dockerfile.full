@@ -9,7 +9,7 @@ LABEL io.modelcontextprotocol.server.name="io.github.psyb0t/claudebox"
 
 USER root
 
-ARG CLAUDE_VERSION=2.1.263
+ARG CLAUDE_VERSION=2.1.280
 ENV CLAUDEBOX_CLAUDE_VERSION=${CLAUDE_VERSION}
 
 COPY claudebox /opt/claudebox
