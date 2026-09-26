@@ -6,6 +6,7 @@ claude CLI surface used here:
   --verbose                          required by stream-json to include tool_result blocks
   --permission-mode bypassPermissions  bypass every permission prompt (non-TTY)
   --model <id>                       model override
+  --effort <level>                   reasoning effort (low|medium|high|xhigh|max)
   --system-prompt <text>             replace default system prompt
   --append-system-prompt <text>      append (repeatable)
   --continue                         resume most recent session in cwd
@@ -37,7 +38,16 @@ SKILLS_DIR_DEFAULT = "/home/aicode/.claude/.always-skills"
 SYSTEM_HINT_FILE_DEFAULT = "/home/aicode/.claude/system-hint.txt"
 
 CLAUDE_MODELS = ["haiku", "sonnet", "opus", "opusplan"]
-CLAUDE_THINKING_LEVELS = ["off", "low", "medium", "high", "xhigh", "max"]
+# Values `claude --effort` accepts.
+CLAUDE_EFFORT_LEVELS = ["low", "medium", "high", "xhigh", "max"]
+# "off" asks for Claude Code's default effort, so it sends no --effort flag.
+CLAUDE_THINKING_LEVELS = ["off", *CLAUDE_EFFORT_LEVELS]
+# Requested levels that leave the effort at Claude Code's default. "none" is
+# the OpenAI reasoning_effort spelling.
+DEFAULT_EFFORT_LEVELS = frozenset({"off", "none"})
+# OpenAI reasoning_effort values with no Claude Code equivalent, mapped to the
+# closest level.
+EFFORT_ALIASES = {"minimal": "low"}
 
 VALID_STOP_REASONS = {"end_turn", "stop_sequence", "max_tokens", "tool_use", "error"}
 
@@ -46,6 +56,24 @@ FULL_EVENT_ARGS = (
     "--forward-subagent-text",
     "--include-hook-events",
 )
+
+
+def _effort_flag_value(thinking: str | None) -> str | None:
+    """Return the `--effort` value for a requested thinking level.
+
+    Returns None when the level asks for Claude Code's default. Raises
+    ValueError for a level Claude Code cannot honour, so a caller-supplied
+    value never reaches the CLI unchecked.
+    """
+    if not thinking:
+        return None
+    requested = thinking.strip().lower()
+    if not requested or requested in DEFAULT_EFFORT_LEVELS:
+        return None
+    level = EFFORT_ALIASES.get(requested, requested)
+    if level not in CLAUDE_EFFORT_LEVELS:
+        raise ValueError(f"thinking={thinking!r} invalid; choose one of {CLAUDE_THINKING_LEVELS}")
+    return level
 
 
 def _truncate(value: Any, limit: int = 80) -> str:
@@ -145,6 +173,17 @@ class ClaudecodeAdapter(AgentAdapter):
     available_models: ClassVar[list[str]] = CLAUDE_MODELS
     available_thinking_levels: ClassVar[list[str]] = CLAUDE_THINKING_LEVELS
 
+    def validate(self, req: RunRequest) -> None:
+        super().validate(req)
+        try:
+            _effort_flag_value(req.thinking)
+        except ValueError:
+            logger.warning(
+                "validate(req): rejecting unknown thinking level",
+                extra={"thinking": req.thinking, "reason": "unknown_effort_level"},
+            )
+            raise
+
     def build_argv(self, req: RunRequest) -> list[str]:
         argv: list[str] = [
             self.binary,
@@ -158,6 +197,10 @@ class ClaudecodeAdapter(AgentAdapter):
 
         if req.model:
             argv += ["--model", req.model]
+
+        effort = _effort_flag_value(req.thinking)
+        if effort:
+            argv += ["--effort", effort]
 
         # Claude otherwise omits partial messages, hook records, and
         # subagent text from its stream. The adapter always runs stream-json,
@@ -201,6 +244,7 @@ class ClaudecodeAdapter(AgentAdapter):
             "build_argv done",
             extra={
                 "model": req.model or "(default)",
+                "effort": effort or "(default)",
                 "session": session_choice,
                 "tools": tools_choice,
                 "has_schema": req.json_schema is not None,

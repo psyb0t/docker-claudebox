@@ -4,6 +4,12 @@ All notable changes to **claudebox** (formerly `docker-claude-code`).
 
 Format roughly follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [v2.4.6], 2026-09-26: Pass reasoning effort to Claude Code
+
+- Passes the requested effort to Claude Code as `--effort`. Telegram `/effort`, cron `effort:`, OpenAI `reasoning_effort`, `/run` `thinking`, and the MCP `run_prompt` tool were accepted before but never reached the CLI.
+- `low`, `medium`, `high`, `xhigh`, and `max` pass through. `minimal` maps to `low`. `off`, `none`, or an empty value keeps Claude Code's default effort.
+- Rejects any other effort value with an error instead of ignoring it. A client that sent an unsupported `reasoning_effort` value now gets an error and must send one of the accepted values or omit the field.
+
 ## [v2.4.5], 2026-09-23: Rebuild on Aicodebox v0.16.0
 
 - Rebuilds both variants on digest-pinned Aicodebox `v0.16.0`.

@@ -230,7 +230,7 @@ named `aicodebox.native` SSE event before normal OpenAI chunks. Its payload is
 `{sequence, attempt, backend, eventType, event}`. Standard chunks remain
 unchanged, so the extension stays opt-in for strict OpenAI SSE clients.
 
-`temperature`, `max_tokens`, and `reasoning_effort` are accepted for OpenAI-client compatibility but have no effect on this adapter — claudebox's Claude Code adapter doesn't wire a reasoning-effort flag into the underlying CLI invocation for API/OpenAI/MCP-mode calls (unlike the `--effort` flag on the interactive/exec CLI, which is a native `claude` CLI flag, not adapter-built).
+`temperature` and `max_tokens` are accepted for OpenAI-client compatibility but have no effect on this adapter. `reasoning_effort` maps to the `claude --effort` flag: `low`, `medium`, `high`, `xhigh`, and `max` pass through, `minimal` maps to `low`, `none` or `off` keeps the default, and any other value is rejected. The `thinking` field on `/run` and MCP `run_prompt` works the same way.
 
 **Tool calling and structured output are supported, not ignored** — `tools`/`tool_choice` engage a client-executed function-calling bridge (Claude Code acts as a pure function-calling model, emits `tool_calls` for the *client* to run), and `response_format` (`json_object` or `json_schema`) constrains the final answer turn. Both can combine in one request. Because a tool call or schema-checked answer only exists once the full response is computed, `stream:true` combined with `tools` or a schema `response_format` returns a **buffered** single-shot SSE stream instead of token-incremental deltas — only plain chat (no tools, no schema) streams token-by-token.
 
@@ -356,7 +356,7 @@ Per-chat overrides: `workspace`, `model`, `effort`, `continue`, `system_prompt`,
 
 Bot commands: any text message is a prompt; sending a file/photo/video/voice saves it to the workspace (caption becomes the prompt); `/model [name]`, `/effort [level]`, `/system_prompt [text]`, `/append_system_prompt [text]`, `/fetch <path>`, `/cancel`, `/status`, `/config`, `/reload`. Claude sends files back with `[SEND_FILE: relative/path]` in its response text.
 
-Note: `effort` (config field and `/effort` command) is accepted and shown in `/config`, but — same as the OpenAI adapter and MCP `run_prompt` tool — claudebox's adapter doesn't currently wire it into the underlying `claude` CLI invocation, so it has no observable effect on response depth.
+`effort` (config field and `/effort` command) is passed to the `claude` CLI as `--effort`. `off` keeps Claude Code's default effort.
 
 ## Cron scheduler mode
 

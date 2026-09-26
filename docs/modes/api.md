@@ -213,7 +213,7 @@ curl -X POST http://localhost:8080/openai/v1/chat/completions \
 
 **System messages:** messages with `role: "system"` are extracted and passed to Claude Code as `--system-prompt`.
 
-**Reasoning effort:** `reasoning_effort` is accepted by the shared OpenAI request model, but the current Claude adapter does not map it to a Claude Code flag.
+**Reasoning effort:** `reasoning_effort` maps to Claude Code's `--effort` flag. `low`, `medium`, `high`, `xhigh`, and `max` pass through, `minimal` maps to `low`, and `none` or `off` keeps Claude Code's default. Any other value is rejected. The `thinking` field on `/run` and the MCP `run_prompt` tool follow the same rules.
 
 **Client-executed tools:** standard `tools` and `tool_choice` are supported. A tool-call turn returns OpenAI `tool_calls`; the client runs the selected function and sends the `role: "tool"` result in the next request. Internal agent tools default off for that turn. Send `x-aicodebox-no-tools: 0` to keep them enabled.
 

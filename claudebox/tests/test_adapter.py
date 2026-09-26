@@ -87,6 +87,51 @@ def test_build_argv_model_flag(adapter: ClaudecodeAdapter) -> None:
     assert argv[m_idx + 1] == "opus"
 
 
+@pytest.mark.parametrize(
+    ("thinking", "expected_effort"),
+    [
+        ("low", "low"),
+        ("medium", "medium"),
+        ("high", "high"),
+        ("xhigh", "xhigh"),
+        ("max", "max"),
+        ("minimal", "low"),
+        ("HIGH", "high"),
+        (" high ", "high"),
+    ],
+)
+def test_build_argv_effort_flag(
+    adapter: ClaudecodeAdapter,
+    thinking: str,
+    expected_effort: str,
+) -> None:
+    argv = adapter.build_argv(RunRequest(prompt="hi", thinking=thinking))
+    e_idx = argv.index("--effort")
+    assert argv[e_idx + 1] == expected_effort
+    assert argv.count("--effort") == 1
+
+
+@pytest.mark.parametrize("thinking", [None, "", "off", "none", "OFF"])
+def test_build_argv_default_effort_omits_flag(
+    adapter: ClaudecodeAdapter,
+    thinking: str | None,
+) -> None:
+    argv = adapter.build_argv(RunRequest(prompt="hi", thinking=thinking))
+    assert "--effort" not in argv
+
+
+@pytest.mark.parametrize("thinking", ["turbo", "--dangerously-skip-permissions"])
+def test_unknown_effort_is_rejected(
+    adapter: ClaudecodeAdapter,
+    thinking: str,
+) -> None:
+    req = RunRequest(prompt="hi", thinking=thinking)
+    with pytest.raises(ValueError, match="thinking="):
+        adapter.validate(req)
+    with pytest.raises(ValueError, match="thinking="):
+        adapter.build_argv(req)
+
+
 def test_build_argv_tools_allowlist(adapter: ClaudecodeAdapter) -> None:
     argv = adapter.build_argv(
         RunRequest(prompt="hi", tools_allowlist=["Bash", "Edit"]),
