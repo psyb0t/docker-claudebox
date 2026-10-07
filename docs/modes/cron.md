@@ -1,172 +1,106 @@
 # Cron Mode
 
-Run scheduled Claude jobs from a YAML cron file. Each job has a cron expression and a multiline instruction. Output streams to `~/.claude/cron/history/<workspace-slug>/<YYYYMMDD-HHMMSS>-<job-name>/` as `activity.jsonl` (Claude's stream-json output) alongside `stderr.log` and `meta.json`.
+Run scheduled Claude jobs from a YAML file. The scheduler expands template values when a job fires, runs Claude in the selected workspace, and keeps durable artifacts for every run.
 
-1. **Write a cron yaml** (see `cron.yml.example`):
+## Cron YAML
+
+Create a YAML file and mount it into the container. `cron.yml.example` contains the complete annotated reference.
 
 ```yaml
-model: haiku                    # default model for all jobs; per-job "model" overrides this
+model: haiku
+effort: medium
 append_system_prompt: |
-  The current date and time is {system_datetime}.
-telegram_chat_id: -1001234567890  # optional: send results to this chat (requires CLAUDEBOX_TELEGRAM_MODE_TOKEN)
+  The current UTC time is {system_datetime}.
+telegram_chat_id: -1001234567890
 
 jobs:
-  - name: every_30_seconds
-    schedule: "*/30 * * * * *"  # 6-field = sec min hr dom mon dow
+  - name: every_thirty_seconds
+    schedule: "*/30 * * * * *"
     instruction: |
       Write the current UTC timestamp to ./status.txt.
 
   - name: hourly_repo_check
-    schedule: "0 * * * *"       # 5-field = standard cron, every hour at :00
-    model: sonnet                # override the default for this job
-    instruction: |
-      Look at the git log for the last hour. Summarize commits.
-      Job name: {job_name}.
-
-  - name: nightly_cleanup
-    schedule: "0 3 * * *"
-    model: opus
-    system_prompt: |             # replaces system prompt entirely for this job
-      You are a cleanup agent. Current time: {system_datetime}.
-    instruction: |
-      Find files older than 7 days under ./tmp and delete them.
-      Report what you removed.
-```
-
-## Root-level fields (defaults for all jobs)
-
-| Field                  | Description                                                                          |
-| ---------------------- | ------------------------------------------------------------------------------------ |
-| `model`                | Default model — per-job `model` overrides it                                         |
-| `effort`               | Default reasoning effort: `low`, `medium`, `high`, `xhigh`, `max` — per-job overrides |
-| `system_prompt`        | Default system prompt — replaces Claude's built-in system prompt                     |
-| `append_system_prompt` | Default text appended to the system prompt                                           |
-| `telegram_chat_id`     | Chat/channel ID to send results to — requires `CLAUDEBOX_TELEGRAM_MODE_TOKEN` env var |
-
-## Per-job fields
-
-Same fields as root-level, plus:
-
-| Field             | Description                                    |
-| ----------------- | ---------------------------------------------- |
-| `name`            | Unique job identifier (alphanumeric, `-`, `_`) |
-| `schedule`        | Cron expression (5-field or 6-field)           |
-| `instruction`     | The prompt sent to Claude                      |
-
-Per-job values override the root-level defaults. `telegram_chat_id` can be set at root level for all jobs and overridden per job.
-
-## Telegram notifications
-
-Set `telegram_chat_id` (root or per-job) and `CLAUDEBOX_TELEGRAM_MODE_TOKEN` to get Claude's result posted to a Telegram chat after each job finishes. The bot must already be set up — see [Telegram mode](telegram.md) for setup.
-
-```yaml
-telegram_chat_id: -1001234567890   # root default — all jobs notify here
-
-jobs:
-  - name: hourly_check
     schedule: "0 * * * *"
-    instruction: Check for issues and report.
+    workspace: repository
+    model: sonnet
+    effort: high
+    instruction: |
+      Summarize commits from the last hour. Job name: {job_name}.
 
   - name: silent_job
     schedule: "*/5 * * * *"
-    telegram_chat_id: 0            # override: disable notifications for this job
-    instruction: Write timestamp to status.txt.
+    telegram_chat_id: 0
+    instruction: |
+      Write the current UTC timestamp to ./status.txt without sending Telegram notifications.
 ```
 
-After each job finishes, the last `result` block from Claude's output is sent. If Claude produced no output, a "finished (no output)" notice is sent. On non-zero exit, a failure notice is sent.
+Root fields set defaults. A job may override `model`, `effort`, `thinking`, `system_prompt`, `append_system_prompt`, and `telegram_chat_id`. Setting a job's `telegram_chat_id` to `0` disables an inherited notification target. `no_continue: true` starts that job without continuing its prior Claude session.
 
-## Template variables
+Each job needs a unique `name`, a `schedule`, and an `instruction`. `workspace` is optional. Without it, jobs run in `CLAUDEBOX_WORKSPACE`. A job can select a safe relative directory below that root, such as `repository` or `reports`. Absolute paths and paths that escape the workspace are rejected.
 
-Use these in `instruction`, `system_prompt`, or `append_system_prompt` — expanded at fire time:
+Use standard five field cron for minute resolution, `min hr dom mon dow`, or six field cron for second resolution, `sec min hr dom mon dow`. For example, `*/30 * * * * *` fires every thirty seconds.
 
-| Variable            | Expands to                                   | Example                      |
-| ------------------- | -------------------------------------------- | ---------------------------- |
-| `{system_datetime}` | Current UTC datetime                         | `2026-04-29 14:35:00 UTC`    |
-| `{job_name}`        | The job's `name` field                       | `hourly_repo_check`          |
+`{system_datetime}` and `{job_name}` work in `instruction`, `system_prompt`, and `append_system_prompt`. They are expanded when the job fires.
 
-## Cron syntax
+## Run history and notifications
 
-Standard 5-field (`min hr dom mon dow`) for minute resolution, or 6-field (`sec min hr dom mon dow`) for sub-minute — `*/30 * * * * *` fires every 30 seconds, `*/5 * * * * *` every 5 seconds.
+The scheduler stores each run under `$HOME/.aicodebox/cron/history/<workspace-slug>/<YYYYMMDD-HHMMSS>-<job-name>/`. A run directory contains `meta.json`, `stdout.log`, `stderr.log`, and `result.txt`. It also appends a summary record to `$HOME/.aicodebox/cron/<job-name>.jsonl`.
 
-2. **Run it:**
+Set `CLAUDEBOX_CRON_MODE_HISTORY_DIR` to move the whole cron state root. The scheduler and Telegram reply bridge use that same directory. Do not point it at the `history` child directory.
+
+Set `telegram_chat_id` and `CLAUDEBOX_TELEGRAM_MODE_TOKEN` to post a completed result to Telegram. Successful jobs send their parsed result text, empty successful jobs send a completion notice, and failed jobs send a failure notice. See [Telegram mode](telegram.md).
+
+The scheduler runs one process per job name. If a job is still running at its next tick, that tick is skipped and logged. Jobs may run at the same time when their names differ.
+
+## Compose example
+
+This example keeps credentials and cron state on the host, mounts one workspace, and deliberately does not give Claude Docker socket access.
 
 ```yaml
-# docker-compose.yml
 services:
   claudebox-cron:
     image: psyb0t/claudebox:latest
+    init: true
+    restart: unless-stopped
     environment:
-      - CLAUDEBOX_CRON_MODE=1
-      - CLAUDEBOX_CRON_MODE_FILE=/home/aicode/.claude/cron.yaml
-      - CLAUDEBOX_WORKSPACE=/workspace
-      - CLAUDE_CODE_OAUTH_TOKEN=your-oauth-token
-      - DEBUG=true # optional, verbose per-tick logs
+      CLAUDEBOX_CRON_MODE: "1"
+      CLAUDEBOX_CRON_MODE_FILE: /home/aicode/.aicodebox/cron.yaml
+      CLAUDEBOX_WORKSPACE: /workspace
+      CLAUDE_CODE_OAUTH_TOKEN: ${CLAUDE_CODE_OAUTH_TOKEN:?set this in .env}
     volumes:
-      - ./cron.yaml:/home/aicode/.claude/cron.yaml:ro
+      - ./cron.yaml:/home/aicode/.aicodebox/cron.yaml:ro
+      - ./claude-state:/home/aicode/.aicodebox
       - ./workspace:/workspace
-      - ~/.claude:/home/aicode/.claude
-      - /var/run/docker.sock:/var/run/docker.sock
+    mem_limit: 2g
+    cpus: 2
+    pids_limit: 512
+    logging:
+      driver: local
+      options:
+        max-size: 10m
+        max-file: "3"
 ```
 
-The scheduler is a single foreground process — `docker logs` shows every tick (job fired, finished, errors). All jobs share the workspace at `CLAUDEBOX_WORKSPACE`. If a previous run is still in progress when the next tick fires, that tick is skipped (logged as a warning).
+Claudebox creates `~/.claude` as a compatibility alias for its canonical `$HOME/.aicodebox` state directory. Use the canonical path in new container configuration. A Docker socket is a host control boundary. Add it only when a job genuinely needs Docker control and you accept that authority.
 
-To target external systems (Telegram, Discord, Slack, email, web hooks, ...), tell Claude in the instruction to use an MCP server you've configured under `~/.claude` — it has full tool access during cron runs just like in interactive mode. See [Customization → MCP servers](../customization.md#mcp-servers) for setup.
+The current image installs Claude Code during first start, so a fresh long running container needs a writable root filesystem. Do not add `read_only: true` or `cap_drop: [ALL]` to this image without first verifying its startup path for the image version you run.
 
-## Combined cron + telegram mode
+## Combined cron + Telegram mode
 
-Set both `CLAUDEBOX_CRON_MODE=1` and `CLAUDEBOX_TELEGRAM_MODE=1` in the same container and you get a single workspace shared between the cron scheduler (background) and the telegram bot (foreground). When the bot exits, the scheduler is killed too.
+Set both `CLAUDEBOX_CRON_MODE=1` and `CLAUDEBOX_TELEGRAM_MODE=1` to run the scheduler in the background while the Telegram bot owns the foreground process. When the bot stops, the scheduler stops too.
 
-In this mode:
+Cron jobs post results only when their root or per job `telegram_chat_id` is set. Reply to a cron notification in Telegram to start a fresh Claude session with that notification's job name, fire time, instruction, result, and history directory added to the prompt. Ordinary Telegram messages retain their own chat session behavior. The bot does not inject a rolling cron summary into unrelated chat messages.
 
-1. **Cron jobs post their results to Telegram automatically.** Set `telegram_chat_id` in your `cron.yaml` (root-level default and/or per-job override). Each completed job sends its output as a normal Telegram message.
-
-2. **You can reply to those messages** (Telegram's native reply-quote, or just hit "Reply" on the cron notification) to ask Claude follow-ups about the run. The bot detects that you replied to a cron notification, looks up the original job (name, fired-at timestamp, instruction, result), and prepends that full context to your prompt — so a fresh Claude session can answer "what file did you write again?" without needing `--continue`.
-
-3. **The whole chat is cron-aware.** Even non-reply messages get the most recent ~10 cron runs injected via `--append-system-prompt`, so Claude can answer questions about cron activity anywhere in the chat.
-
-Cron-reply prompts run in a fresh session (no `--continue`); regular telegram messages still continue the chat's session as usual. Sent message IDs and job context are stored in `~/.claude/cron/telegram_messages.json` (auto-pruned to the last 200 entries).
-
-Example combined-mode `docker-compose.yml`:
-
-```yaml
-services:
-  claudebox-cron-tg:
-    image: psyb0t/claudebox:latest
-    environment:
-      - CLAUDEBOX_CRON_MODE=1
-      - CLAUDEBOX_TELEGRAM_MODE=1
-      - CLAUDEBOX_CRON_MODE_FILE=/home/aicode/.claude/cron.yaml
-      - CLAUDEBOX_WORKSPACE=/workspace
-      - CLAUDEBOX_TELEGRAM_MODE_TOKEN=123456:ABC-DEF
-      - CLAUDE_CODE_OAUTH_TOKEN=your-oauth-token
-    volumes:
-      - ./cron.yaml:/home/aicode/.claude/cron.yaml:ro
-      - ./workspace:/workspace
-      - ~/.claude:/home/aicode/.claude
-      - ~/telegram-workspaces:/workspace
-```
-
-`telegram.yml` works exactly as in [telegram mode](telegram.md). `cron.yaml` adds:
-
-```yaml
-telegram_chat_id: 698282139    # default for all jobs
-
-jobs:
-  - name: log_checker
-    schedule: "*/10 * * * *"
-    instruction: |
-      Check /var/log for anything noteworthy in the last 10 minutes.
-    # telegram_chat_id: -100123 # optional per-job override
-```
+Use one host workspace mount at `/workspace`. Give cron jobs and Telegram chats different relative `workspace` values if they must not share files. Do not mount two host directories at the same container path.
 
 ## Environment variables
 
-| Variable                   | Description                                                  | Default      |
-| -------------------------- | ------------------------------------------------------------ | ------------ |
-| `CLAUDEBOX_CRON_MODE`      | Set to `1` to start in cron mode                             | _(none)_     |
-| `CLAUDEBOX_CRON_MODE_FILE` | Path inside the container to the cron yaml                   | _(none)_     |
-| `CLAUDEBOX_CRON_MODE_HISTORY_DIR` | Directory the **telegram bot** reads the cron→telegram message inbox (`telegram_messages.json`) from. It does **not** move where the scheduler writes run history — that path is fixed; mount a volume at `$HOME/.aicodebox/cron` instead | `$HOME/.aicodebox/cron` |
-| `CLAUDEBOX_WORKSPACE`      | Absolute path to the workspace directory (cwd for every job) | `/workspace` |
-| `DEBUG`                    | Set to `true` for per-tick + per-line debug logs             | _(none)_     |
+| Variable | Description | Default |
+| --- | --- | --- |
+| `CLAUDEBOX_CRON_MODE` | Set to `1` to start cron mode. | None |
+| `CLAUDEBOX_CRON_MODE_FILE` | Path inside the container to the cron YAML file. | None |
+| `CLAUDEBOX_CRON_MODE_HISTORY_DIR` | Cron state root for run artifacts, job summaries, and Telegram reply metadata. | `$HOME/.aicodebox/cron` |
+| `CLAUDEBOX_WORKSPACE` | Absolute workspace root. Jobs may select safe relative subdirectories below it. | `/workspace` |
+| `DEBUG` | Set to `true` for per tick and per line debug logs. | None |
 
-> Legacy `CLAUDE_MODE_CRON`, `CLAUDE_MODE_CRON_FILE`, `CLAUDE_WORKSPACE` are still accepted as fallbacks.
+Legacy `CLAUDE_MODE_CRON`, `CLAUDE_MODE_CRON_FILE`, and `CLAUDE_WORKSPACE` remain accepted as fallbacks.

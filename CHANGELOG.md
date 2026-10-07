@@ -4,6 +4,14 @@ All notable changes to **claudebox** (formerly `docker-claude-code`).
 
 Format roughly follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [v2.4.7], 2026-09-30: Fix MCP deployment guidance and base pin
+
+- Rebuilds both variants on the immutable, multi-architecture Aicodebox `v0.16.1` images, which include the corrected MCP endpoint behavior.
+- Documents standalone MCP at `/`, API-mode MCP at `/mcp/`, the no-redirect `/mcp` compatibility path, and exact reverse-proxy Host and Origin allowlists.
+- Forwards `CLAUDEBOX_MCP_MODE_ALLOWED_HOSTS` and `CLAUDEBOX_MCP_MODE_ALLOWED_ORIGINS` to the Aicodebox MCP runtime.
+- Corrects wrapper, cron, Telegram, and agent setup guidance to use the canonical Aicodebox state directory and actual generated artifacts.
+- Pins the installer download to this matching `v2.4.7` wrapper release instead of stale `v2.4.2` code.
+
 ## [v2.4.6], 2026-09-26: Pass reasoning effort to Claude Code
 
 - Passes the requested effort to Claude Code as `--effort`. Telegram `/effort`, cron `effort:`, OpenAI `reasoning_effort`, `/run` `thinking`, and the MCP `run_prompt` tool were accepted before but never reached the CLI.

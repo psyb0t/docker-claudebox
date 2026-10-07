@@ -46,7 +46,11 @@ done
 : >"$TMP_ROOT/docker.log"
 (
     cd "$TMP_ROOT"
-    HOME=/home/aicode PATH="$FAKE_BIN:$PATH" \
+    env \
+        -u AICODEBOX_HOST_CODEX_WRAPPER \
+        -u AICODEBOX_HOST_CLAUDE_WRAPPER \
+        -u AICODEBOX_HOST_PI_WRAPPER \
+        HOME=/home/aicode PATH="$FAKE_BIN:$PATH" \
         AICODEBOX_LAUNCH_CONTEXT_VERSION=1 \
         AICODEBOX_HOST_HOME="$TMP_ROOT/home" \
         AICODEBOX_HOST_CODEX_HOME="$TMP_ROOT/home/.codex" \
@@ -73,7 +77,7 @@ HOME="$TMP_ROOT/home" PATH="$FAKE_BIN:$PATH" \
     bash "$TMP_ROOT/remote/install.sh" </dev/null >/dev/null
 [[ -x "$TMP_ROOT/wrappers/claudebox" ]] || fail "managed installer target"
 curl_call="$(cat "$TMP_ROOT/curl.log")"
-[[ "$curl_call" == *"/v2.4.2/wrapper.sh"* ]] || fail "wrapper download is not release-pinned"
+[[ "$curl_call" == *"/v2.4.7/wrapper.sh"* ]] || fail "wrapper download is not release-pinned"
 
 if AICODEBOX_LAUNCH_CONTEXT_VERSION=2 bash "$REPO/wrapper.sh" --version >/dev/null 2>&1; then
     fail "unsupported nested-launch context was accepted"

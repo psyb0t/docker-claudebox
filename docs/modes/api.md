@@ -7,23 +7,36 @@ Run the container as an HTTP API server with workspace management, file operatio
 services:
   claudebox:
     image: psyb0t/claudebox:latest
+    init: true
+    restart: unless-stopped
     ports:
-      - "8080:8080"
+      - "127.0.0.1:8080:8080"
     environment:
       - CLAUDEBOX_API_MODE=1
-      - CLAUDEBOX_API_MODE_TOKEN=your-secret-token
-      - CLAUDE_CODE_OAUTH_TOKEN=your-oauth-token
+      - CLAUDEBOX_API_MODE_TOKEN=${CLAUDEBOX_API_MODE_TOKEN:?set this in .env}
+      - CLAUDEBOX_AVAILABLE_MODELS=haiku,sonnet,opus,opusplan
+      - CLAUDE_CODE_OAUTH_TOKEN=${CLAUDE_CODE_OAUTH_TOKEN:?set this in .env}
     volumes:
-      - ~/.claude:/home/aicode/.claude
+      - ./claude-state:/home/aicode/.aicodebox
       - /your/projects:/workspace
-      - /var/run/docker.sock:/var/run/docker.sock
+    mem_limit: 2g
+    cpus: 2
+    pids_limit: 512
+    logging:
+      driver: local
+      options:
+        max-size: 10m
+        max-file: "3"
 ```
+
+The example publishes only to loopback and intentionally omits `/var/run/docker.sock`. Put the API behind a reverse proxy with TLS and authentication when clients are not on the same host. Adding the Docker socket gives Claude host container control.
 
 | Variable                   | Description                                                         | Default  |
 | -------------------------- | ------------------------------------------------------------------- | -------- |
 | `CLAUDEBOX_API_MODE`       | Set to `1` to start in API server mode                              | _(none)_ |
 | `CLAUDEBOX_API_MODE_PORT`  | Port the API server listens on                                      | `8080`   |
 | `CLAUDEBOX_API_MODE_TOKEN` | Bearer token for API authentication (if unset, no auth is required) | _(none)_ |
+| `CLAUDEBOX_AVAILABLE_MODELS` | Comma separated model IDs returned by `/openai/v1/models`. Claudebox has a built-in list, but set it explicitly when you need to constrain or extend the advertised models. | `haiku,sonnet,opus,opusplan` |
 | `DEBUG`                    | Set to `1` or `true` for structured JSON debug logging              | _(none)_ |
 
 > Legacy `CLAUDE_MODE_API`, `CLAUDE_MODE_API_PORT`, `CLAUDE_MODE_API_TOKEN` are still accepted as fallbacks.
@@ -49,7 +62,7 @@ curl -X POST http://localhost:8080/run \
 | `systemPrompt`       | string | Replace the default system prompt entirely                                                | _(none)_        |
 | `appendSystemPrompt` | string | Append text to the default system prompt without replacing it                             | _(none)_        |
 | `jsonSchema`         | object | A JSON Schema object for structured output. Claude will return JSON matching this schema | _(none)_        |
-| `thinking`           | string | Accepted by the shared request model. The current Claude adapter does not map it to a CLI flag. | _(none)_        |
+| `thinking`           | string | Claude reasoning level. `low`, `medium`, `high`, `xhigh`, and `max` map to Claude Code's `--effort` flag. `off` or `none` keep Claude Code's default. | _(none)_        |
 | `eventMode`          | string | `auto`, `none`, or `full`. `full` returns complete native Claude stream records           | `auto`          |
 | `outputFormat`       | string | Legacy compatibility: `json-verbose` selects full events while `eventMode` is `auto`; `text` and `json` do not change the response shape | _(none)_        |
 | `noContinue`         | bool   | If true, start a fresh session instead of continuing the previous one                     | `false`         |

@@ -1,25 +1,27 @@
 # Claudebox cron configuration
-# Copy somewhere accessible (e.g. ~/.claude/cron.yaml) and point CLAUDEBOX_CRON_MODE_FILE at it.
+# Copy somewhere accessible, such as $HOME/.aicodebox/cron.yaml, and point CLAUDEBOX_CRON_MODE_FILE at it.
 #
 # Run with:
-#   CLAUDEBOX_CRON_MODE=1 CLAUDEBOX_CRON_MODE_FILE=/home/aicode/.claude/cron.yaml claudebox
+#   CLAUDEBOX_CRON_MODE=1 CLAUDEBOX_CRON_MODE_FILE=/home/aicode/.aicodebox/cron.yaml claudebox
 # or via docker-compose (see README).
 #
-# Each job fires `claude -p "<instruction>"` on schedule. Output streams to
-# ~/.claude/cron/history/<workspace-slug>/<YYYYMMDD-HHMMSS>-<job-name>/activity.jsonl
-# alongside stderr.log and meta.json.
+# Each job fires `claude -p "<instruction>"` on schedule. Every run is stored
+# under $HOME/.aicodebox/cron/history/<workspace-slug>/<YYYYMMDD-HHMMSS>-<job-name>/
+# with meta.json, stdout.log, stderr.log, and result.txt. Each job also writes
+# a summary stream at $HOME/.aicodebox/cron/<job-name>.jsonl.
 #
-# Workspace: CLAUDEBOX_WORKSPACE env var (wrapper sets it to $PWD). All jobs share one workspace.
+# Workspace: CLAUDEBOX_WORKSPACE env var (wrapper sets it to $PWD). Jobs use
+# that root by default and can select safe relative subdirectories with workspace.
 #
 # Cron syntax:
-#   5-field "min hr dom mon dow"        — standard cron, minute resolution
-#   6-field "sec min hr dom mon dow"    — sub-minute resolution (e.g. */30 fires every 30s)
+#   5-field "min hr dom mon dow"        standard cron, minute resolution
+#   6-field "sec min hr dom mon dow"    sub-minute resolution, for example */30 fires every 30s
 #
 # Root-level fields set defaults for all jobs. Per-job fields override them.
 #
 # Template variables (expanded at fire time):
-#   {system_datetime} — current UTC datetime, e.g. "2026-04-29 14:35:00 UTC"
-#   {job_name}        — the job's name field
+#   {system_datetime} current UTC datetime
+#   {job_name}        the job's name field
 #
 # Works in: instruction, system_prompt, append_system_prompt
 #
@@ -29,6 +31,7 @@
 
 model: haiku                        # default model for all jobs
 effort: medium                      # default reasoning effort: low|medium|high|xhigh|max
+thinking: medium                    # optional adapter thinking level; per-job overrides this
 append_system_prompt: |             # appended to system prompt for all jobs
   The current date and time is {system_datetime}.
 # telegram_chat_id: -1001234567890  # send all job results here by default
@@ -43,6 +46,7 @@ jobs:
     schedule: "0 * * * *"
     model: sonnet                   # override: use sonnet for this job
     effort: high                    # override: bump reasoning for this job
+    workspace: repository            # safe relative directory below CLAUDEBOX_WORKSPACE
     # telegram_chat_id: -1001234567890  # per-job override
     instruction: |
       Look at the git log for the last hour. Summarize commits.
@@ -50,6 +54,7 @@ jobs:
   - name: nightly_cleanup
     schedule: "0 3 * * *"
     model: opus
+    no_continue: true                # start without continuing this job's earlier session
     system_prompt: |                # override: replace system prompt entirely for this job
       You are a cleanup agent. Current time: {system_datetime}.
       Your only job is to find and delete stale files.

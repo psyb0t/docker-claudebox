@@ -1,8 +1,10 @@
 # Telegram bot configuration
-# Copy to ~/.claude/telegram.yml and edit
+# Copy to $HOME/.aicodebox/telegram.yml and edit. Claudebox also accepts
+# ~/.claude/telegram.yml through its compatibility alias.
 
 # Allowed chats — DM user IDs (positive) and/or group chat IDs (negative).
-# Empty list = no restriction. Get your ID from @userinfobot.
+# Empty list means no restriction. Set explicit IDs before exposing this bot.
+# Get your ID from @userinfobot.
 allowed_chats:
   - 123456789       # your DM (user ID = chat ID for DMs)
   - -987654321      # a group chat
@@ -15,7 +17,6 @@ default:
   continue: true
   # system_prompt: "You are a helpful assistant"
   # append_system_prompt: "Be concise"
-  # max_budget_usd: 5.0
 
 # Per-chat overrides. Keys are telegram chat IDs.
 # Group chats have negative IDs.

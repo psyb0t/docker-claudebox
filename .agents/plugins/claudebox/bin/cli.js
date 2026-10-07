@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // claudebox MCP bridge. A thin stdio<->HTTP proxy: forwards MCP over stdio to a
-// running claudebox server's Streamable-HTTP endpoint (`$CLAUDEBOX_URL/mcp`),
+// running claudebox server's Streamable-HTTP endpoint (`$CLAUDEBOX_URL/mcp/`),
 // authenticating with `$CLAUDEBOX_MCP_MODE_TOKEN` when the server requires it.
 //
 // stdout IS the MCP protocol channel, so diagnostics go to stderr only — the
@@ -11,7 +11,7 @@ import { createRequire } from "node:module";
 
 const require = createRequire(import.meta.url);
 
-const MCP_PATH = "/mcp";
+const MCP_PATH = "/mcp/";
 
 const base = process.env.CLAUDEBOX_URL;
 

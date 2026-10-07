@@ -4,7 +4,7 @@ requires-python = ">=3.12"
 
 [[package]]
 name = "aicodebox"
-version = "0.16.0"
+version = "0.16.1"
 source = { editable = "../../docker-aicodebox" }
 dependencies = [
     { name = "croniter" },
@@ -141,7 +141,7 @@ wheels = [
 
 [[package]]
 name = "claudebox"
-version = "2.4.6"
+version = "2.4.7"
 source = { editable = "." }
 
 [package.dev-dependencies]

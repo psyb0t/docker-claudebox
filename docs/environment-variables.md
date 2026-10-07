@@ -57,6 +57,10 @@ CLAUDEBOX_MOUNT_RO=/data:/data:ro claudebox -p "read the data"                # 
 
 If the value contains `:`, it is passed directly as Docker `-v` syntax. Otherwise, the same path is used on both host and container sides.
 
+The standard wrapper also mounts `/var/run/docker.sock` so Claude can manage host containers. Server deployments should use the Compose examples instead when they do not need that authority.
+
+For server-mode MCP settings, use `CLAUDEBOX_MCP_MODE_ALLOWED_HOSTS` and `CLAUDEBOX_MCP_MODE_ALLOWED_ORIGINS` inside the container. With the wrapper, forward them as `CLAUDEBOX_ENV_CLAUDEBOX_MCP_MODE_ALLOWED_HOSTS` and `CLAUDEBOX_ENV_CLAUDEBOX_MCP_MODE_ALLOWED_ORIGINS`.
+
 ## Sibling boxes
 
 Install `claudebox`, `codexbox`, and `pibox` in the same command directory,

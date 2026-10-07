@@ -5,7 +5,7 @@ An OpenClaw/MCP plugin that connects your agent to a self-hosted
 running in a Docker container — over the
 [Model Context Protocol](https://modelcontextprotocol.io).
 
-claudebox serves a Streamable-HTTP MCP endpoint at `/mcp` when the container
+claudebox serves a Streamable-HTTP MCP endpoint at `/mcp/` when the container
 is started with `CLAUDEBOX_API_MODE=1` and `CLAUDEBOX_MCP_MODE=1`. This
 package is a thin stdio↔HTTP bridge (via
 [`mcp-remote`](https://www.npmjs.com/package/mcp-remote)) for MCP clients that
@@ -29,7 +29,7 @@ CLAUDEBOX_ENV_CLAUDEBOX_MCP_MODE_TOKEN=your-mcp-token \
 claudebox
 ```
 
-The plugin connects to `http://localhost:8080/mcp`. It does not launch the
+The plugin connects to `http://localhost:8080/mcp/`. It does not launch the
 container for you. See the repository README for a remote deployment.
 
 ## Tools
@@ -43,11 +43,11 @@ access to the workspace, not just text generation), plus `list_files`,
 
 | Env var | Required | Description |
 |---|---|---|
-| `CLAUDEBOX_URL` | yes | Base URL of your running claudebox server, e.g. `http://localhost:8080`. The bridge appends `/mcp`. |
+| `CLAUDEBOX_URL` | yes | Base URL of your running claudebox server, e.g. `http://localhost:8080`. The bridge appends `/mcp/`. |
 | `CLAUDEBOX_MCP_MODE_TOKEN` | no | Bearer token — only if the claudebox server was started with `CLAUDEBOX_MCP_MODE_TOKEN` set. |
 
 The server needs `CLAUDEBOX_API_MODE=1` and `CLAUDEBOX_MCP_MODE=1` set for
-`/mcp` to be mounted — see the
+`/mcp/` to be mounted — see the
 [claudebox MCP mode docs](https://github.com/psyb0t/docker-claudebox/blob/master/.agents/skills/claudebox/SKILL.md).
 
 ## Install
@@ -65,7 +65,7 @@ auth) in the plugin's environment.
 
 If your MCP client already supports **remote** Streamable-HTTP servers, you
 don't need this bridge — point the client straight at
-`$CLAUDEBOX_URL/mcp` with an `Authorization: Bearer <token>` header.
+`$CLAUDEBOX_URL/mcp/` with an `Authorization: Bearer <token>` header.
 
 ## License
 

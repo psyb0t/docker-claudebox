@@ -42,12 +42,12 @@ fail() {
 # without privilege so install.sh's `sudo install` writes into the sandbox.
 readonly FAKEBIN="$TMPROOT/bin"
 mkdir -p "$FAKEBIN" "$TMPROOT/claude" "$TMPROOT/ssh"
-cat > "$FAKEBIN/docker" <<EOF
+cat >"$FAKEBIN/docker" <<EOF
 #!/bin/bash
 printf '%s\n' "\$*" >> "$TMPROOT/docker.log"
 exit 0
 EOF
-cat > "$FAKEBIN/sudo" <<'EOF'
+cat >"$FAKEBIN/sudo" <<'EOF'
 #!/bin/bash
 exec "$@"
 EOF
@@ -55,16 +55,30 @@ chmod +x "$FAKEBIN/docker" "$FAKEBIN/sudo"
 
 # Pull the psyb0t/claudebox:<tag> (or override) image token out of a log line.
 image_token() {
-    grep -oE '[[:graph:]]*claudebox:[[:graph:]]+' <<< "$1" | head -1
+    grep -oE '[[:graph:]]*claudebox:[[:graph:]]+' <<<"$1" | head -1
+}
+
+clear_inherited_launch_context() {
+    unset AICODEBOX_LAUNCH_CONTEXT_VERSION
+    unset AICODEBOX_HOST_HOME
+    unset AICODEBOX_HOST_WORKSPACE
+    unset AICODEBOX_HOST_CODEX_HOME
+    unset AICODEBOX_HOST_CLAUDE_HOME
+    unset AICODEBOX_HOST_PI_HOME
+    unset AICODEBOX_HOST_WRAPPER_DIR
+    unset AICODEBOX_HOST_CODEX_WRAPPER
+    unset AICODEBOX_HOST_CLAUDE_WRAPPER
+    unset AICODEBOX_HOST_PI_WRAPPER
 }
 
 # Run the wrapper (programmatic mode, no TTY) under an env-assignment string;
 # echo the resolved image from its `docker run` line.
 wrapper_image() {
     local env_assigns="$1"
-    : > "$TMPROOT/docker.log"
+    : >"$TMPROOT/docker.log"
     (
         cd "$TMPROOT"
+        clear_inherited_launch_context
         # shellcheck disable=SC2086 # deliberate VAR=val word-split
         PATH="$FAKEBIN:$PATH" \
             CLAUDEBOX_DATA_DIR="$TMPROOT/claude" \
@@ -75,14 +89,15 @@ wrapper_image() {
 }
 
 wrapper_programmatic_args() {
-    : > "$TMPROOT/docker.log"
+    : >"$TMPROOT/docker.log"
     (
         cd "$TMPROOT"
+        clear_inherited_launch_context
         PATH="$FAKEBIN:$PATH" \
             CLAUDEBOX_DATA_DIR="$TMPROOT/claude" \
             CLAUDEBOX_SSH_DIR="$TMPROOT/ssh" \
             bash "$WRAPPER" -p "hi" --output-format stream-json \
-                >/dev/null 2>&1
+            >/dev/null 2>&1
     ) || true
     grep -m1 'run --name' "$TMPROOT/docker.log" || true
 }
@@ -92,20 +107,21 @@ assert_native_event_flags_require_stream_json() {
     set +e
     output="$(
         cd "$TMPROOT"
+        clear_inherited_launch_context
         PATH="$FAKEBIN:$PATH" \
             CLAUDEBOX_DATA_DIR="$TMPROOT/claude" \
             CLAUDEBOX_SSH_DIR="$TMPROOT/ssh" \
             bash "$WRAPPER" -p "hi" --output-format json \
-                --include-partial-messages 2>&1
+            --include-partial-messages 2>&1
     )"
     status=$?
     set -e
 
-    [ "$status" -eq 1 ] \
-        || fail "native event flags with json exited $status, expected 1"
+    [ "$status" -eq 1 ] ||
+        fail "native event flags with json exited $status, expected 1"
     case "$output" in
-        *"require --output-format stream-json"*) ;;
-        *) fail "native event flag error did not explain the required stream format" ;;
+    *"require --output-format stream-json"*) ;;
+    *) fail "native event flag error did not explain the required stream format" ;;
     esac
 }
 
@@ -115,8 +131,9 @@ install_image() {
     local env_assigns="$1"
     local ihome
     ihome="$(mktemp -d)"
-    : > "$TMPROOT/docker.log"
+    : >"$TMPROOT/docker.log"
     (
+        clear_inherited_launch_context
         # shellcheck disable=SC2086 # deliberate VAR=val word-split
         HOME="$ihome" \
             PATH="$FAKEBIN:$PATH" \
@@ -139,11 +156,11 @@ readonly WRAPPER_CASES=(
 )
 
 for tc in "${WRAPPER_CASES[@]}"; do
-    IFS='|' read -r name env_assigns want <<< "$tc"
+    IFS='|' read -r name env_assigns want <<<"$tc"
     log INFO "A/$name (env: ${env_assigns:-none})"
     got="$(wrapper_image "$env_assigns")"
-    [ "$got" = "$want" ] \
-        || fail "A/$name: wrapper resolved '$got', expected '$want'"
+    [ "$got" = "$want" ] ||
+        fail "A/$name: wrapper resolved '$got', expected '$want'"
     log INFO "  PASS ($got)"
 done
 
@@ -156,8 +173,8 @@ for required_flag in \
     --forward-subagent-text \
     --include-hook-events; do
     case "$stream_args" in
-        *"$required_flag"*) ;;
-        *) fail "stream-json missing native event flag: $required_flag" ;;
+    *"$required_flag"*) ;;
+    *) fail "stream-json missing native event flag: $required_flag" ;;
     esac
 done
 log INFO "A/stream-json-native-events PASS"
@@ -175,14 +192,14 @@ readonly CONSISTENCY_CASES=(
 )
 
 for tc in "${CONSISTENCY_CASES[@]}"; do
-    IFS='|' read -r name env_assigns <<< "$tc"
+    IFS='|' read -r name env_assigns <<<"$tc"
     log INFO "B/$name (env: ${env_assigns:-none})"
     pulled="$(install_image "$env_assigns")"
     launched="$(wrapper_image "$env_assigns")"
     [ -n "$pulled" ] || fail "B/$name: install.sh pulled no image"
     [ -n "$launched" ] || fail "B/$name: wrapper launched no image"
-    [ "$pulled" = "$launched" ] \
-        || fail "B/$name: install pulls '$pulled' but wrapper runs '$launched' — pull/run mismatch (the original bug)"
+    [ "$pulled" = "$launched" ] ||
+        fail "B/$name: install pulls '$pulled' but wrapper runs '$launched' — pull/run mismatch (the original bug)"
     log INFO "  PASS (both use $pulled)"
 done
 

@@ -76,31 +76,35 @@ The installed `claudebox` wrapper handles container naming, volume mounts, SSH k
 services:
   claudebox:
     image: psyb0t/claudebox:latest
+    init: true
+    restart: unless-stopped
     ports:
-      - "8080:8080"
+      - "127.0.0.1:8080:8080"
     environment:
       - CLAUDEBOX_API_MODE=1
-      - CLAUDEBOX_API_MODE_TOKEN=your-secret-token
+      - CLAUDEBOX_API_MODE_TOKEN=${CLAUDEBOX_API_MODE_TOKEN:?set this in .env}
       - CLAUDEBOX_AVAILABLE_MODELS=haiku,sonnet,opus,opusplan
-      - CLAUDE_CODE_OAUTH_TOKEN=<YOUR_OAUTH_TOKEN>
+      - CLAUDE_CODE_OAUTH_TOKEN=${CLAUDE_CODE_OAUTH_TOKEN:?set this in .env}
     volumes:
-      - ~/.claude:/home/aicode/.claude
+      - ./claude-state:/home/aicode/.aicodebox
       - /your/projects:/workspace
-      - /var/run/docker.sock:/var/run/docker.sock
+    mem_limit: 2g
+    cpus: 2
+    pids_limit: 512
+    logging:
+      driver: local
+      options:
+        max-size: 10m
+        max-file: "3"
 ```
 
-Mounting `/var/run/docker.sock` grants host-level container control — anything that can reach the socket (including Claude itself, by design, or an attacker who compromises the API/MCP surface above) can create, inspect, or destroy any container on the host, not just this one. Only mount it on a host you trust, and only if you need docker-in-docker for this workload.
+This server example intentionally omits `/var/run/docker.sock`. That socket grants the container control over every host container. Add it only for a trusted workload that requires host Docker access.
 
-Add `CLAUDEBOX_MCP_MODE=1` + `CLAUDEBOX_MCP_MODE_TOKEN` alongside `CLAUDEBOX_API_MODE=1` to mount MCP on the same port. Set `CLAUDEBOX_TELEGRAM_MODE=1` + `CLAUDEBOX_TELEGRAM_MODE_TOKEN` for the bot, or `CLAUDEBOX_CRON_MODE=1` + `CLAUDEBOX_CRON_MODE_FILE` for the scheduler — any combination can run in the same container (e.g. cron + Telegram share one workspace).
+Add `CLAUDEBOX_MCP_MODE=1` and `CLAUDEBOX_MCP_MODE_TOKEN` alongside `CLAUDEBOX_API_MODE=1` to mount MCP on the same port. API mode takes precedence over Telegram and cron if more than one foreground mode is set. Telegram and cron are the only foreground pair that run together.
 
-## Runtime Hardening (recommended `docker run` flags)
+## Runtime boundaries
 
-- `--cap-drop=ALL --cap-add=NET_BIND_SERVICE` — drop every Linux capability, add back only bind-below-1024 if needed.
-- `--security-opt no-new-privileges:true` — block setuid privilege escalation inside the container.
-- `--memory=2g --cpus=2 --pids-limit=512` — cap resource use so a runaway process can't starve the host.
-- `--read-only --tmpfs /tmp:rw,noexec,nosuid` — only if you don't need `/workspace` writes, otherwise skip.
-
-The container drops from root to `aicode` (UID 1000) at boot via `setpriv`, so the process running your code is never root even without `--user`.
+Set Docker memory, CPU, PID, and log limits for long running containers. This image installs Claude Code during first start and changes identity during boot, so `read_only: true` and `cap_drop: [ALL]` are not safe copy-paste defaults. Test the exact image and startup path before adding them.
 
 ## Environment Variable Reference
 
@@ -148,14 +152,17 @@ CLAUDEBOX_MOUNT_RO=/data:/data:ro claudebox -p "read the data"               # r
 | `CLAUDEBOX_API_MODE_TOKEN` | Bearer token for `/run`, `/files`, `/status`, `/openai/*` | _(none — no auth)_ |
 | `CLAUDEBOX_AVAILABLE_MODELS` | CSV of model aliases surfaced at `/openai/v1/models`. Optional — claudebox's adapter has a built-in default (`haiku,sonnet,opus,opusplan`); set this to override it. The API server only refuses to boot if the resolved list ends up empty. | _(none — adapter default applies)_ |
 | `CLAUDEBOX_AVAILABLE_EFFORTS` | CSV of effort levels surfaced to Telegram `/effort` picker | adapter default |
-| `CLAUDEBOX_MCP_MODE` | `1` to expose MCP. Mounts at `/mcp` on the API port if `CLAUDEBOX_API_MODE=1` is also set; otherwise runs standalone on its own port | _(none)_ |
+| `CLAUDEBOX_MCP_MODE` | `1` to expose MCP. Mounts at `/mcp/` on the API port if `CLAUDEBOX_API_MODE=1` is also set; otherwise runs standalone on its own port | _(none)_ |
 | `CLAUDEBOX_MCP_MODE_PORT` | Port for the standalone MCP process (only used when API mode is off) | `8081` |
 | `CLAUDEBOX_MCP_MODE_TOKEN` | Bearer token for MCP (independent of the API token, no fallback) | _(none — no auth)_ |
+| `CLAUDEBOX_MCP_MODE_ALLOWED_HOSTS` | Comma-separated MCP `Host` allowlist. Add each reverse-proxy host name. | loopback hosts |
+| `CLAUDEBOX_MCP_MODE_ALLOWED_ORIGINS` | Comma-separated MCP browser Origin allowlist. Add each reverse-proxy origin. | loopback HTTP origins |
 | `CLAUDEBOX_TELEGRAM_MODE` | `1` to start the Telegram bot | _(none)_ |
 | `CLAUDEBOX_TELEGRAM_MODE_TOKEN` | Bot token from [@BotFather](https://t.me/BotFather) | _(none)_ |
-| `CLAUDEBOX_TELEGRAM_MODE_CONFIG` | Path to `telegram.yml` inside the container | `/home/aicode/.claude/telegram.yml` |
+| `CLAUDEBOX_TELEGRAM_MODE_CONFIG` | Path to `telegram.yml` inside the container | `/home/aicode/.aicodebox/telegram.yml` |
 | `CLAUDEBOX_CRON_MODE` | `1` to start the cron scheduler | _(none)_ |
 | `CLAUDEBOX_CRON_MODE_FILE` | Path to the cron YAML inside the container | _(none)_ |
+| `CLAUDEBOX_CRON_MODE_HISTORY_DIR` | Cron state root for artifacts, summaries, and Telegram reply metadata | `/home/aicode/.aicodebox/cron` |
 | `CLAUDEBOX_WORKSPACE` | Absolute workspace path (cwd for every mode) | `/workspace` |
 | `CLAUDEBOX_ALWAYS_SKILLS_DIR` | Where `SKILL.md` files are scanned for always-active injection | `/home/aicode/.claude/.always-skills` |
 | `CLAUDEBOX_SYSTEM_HINT_FILE` | Text prepended to `--append-system-prompt` on every call | `/home/aicode/.claude/system-hint.txt` |
@@ -167,10 +174,10 @@ Legacy fallbacks still accepted: `CLAUDE_MODE_API`/`CLAUDE_MODE_API_PORT`/`CLAUD
 
 | Port | Service |
 | --- | --- |
-| 8080 (default, `CLAUDEBOX_API_MODE_PORT`) | HTTP API + OpenAI adapter, and MCP (`/mcp`) if `CLAUDEBOX_MCP_MODE=1` is also set |
-| 8081 (default, `CLAUDEBOX_MCP_MODE_PORT`) | Standalone MCP, only when `CLAUDEBOX_MCP_MODE=1` is set without `CLAUDEBOX_API_MODE=1` |
+| 8080 (default, `CLAUDEBOX_API_MODE_PORT`) | HTTP API + OpenAI adapter, and MCP (`/mcp/`) if `CLAUDEBOX_MCP_MODE=1` is also set |
+| 8081 (default, `CLAUDEBOX_MCP_MODE_PORT`) | Standalone MCP at `/`, only when `CLAUDEBOX_MCP_MODE=1` is set without `CLAUDEBOX_API_MODE=1` |
 
-MCP either mounts onto the API port or runs on its own port — never both at once, depending on whether API mode is also enabled.
+MCP either mounts onto the API port or runs on its own port — never both at once, depending on whether API mode is also enabled. Loopback hosts work by default. A proxy or public endpoint must set the exact `CLAUDEBOX_MCP_MODE_ALLOWED_HOSTS` and browser `CLAUDEBOX_MCP_MODE_ALLOWED_ORIGINS` values it sends.
 
 ## Cron + Telegram Combined Mode
 
@@ -178,9 +185,10 @@ Set both `CLAUDEBOX_CRON_MODE=1` and `CLAUDEBOX_TELEGRAM_MODE=1` in the same con
 
 - Cron jobs post results to Telegram automatically when `telegram_chat_id` is set (root default and/or per-job override) in `cron.yaml`.
 - Reply to a cron notification message to interrogate that run — the bot detects the reply, looks up the original job (name, timestamp, instruction, result), and prepends that context to a fresh session.
-- The whole chat gets the last ~10 cron runs injected via `--append-system-prompt`, so Claude can answer cron questions anywhere in the conversation.
 
-Sent message IDs and job context are stored in `~/.claude/cron/telegram_messages.json` (auto-pruned to the last 200 entries).
+Only a reply to a cron notification receives that recorded job context. Ordinary Telegram messages do not receive cron history.
+
+Sent message IDs and job context are stored in `$HOME/.aicodebox/cron/telegram_messages.json` and are automatically pruned to the last 200 entries.
 
 ## MCP Servers claudebox Itself Can Use
 
@@ -211,10 +219,10 @@ Run `/mcp` inside an interactive session to inspect what's loaded. This is how c
 - SSH keys are mounted from the host for git push/pull. Don't share your container or image with untrusted parties.
 - Host paths are preserved — a project at `/home/you/project` mounts at the same path inside the container, so Docker volume mounts Claude creates from within it resolve correctly against the host.
 - UID/GID of the `aicode` user auto-adjusts to match the host directory owner at startup.
-- The Docker socket is mounted in — Claude can build images and run containers from within its own container, by design.
+- Wrapper-started interactive and programmatic containers mount the Docker socket by design. The server Compose example above deliberately does not.
 - Two containers per workspace: `claude-<path>` for interactive (TTY), `claude-<path>_prog` for one-shot exec (no TTY). Both share mounted volumes and data.
 - API-mode workspace busy tracking: one active Claude process per workspace; concurrent requests to the same workspace get `409`.
-- Telegram mode requires `telegram.yml` to exist — refuses to boot silently exposed.
+- If `telegram.yml` is absent, `TELEGRAM_CHAT_ID` becomes the only allowed chat. If both are absent, the compatibility fallback permits every chat. Use an explicit allowlist before exposing the bot.
 - Claude Code CLI auto-updates are disabled inside the container by default; opt in with `claudebox --update`.
 
 ## Management
