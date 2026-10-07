@@ -37,8 +37,8 @@ You are running in a Docker container with full sudo access.
   the container matches the host path, so `docker run -v "$PWD/data:/data"` from
   within resolves correctly on the host.
 - pyenv at /usr/local/pyenv, Go tools at /usr/local/bin
-- `~/.claude/bin` is in PATH — drop custom scripts there.
-- `/aicodebox-init.d/*.sh` scripts fire once on first container create.
+- `~/.aicodebox/bin` is in PATH. Drop custom scripts there.
+- `/aicodebox-init.d/*.sh`, then `~/.aicodebox/init.d/*.sh`, run once per container, the first time it starts.
 
 ## IMPORTANT
 If you need to overwrite this CLAUDE.md, first save the container environment

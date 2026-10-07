@@ -114,7 +114,7 @@ log INFO "  PASS"
 
 # ── Test 4 — init.d completion + .claude.json patch ──────────────────────────
 log INFO "Test 4: init.d completion + .claude.json patch"
-docker exec "${CONTAINER_PREFIX}-api" test -f /home/aicode/.aicodebox/.init-done \
+docker exec "${CONTAINER_PREFIX}-api" test -f /var/lib/aicodebox/init-done \
     || fail "init-done marker missing"
 
 patched=$(docker exec "${CONTAINER_PREFIX}-api" jq -r '

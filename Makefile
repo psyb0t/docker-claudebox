@@ -7,11 +7,11 @@ TAG        := v$(VERSION)
 # Default to the published aicodebox base, digest-pinned (keep in sync with the
 # ARG default in Dockerfile) — override with `make build BASE_IMAGE=...` to point
 # at a locally-built base image.
-BASE_IMAGE ?= psyb0t/aicodebox:v0.16.1@sha256:5ce05bf78e5ebc93df1bd85f0dd6c7a5a0cb4ecd40c5b519ee304c758a29ecc2
-FULL_BASE_IMAGE ?= psyb0t/aicodebox:v0.16.1-full@sha256:6c7de7e5dc6024c4b44ebe59a82618d7c25fe758c5d2c28843efc7ff4bb6b907
+BASE_IMAGE ?= psyb0t/aicodebox:v0.17.0@sha256:c75a87509d4cb40f18b85e883244c34bc77bca6e48519753b9658b25c6c31d2f
+FULL_BASE_IMAGE ?= psyb0t/aicodebox:v0.17.0-full@sha256:b217c509b18a04c4d9bf370d46dee4053c49fbdf872c8075b9a888ecd9eec9d9
 CLAUDE_VERSION ?= 2.1.280
 
-.PHONY: all build build-full build-all pull-base pull-full-base test test-unit test-smoke test-persist test-image-select test-agent-launcher test-managed-nested clean help version pkg-lock
+.PHONY: all build build-full build-all pull-base pull-full-base test test-unit test-smoke test-persist test-image-select test-agent-launcher test-managed-nested test-cron-shortcut test-entrypoint-aliases clean help version pkg-lock
 
 all: build ## Build the minimal claudebox image on top of the published base
 
@@ -90,6 +90,12 @@ test-agent-launcher: ## Assert claudebox-agent.sh restores interactive defaults 
 
 test-managed-nested: ## Verify managed install and nested wrapper propagation without Docker
 	bash tests/test_managed_nested.sh
+
+test-cron-shortcut: ## Assert the wrapper's cron shortcut passes the canonical cron env names; no build needed
+	bash tests/test_cron_shortcut.sh
+
+test-entrypoint-aliases: ## Assert the entrypoint maps every claudebox mode env name to AICODEBOX_*; needs docker, no build
+	bash tests/test_entrypoint_aliases.sh
 
 test: test-unit ## Alias for test-unit
 

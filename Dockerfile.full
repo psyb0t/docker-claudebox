@@ -2,7 +2,7 @@
 #
 # Keep generic development tooling in aicodebox. This image adds only
 # claudebox's adapter, first-run setup, and Claude-specific entrypoint.
-ARG BASE_IMAGE=psyb0t/aicodebox:v0.16.1-full@sha256:6c7de7e5dc6024c4b44ebe59a82618d7c25fe758c5d2c28843efc7ff4bb6b907
+ARG BASE_IMAGE=psyb0t/aicodebox:v0.17.0-full@sha256:b217c509b18a04c4d9bf370d46dee4053c49fbdf872c8075b9a888ecd9eec9d9
 FROM ${BASE_IMAGE}
 
 LABEL io.modelcontextprotocol.server.name="io.github.psyb0t/claudebox"

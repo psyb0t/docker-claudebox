@@ -4,6 +4,14 @@ All notable changes to **claudebox** (formerly `docker-claude-code`).
 
 Format roughly follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [v2.5.0], 2026-10-07: User init scripts and bin on PATH, working cron shortcut
+
+- Rebuilds both variants on Aicodebox `v0.17.0`. Executables in `~/.aicodebox/bin` are on `PATH` ahead of everything else, for Claude in every mode, for init scripts, and for `docker exec` shells. `~/.aicodebox/init.d/*.sh` run once per container, after the image's own init scripts, as `aicode` with passwordless sudo. With the `claudebox` wrapper, `~/.aicodebox` is your host `~/.claude`, so these are `~/.claude/bin` and `~/.claude/init.d`. The pre-v2 promise of both is real again.
+- The image's init scripts now run in every new container instead of once per mounted `~/.claude`, so each new workspace gets its trust entry and seeded `CLAUDE.md`.
+- `CLAUDEBOX_CRON_MODE=1 claudebox` starts a `<name>_cron` container that actually runs cron mode. The wrapper used to pass the v1 `CLAUDEBOX_MODE_CRON` name, which the v2 entrypoint never read, so the container started and cron never turned on. The wrapper now accepts `CLAUDEBOX_CRON_MODE`, `CLAUDEBOX_MODE_CRON` and `CLAUDE_MODE_CRON` (and the matching `_FILE` names) and always passes the canonical names.
+- The entrypoint maps the v1 `CLAUDEBOX_MODE_API`, `CLAUDEBOX_MODE_API_PORT`, `CLAUDEBOX_MODE_API_TOKEN`, `CLAUDEBOX_MODE_TELEGRAM`, `CLAUDEBOX_MODE_CRON` and `CLAUDEBOX_MODE_CRON_FILE` names forward, as the v2.0.0 notes promised. A canonical `CLAUDEBOX_*` name still wins.
+- Adds `make test-cron-shortcut` and `make test-entrypoint-aliases`.
+
 ## [v2.4.7], 2026-09-30: Fix MCP deployment guidance and base pin
 
 - Rebuilds both variants on the immutable, multi-architecture Aicodebox `v0.16.1` images, which include the corrected MCP endpoint behavior.

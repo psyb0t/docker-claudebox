@@ -196,9 +196,11 @@ if [ "${1:-}" = "clear-session" ]; then
     exit 0
 fi
 
-# cron mode — long-running daemon container, named <base>_cron
-_mode_cron="${CLAUDEBOX_MODE_CRON:-${CLAUDE_MODE_CRON:-}}"
-_mode_cron_file="${CLAUDEBOX_MODE_CRON_FILE:-${CLAUDE_MODE_CRON_FILE:-}}"
+# cron mode — long-running daemon container, named <base>_cron. Accepts the
+# canonical CLAUDEBOX_CRON_MODE names plus the v1 CLAUDEBOX_MODE_CRON and
+# CLAUDE_MODE_CRON spellings, and always passes the canonical names inward.
+_mode_cron="${CLAUDEBOX_CRON_MODE:-${CLAUDEBOX_MODE_CRON:-${CLAUDE_MODE_CRON:-}}}"
+_mode_cron_file="${CLAUDEBOX_CRON_MODE_FILE:-${CLAUDEBOX_MODE_CRON_FILE:-${CLAUDE_MODE_CRON_FILE:-}}}"
 if [ -n "$_mode_cron" ]; then
     cron_name="${container_name}_cron"
     dbg "cron container: $cron_name"
@@ -220,11 +222,11 @@ if [ -n "$_mode_cron" ]; then
     fi
 
     CRON_ARGS=(
-        -e "CLAUDEBOX_MODE_CRON=1"
+        -e "CLAUDEBOX_CRON_MODE=1"
         -e "CLAUDEBOX_WORKSPACE=$PWD"
         -e "CLAUDEBOX_CONTAINER_NAME=$cron_name"
     )
-    [ -n "$_mode_cron_file" ] && CRON_ARGS+=(-e "CLAUDEBOX_MODE_CRON_FILE=$_mode_cron_file")
+    [ -n "$_mode_cron_file" ] && CRON_ARGS+=(-e "CLAUDEBOX_CRON_MODE_FILE=$_mode_cron_file")
     [ "$DEBUG" = "true" ] && CRON_ARGS+=(-e "DEBUG=true")
 
     if docker ps -a --format '{{.Names}}' | grep -q "^${cron_name}$"; then

@@ -103,4 +103,4 @@ Use one host workspace mount at `/workspace`. Give cron jobs and Telegram chats 
 | `CLAUDEBOX_WORKSPACE` | Absolute workspace root. Jobs may select safe relative subdirectories below it. | `/workspace` |
 | `DEBUG` | Set to `true` for per tick and per line debug logs. | None |
 
-Legacy `CLAUDE_MODE_CRON`, `CLAUDE_MODE_CRON_FILE`, and `CLAUDE_WORKSPACE` remain accepted as fallbacks.
+Legacy `CLAUDEBOX_MODE_CRON`, `CLAUDEBOX_MODE_CRON_FILE`, `CLAUDE_MODE_CRON`, `CLAUDE_MODE_CRON_FILE`, and `CLAUDE_WORKSPACE` remain accepted as fallbacks.

@@ -19,8 +19,8 @@ Install whatever you need with `sudo apt-get install ...`, `npm install -g ...`,
 - Docker socket may be mounted for docker-in-docker. The workspace path inside
   the container matches the host path, so `docker run -v "$PWD/data:/data"` from
   within resolves correctly on the host.
-- `~/.claude/bin` is in PATH — drop custom scripts there.
-- `/aicodebox-init.d/*.sh` scripts fire once on first container create.
+- `~/.aicodebox/bin` is in PATH. Drop custom scripts there.
+- `/aicodebox-init.d/*.sh`, then `~/.aicodebox/init.d/*.sh`, run once per container, the first time it starts.
 - Extra host directories may be mounted via `CLAUDEBOX_MOUNT_*` env vars.
 
 ## IMPORTANT

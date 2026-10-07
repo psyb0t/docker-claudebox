@@ -168,7 +168,7 @@ CLAUDEBOX_MOUNT_RO=/data:/data:ro claudebox -p "read the data"               # r
 | `CLAUDEBOX_SYSTEM_HINT_FILE` | Text prepended to `--append-system-prompt` on every call | `/home/aicode/.claude/system-hint.txt` |
 | `DEBUG` | `1`/`true` for structured JSON debug logging | _(none)_ |
 
-Legacy fallbacks still accepted: `CLAUDE_MODE_API`/`CLAUDE_MODE_API_PORT`/`CLAUDE_MODE_API_TOKEN`, `CLAUDE_MODE_TELEGRAM`, `CLAUDE_MODE_CRON`/`CLAUDE_MODE_CRON_FILE`, `CLAUDE_WORKSPACE`, `CLAUDE_TELEGRAM_BOT_TOKEN`, `CLAUDE_TELEGRAM_CONFIG`.
+Legacy fallbacks still accepted: the v1 `CLAUDEBOX_MODE_API`/`CLAUDEBOX_MODE_API_PORT`/`CLAUDEBOX_MODE_API_TOKEN`, `CLAUDEBOX_MODE_TELEGRAM`, `CLAUDEBOX_MODE_CRON`/`CLAUDEBOX_MODE_CRON_FILE`, and the older `CLAUDE_MODE_API`/`CLAUDE_MODE_API_PORT`/`CLAUDE_MODE_API_TOKEN`, `CLAUDE_MODE_TELEGRAM`, `CLAUDE_MODE_CRON`/`CLAUDE_MODE_CRON_FILE`, `CLAUDE_WORKSPACE`, `CLAUDE_TELEGRAM_BOT_TOKEN`, `CLAUDE_TELEGRAM_CONFIG`. A canonical `CLAUDEBOX_*` name wins over its legacy spelling.
 
 ## Ports
 
@@ -209,9 +209,9 @@ Run `/mcp` inside an interactive session to inspect what's loaded. This is how c
 
 ## Customization
 
-- **Custom scripts (`~/.claude/bin`)** — any executable placed here is on PATH in every mode.
-- **Init hooks (`~/.claude/init.d/*.sh`)** — run once as root on first container create, before the entrypoint drops to `aicode`. Good for pre-installing tools on the minimal image.
-- **Always-active skills (`~/.claude/.always-skills/`)** — every `SKILL.md` found (recursive, alphabetical) is appended to `--append-system-prompt` on every invocation, across all modes, prefixed with `[Skill file: <path>]`.
+- **Custom scripts (`~/.aicodebox/bin`)**: any executable placed here is on PATH ahead of everything else, in every mode, in init scripts and in `docker exec` shells. With the `claudebox` wrapper this is your host `~/.claude/bin`: the wrapper mounts `~/.claude` and the entrypoint points `~/.aicodebox` at it. A compose setup that mounts its own directory at `/home/aicode/.aicodebox` uses that directory's `bin/` instead.
+- **Init hooks (`~/.aicodebox/init.d/*.sh`)**: run once per container, the first time it starts, after the image's own `/aicodebox-init.d/` scripts. They run in filename order as `aicode`, which has passwordless sudo, so `sudo apt-get install …` works for pre-installing tools on the minimal image. A restart does not run them again; a new container does. A failing script is logged and the rest still run. With the wrapper this is your host `~/.claude/init.d`.
+- **Always-active skills (`~/.claude/.always-skills/`)**: every `SKILL.md` found (recursive, alphabetical) is appended to `--append-system-prompt` on every invocation, across all modes, prefixed with `[Skill file: <path>]`.
 
 ## Gotchas
 
