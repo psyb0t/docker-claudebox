@@ -307,7 +307,7 @@ wrapper. Do not set it for an ordinary host launch.
 
 ## Agent integrations
 
-The [skill](.agents/skills/claudebox) works in any agent that reads `.agents/skills/`. It tells agents to use the installed wrapper for local work and to use MCP only for an already-running remote server. It installs natively in the clients below.
+The [skill](.agents/skills/claudebox) works in any agent that reads `.agents/skills/` (such as [peen](https://github.com/psyb0t/peen)). It tells agents to use the installed wrapper for local work and to use MCP only for an already-running remote server. It installs natively in the clients below.
 
 ### Claude Code
 

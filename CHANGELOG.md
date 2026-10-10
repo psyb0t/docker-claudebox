@@ -4,6 +4,10 @@ All notable changes to **claudebox** (formerly `docker-claude-code`).
 
 Format roughly follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [v2.5.1], 2026-10-10: README names peen
+
+- Documentation only. The README's agent integrations section names [peen](https://github.com/psyb0t/peen) as an example of an agent that reads `.agents/skills/`.
+
 ## [v2.5.0], 2026-10-07: User init scripts and bin on PATH, working cron shortcut
 
 - Rebuilds both variants on Aicodebox `v0.17.0`. Executables in `~/.aicodebox/bin` are on `PATH` ahead of everything else, for Claude in every mode, for init scripts, and for `docker exec` shells. `~/.aicodebox/init.d/*.sh` run once per container, after the image's own init scripts, as `aicode` with passwordless sudo. With the `claudebox` wrapper, `~/.aicodebox` is your host `~/.claude`, so these are `~/.claude/bin` and `~/.claude/init.d`. The pre-v2 promise of both is real again.
