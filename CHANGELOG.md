@@ -4,6 +4,10 @@ All notable changes to **claudebox** (formerly `docker-claude-code`).
 
 Format roughly follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [v2.8.0], 2026-10-16: action streams Claude's work to the log
+
+- The GitHub Action prints what Claude does while it runs: its messages as `[claude]`, each tool call as `[tool]` with the command or file, and each tool result as `[result]`, cut at 600 characters. It requests `stream-json` from claudebox and rebuilds the `result` output from the final event, so callers get the same outputs. Set `stream: false` for the previous quiet log.
+
 ## [v2.7.0], 2026-10-16: action follows the latest image
 
 - The GitHub Action's `image` input defaults to `psyb0t/claudebox:latest`, so callers get each new minimal release without updating the action. The action no longer requires a digest; pin a tag or `name:tag@sha256:...` in `image` to freeze the version.

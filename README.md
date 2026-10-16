@@ -346,6 +346,7 @@ jobs:
 | `anthropic-api-key` / `claude-code-oauth-token` | | Set one or both. The action fails without either, masks both and forwards them as `CLAUDEBOX_ENV_*`. |
 | `image` | `psyb0t/claudebox:latest` | Image. The default follows the latest minimal release. Pin a tag or digest to freeze it. |
 | `model`, `effort` | | Passed as `--model` and `--effort`. |
+| `stream` | `true` | With `output-format: json`, print Claude's messages, tool calls and tool results to the job log as they happen. The `result` output is unchanged. |
 | `output-format` | `json` | `json`, `text` or `stream-json`. |
 
 Outputs are `result` (Claude's final text) and `output-path`. Set `timeout-minutes` on the job, because a composite action cannot. The action fails when claudebox exits non-zero or the JSON result has `is_error` set.

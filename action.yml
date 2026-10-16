@@ -58,6 +58,10 @@ inputs:
     description: "claudebox --effort. Empty uses Claude Code's default."
     required: false
     default: ""
+  stream:
+    description: "Print Claude's messages, tool calls and tool results to the job log as they happen. Only applies with output-format json, where the result output is unchanged."
+    required: false
+    default: "true"
   output-format:
     description: "claudebox --output-format: json, text or stream-json. The result output is only parsed for json."
     required: false
@@ -87,6 +91,8 @@ runs:
         IN_MODEL: ${{ inputs.model }}
         IN_EFFORT: ${{ inputs.effort }}
         IN_OUTPUT_FORMAT: ${{ inputs.output-format }}
+        IN_STREAM: ${{ inputs.stream }}
+        STREAM_LOG_JQ: ${{ github.action_path }}/stream-log.jq
         CLAUDEBOX_IMAGE: ${{ inputs.image }}
         WRAPPER: ${{ github.action_path }}/wrapper.sh
         CONTAINER_NAME: claudebox-${{ github.run_id }}-${{ github.run_attempt }}-${{ github.job }}
@@ -181,7 +187,16 @@ runs:
           exit 1
         fi
 
-        args=(-p "${prompt}" --output-format "${IN_OUTPUT_FORMAT}" --no-continue)
+        # Streaming asks claudebox for stream-json and rebuilds the json result
+        # from its final event, so callers see the same outputs either way.
+        streaming=false
+        run_format="${IN_OUTPUT_FORMAT}"
+        if [ "${IN_STREAM}" = "true" ] && [ "${IN_OUTPUT_FORMAT}" = "json" ]; then
+          streaming=true
+          run_format=stream-json
+        fi
+
+        args=(-p "${prompt}" --output-format "${run_format}" --no-continue)
         [ -n "${IN_MODEL}" ] && args+=(--model "${IN_MODEL}")
         [ -n "${IN_EFFORT}" ] && args+=(--effort "${IN_EFFORT}")
 
@@ -189,7 +204,20 @@ runs:
 
         raw="${RUNNER_TEMP}/claudebox-result-${CONTAINER_NAME}"
         rc=0
-        (cd "${out}" && bash "${WRAPPER}" "${args[@]}") >"${raw}" || rc=$?
+        if [ "${streaming}" = "true" ]; then
+          events="${raw}.events"
+          (cd "${out}" && bash "${WRAPPER}" "${args[@]}") |
+            tee "${events}" | jq -R --unbuffered -r -f "${STREAM_LOG_JQ}" || rc=$?
+          # pipefail makes rc cover claudebox, tee and jq. The json result is
+          # the final result event.
+          jq -R -c 'fromjson? | select(.type == "result")' "${events}" | tail -n 1 >"${raw}" || true
+          if [ ! -s "${raw}" ]; then
+            echo "::warning::claudebox stream ended without a result event"
+            rc=1
+          fi
+        else
+          (cd "${out}" && bash "${WRAPPER}" "${args[@]}") >"${raw}" || rc=$?
+        fi
 
         is_error=false
         if [ "${IN_OUTPUT_FORMAT}" = "json" ]; then
