@@ -47,9 +47,9 @@ inputs:
     required: false
     default: ""
   image:
-    description: "claudebox image, pinned by digest (name:tag@sha256:...)."
+    description: "claudebox image. The default follows the latest minimal release; pin a tag or digest to freeze it."
     required: false
-    default: "psyb0t/claudebox:v2.5.1@sha256:26fe88629eaef2c881a838c24788ff12d1307d4ae8dd26ab6ab5c3f266bad3df"
+    default: "psyb0t/claudebox:latest"
   model:
     description: "claudebox --model (alias or full id). Empty uses Claude Code's default."
     required: false
@@ -115,10 +115,6 @@ runs:
         # Names only, never values.
         echo "Claude credentials forwarded into claudebox: ${used[*]}"
 
-        case "${CLAUDEBOX_IMAGE}" in
-          *@sha256:*) ;;
-          *) echo "::error::image must be pinned by digest (name:tag@sha256:...)"; exit 1 ;;
-        esac
         case "${IN_OUTPUT_FORMAT}" in
           json | text | stream-json) ;;
           *) echo "::error::output-format must be json, text or stream-json"; exit 1 ;;

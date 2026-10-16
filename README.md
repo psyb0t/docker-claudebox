@@ -344,7 +344,7 @@ jobs:
 | `context-path` | `.` | Directory mounted read-only at `/context`. |
 | `output-path` | `$RUNNER_TEMP/claudebox-output` | Writable output directory. Must not overlap `context-path`. |
 | `anthropic-api-key` / `claude-code-oauth-token` | | Set one or both. The action fails without either, masks both and forwards them as `CLAUDEBOX_ENV_*`. |
-| `image` | `psyb0t/claudebox:v2.5.1@sha256:26fe…` | Image, must include a digest. |
+| `image` | `psyb0t/claudebox:latest` | Image. The default follows the latest minimal release. Pin a tag or digest to freeze it. |
 | `model`, `effort` | | Passed as `--model` and `--effort`. |
 | `output-format` | `json` | `json`, `text` or `stream-json`. |
 

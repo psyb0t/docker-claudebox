@@ -7,6 +7,7 @@ __pycache__
 AGENTS.md
 CODEX.local.md
 git-update.sh
+git-update.sh.debot
 docker-compose.dev.yaml
 .env
 .env.local

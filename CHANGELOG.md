@@ -4,6 +4,10 @@ All notable changes to **claudebox** (formerly `docker-claude-code`).
 
 Format roughly follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [v2.7.0], 2026-10-16: action follows the latest image
+
+- The GitHub Action's `image` input defaults to `psyb0t/claudebox:latest`, so callers get each new minimal release without updating the action. The action no longer requires a digest; pin a tag or `name:tag@sha256:...` in `image` to freeze the version.
+
 ## [v2.6.0], 2026-10-16: GitHub Action
 
 - Adds a composite GitHub Action at the repo root, used as `uses: psyb0t/docker-claudebox@v2.6.0`. It runs `claudebox -p` one-shot through this repo's `wrapper.sh` on the minimal image pinned by digest. It mounts `context-path` read-only at `/context` and makes `output-path` the writable workspace. It takes `prompt` or `prompt-file`, plus `anthropic-api-key` and/or `claude-code-oauth-token`, and outputs `result` and `output-path`.
