@@ -4,6 +4,13 @@ All notable changes to **claudebox** (formerly `docker-claude-code`).
 
 Format roughly follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [v2.6.0], 2026-10-16: GitHub Action
+
+- Adds a composite GitHub Action at the repo root, used as `uses: psyb0t/docker-claudebox@v2.6.0`. It runs `claudebox -p` one-shot through this repo's `wrapper.sh` on the minimal image pinned by digest. It mounts `context-path` read-only at `/context` and makes `output-path` the writable workspace. It takes `prompt` or `prompt-file`, plus `anthropic-api-key` and/or `claude-code-oauth-token`, and outputs `result` and `output-path`.
+- The action prepends a fixed preamble that marks `/context` as untrusted data and forbids sending it or any credential anywhere. It also starts Claude with empty job-local `~/.claude` and SSH directories and no `SSH_AUTH_SOCK`.
+- The wrapper mounts the runner's Docker socket, so use the action only on ephemeral runners.
+- Documented how to mount an SSH agent into the box explicitly with `CLAUDEBOX_MOUNT_*` and `CLAUDEBOX_ENV_SSH_AUTH_SOCK`. The wrapper does not forward one by default.
+
 ## [v2.5.1], 2026-10-10: README names peen
 
 - Documentation only. The README's agent integrations section names [peen](https://github.com/psyb0t/peen) as an example of an agent that reads `.agents/skills/`.

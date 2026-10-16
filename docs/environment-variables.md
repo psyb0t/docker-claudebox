@@ -57,6 +57,14 @@ CLAUDEBOX_MOUNT_RO=/data:/data:ro claudebox -p "read the data"                # 
 
 If the value contains `:`, it is passed directly as Docker `-v` syntax. Otherwise, the same path is used on both host and container sides.
 
+The wrapper does not forward an SSH agent automatically. To give the box one, mount the agent socket and forward `SSH_AUTH_SOCK` with the prefix stripped:
+
+```bash
+CLAUDEBOX_MOUNT_SSH="$SSH_AUTH_SOCK:/ssh-agent:ro" CLAUDEBOX_ENV_SSH_AUTH_SOCK=/ssh-agent claudebox
+```
+
+Every key loaded in that agent becomes usable inside the box.
+
 The standard wrapper also mounts `/var/run/docker.sock` so Claude can manage host containers. Server deployments should use the Compose examples instead when they do not need that authority.
 
 For server-mode MCP settings, use `CLAUDEBOX_MCP_MODE_ALLOWED_HOSTS` and `CLAUDEBOX_MCP_MODE_ALLOWED_ORIGINS` inside the container. With the wrapper, forward them as `CLAUDEBOX_ENV_CLAUDEBOX_MCP_MODE_ALLOWED_HOSTS` and `CLAUDEBOX_ENV_CLAUDEBOX_MCP_MODE_ALLOWED_ORIGINS`.

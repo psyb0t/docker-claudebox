@@ -41,6 +41,7 @@ Beyond just running Claude Code in Docker, claudebox adds skill injection (auto-
   - [Cron mode](docs/modes/cron.md)
   - [MCP mode](docs/modes/mcp.md)
 - [Configuration](#configuration)
+- [GitHub Action](#github-action)
 - [Agent integrations](#agent-integrations)
 - [Gotchas](#gotchas)
 - [License](#license)
@@ -138,6 +139,14 @@ the same command directory. A running box can call the sibling command
 directly. The parent wrapper passes the host launch context and mounts only
 the sibling wrapper file. Do not set `AICODEBOX_HOST_*`, copy a wrapper, or
 manually mount another box's state directory.
+
+The wrapper does not forward an SSH agent on its own. To give the box your agent, mount its socket and point `SSH_AUTH_SOCK` at it:
+
+```bash
+CLAUDEBOX_MOUNT_SSH="$SSH_AUTH_SOCK:/ssh-agent:ro" CLAUDEBOX_ENV_SSH_AUTH_SOCK=/ssh-agent claudebox
+```
+
+Every key loaded in that agent becomes usable inside the box.
 
 ## Image Variants
 
@@ -304,6 +313,46 @@ host data directory. Claudebox does not directly mount another agent's home.
 `AICODEBOX_HOST_*` is the versioned nested-launch context used by sibling
 wrappers. It records host bind-source paths and is set automatically by a
 wrapper. Do not set it for an ordinary host launch.
+
+## GitHub Action
+
+`action.yml` at the repo root runs claudebox one-shot in a workflow job, through this repo's own `wrapper.sh`. A context directory is mounted read-only at `/context`, and Claude writes into one output directory, which is its workspace.
+
+```yaml
+jobs:
+  summarize:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - id: claude
+        uses: psyb0t/docker-claudebox@v2.6.0
+        with:
+          prompt: "Summarize /context/CHANGELOG.md into summary.md."
+          context-path: .
+          claude-code-oauth-token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+      - run: cat "${{ steps.claude.outputs.output-path }}/summary.md"
+```
+
+| Input | Default | Description |
+| --- | --- | --- |
+| `prompt` / `prompt-file` | | Prompt text, or a file relative to the workspace. Set exactly one. |
+| `context-path` | `.` | Directory mounted read-only at `/context`. |
+| `output-path` | `$RUNNER_TEMP/claudebox-output` | Writable output directory. Must not overlap `context-path`. |
+| `anthropic-api-key` / `claude-code-oauth-token` | | Set one or both. The action fails without either, masks both and forwards them as `CLAUDEBOX_ENV_*`. |
+| `image` | `psyb0t/claudebox:v2.5.1@sha256:26fe…` | Image, must include a digest. |
+| `model`, `effort` | | Passed as `--model` and `--effort`. |
+| `output-format` | `json` | `json`, `text` or `stream-json`. |
+
+Outputs are `result` (Claude's final text) and `output-path`. Set `timeout-minutes` on the job, because a composite action cannot. The action fails when claudebox exits non-zero or the JSON result has `is_error` set.
+
+A fixed preamble tells Claude that everything under `/context` is untrusted data. It may install the tools it needs, but uses the network only for package and image downloads, never sends `/context` or credentials anywhere and never pushes. `~/.claude` and the SSH directory are empty job-local directories, and `SSH_AUTH_SOCK` is unset.
+
+**Use it only on ephemeral runners.** The wrapper always mounts `/var/run/docker.sock` and uses host networking, so Claude can drive the runner's Docker daemon, which is root on the runner. On a GitHub-hosted runner that VM holds only the job's context and the Claude credential. Give the job `contents: read`, pass no other secret, and treat everything in the output directory as untrusted.
 
 ## Agent integrations
 
