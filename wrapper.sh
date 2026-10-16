@@ -56,6 +56,20 @@ FULL_STREAM_ARGS=(
 ANTHROPIC_API_KEY="${CLAUDEBOX_ENV_ANTHROPIC_API_KEY:-${ANTHROPIC_API_KEY:-}}"
 CLAUDE_CODE_OAUTH_TOKEN="${CLAUDEBOX_ENV_CLAUDE_CODE_OAUTH_TOKEN:-${CLAUDE_CODE_OAUTH_TOKEN:-}}"
 
+# A credential pasted with a stray space or newline breaks the auth file the
+# container sources (the rest of the line runs as a command), so trim both.
+# The prefixed copies are forwarded again below and must match.
+trim_space() {
+    local value=$1
+    value="${value#"${value%%[![:space:]]*}"}"
+    value="${value%"${value##*[![:space:]]}"}"
+    printf '%s' "$value"
+}
+ANTHROPIC_API_KEY="$(trim_space "$ANTHROPIC_API_KEY")"
+CLAUDE_CODE_OAUTH_TOKEN="$(trim_space "$CLAUDE_CODE_OAUTH_TOKEN")"
+[ -n "${CLAUDEBOX_ENV_ANTHROPIC_API_KEY:-}" ] && export CLAUDEBOX_ENV_ANTHROPIC_API_KEY="$ANTHROPIC_API_KEY"
+[ -n "${CLAUDEBOX_ENV_CLAUDE_CODE_OAUTH_TOKEN:-}" ] && export CLAUDEBOX_ENV_CLAUDE_CODE_OAUTH_TOKEN="$CLAUDE_CODE_OAUTH_TOKEN"
+
 # Convert PWD to a valid container name (slashes to underscores)
 sanitized_pwd=$(echo "$PWD" | sed 's/\//_/g')
 container_name="${CLAUDEBOX_CONTAINER_NAME:-${CLAUDE_CONTAINER_NAME:-claude-${sanitized_pwd}}}"

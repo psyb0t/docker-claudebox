@@ -4,6 +4,10 @@ All notable changes to **claudebox** (formerly `docker-claude-code`).
 
 Format roughly follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [v2.8.1], 2026-10-16: trim credentials
+
+- The wrapper trims leading and trailing whitespace from `ANTHROPIC_API_KEY` and `CLAUDE_CODE_OAUTH_TOKEN` (and their `CLAUDEBOX_ENV_` forms). A token pasted with a stray space or newline used to break the auth file the container sources, so Claude never started and the run ended with "command not found".
+
 ## [v2.8.0], 2026-10-16: action streams Claude's work to the log
 
 - The GitHub Action prints what Claude does while it runs: its messages as `[claude]`, each tool call as `[tool]` with the command or file, and each tool result as `[result]`, cut at 600 characters. It requests `stream-json` from claudebox and rebuilds the `result` output from the final event, so callers get the same outputs. Set `stream: false` for the previous quiet log.
