@@ -141,7 +141,7 @@ wheels = [
 
 [[package]]
 name = "claudebox"
-version = "2.8.1"
+version = "2.8.2"
 source = { editable = "." }
 
 [package.dev-dependencies]

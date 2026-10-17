@@ -330,7 +330,7 @@ jobs:
         with:
           persist-credentials: false
       - id: claude
-        uses: psyb0t/docker-claudebox@v2.6.0
+        uses: psyb0t/docker-claudebox@master
         with:
           prompt: "Summarize /context/CHANGELOG.md into summary.md."
           context-path: .

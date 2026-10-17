@@ -4,6 +4,10 @@ All notable changes to **claudebox** (formerly `docker-claude-code`).
 
 Format roughly follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [v2.8.2], 2026-10-17: unpinned action example
+
+- The README's GitHub Action example uses `psyb0t/docker-claudebox@master` instead of `@v2.6.0`, so copying it gets the current action.
+
 ## [v2.8.1], 2026-10-16: trim credentials
 
 - The wrapper trims leading and trailing whitespace from `ANTHROPIC_API_KEY` and `CLAUDE_CODE_OAUTH_TOKEN` (and their `CLAUDEBOX_ENV_` forms). A token pasted with a stray space or newline used to break the auth file the container sources, so Claude never started and the run ended with "command not found".
