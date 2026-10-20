@@ -4,6 +4,15 @@ All notable changes to **claudebox** (formerly `docker-claude-code`).
 
 Format roughly follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [v2.8.4], 2026-10-20: fix wrapper installation and Git identity
+
+- Keeps the installer wrapper ref aligned with the release version. Version updates synchronize package, lockfile, plugin manifest, and installer ref without committing or tagging.
+- Fixes `CLAUDEBOX_FULL=0` to select minimal and rejects invalid values. Unset runtime selection preserves the installed variant.
+- Applies Git name and email settings through the shared Aicodebox startup path. Existing containers need recreation to receive changed launch settings.
+- Shortens the README and moves wrapper operations, GitHub Action usage, and agent integration setup into focused guides. Keeps the Docker Hub description below its size limit.
+- Corrects init-hook privileges, Claude configuration paths, MCP tool and token names, and buffered OpenAI streaming behavior. Documents container reuse, installer wrapper selection, and the limits of workspace separation.
+- Removes stale model-generation and tool-inventory claims; links shared tool definitions to Aicodebox instead.
+
 ## [v2.8.3], 2026-10-19: refresh Claude and shared toolchains
 
 - Updates Claude Code to 2.1.296 and the plugin's mcp-remote bridge to 0.14.3. Pins the Python development tools and refreshes their lockfile.

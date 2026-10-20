@@ -1,7 +1,17 @@
 #!/usr/bin/env bash
+set -euo pipefail
 
-readonly CLAUDEBOX_RELEASE_REF="v2.5.0"
+readonly CLAUDEBOX_RELEASE_REF="v2.8.4"
 readonly WRAPPER_URL="https://raw.githubusercontent.com/psyb0t/docker-claudebox/${CLAUDEBOX_INSTALL_REF:-$CLAUDEBOX_RELEASE_REF}/wrapper.sh"
+
+_full="${CLAUDEBOX_FULL:-${CLAUDE_FULL:-0}}"
+case "$_full" in
+    0 | 1) ;;
+    *)
+        echo "CLAUDEBOX_FULL must be 0 or 1" >&2
+        exit 1
+        ;;
+esac
 
 BIN_NAME="${1:-${CLAUDEBOX_BIN_NAME:-${CLAUDE_BIN_NAME:-claudebox}}}"
 INSTALL_DIR="${CLAUDEBOX_INSTALL_DIR:-${CLAUDE_INSTALL_DIR:-/usr/local/bin}}"
@@ -34,7 +44,9 @@ mkdir -p "$HOST_HOME/.ssh/claudebox"
 if [ -f "$HOST_HOME/.ssh/claudebox/id_ed25519" ]; then
     echo "🔑 SSH key already exists at $HOST_HOME/.ssh/claudebox/id_ed25519"
     if [ "$MANAGED_INSTALL" = false ]; then
-        read -rp "   Replace existing key? [y/N] " response
+        if ! read -rp "   Replace existing key? [y/N] " response; then
+            response=n
+        fi
     else
         response=n
     fi
@@ -54,14 +66,14 @@ fi
 # image (latest), so the flag is a no-op. To opt IN to the full toolchain,
 # set CLAUDEBOX_FULL=1.
 CLAUDE_TAG="latest"
-_full="${CLAUDEBOX_FULL:-${CLAUDE_FULL:-}}"
-[ -n "$_full" ] && CLAUDE_TAG="latest-full"
+[ "$_full" = 1 ] && CLAUDE_TAG="latest-full"
 echo "📦 Pulling Claude Code image (tag: $CLAUDE_TAG)..."
 docker pull "psyb0t/claudebox:$CLAUDE_TAG"
 
 # get wrapper.sh — from same dir if running locally, otherwise download from GitHub
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-/dev/null}")" 2>/dev/null && pwd)"
 WRAPPER_TMP="$(mktemp /tmp/claude-wrapper-XXXXXX.sh)"
+trap 'rm -f "$WRAPPER_TMP"' EXIT
 if [ -f "$SCRIPT_DIR/wrapper.sh" ]; then
     echo "📝 Using local wrapper.sh..."
     cp "$SCRIPT_DIR/wrapper.sh" "$WRAPPER_TMP"
@@ -83,7 +95,7 @@ fi
 # Bake the selected variant into the wrapper so the choice sticks per install
 # without an env var. Portable rewrite — `sed -i` differs on GNU vs BSD/macOS.
 _variant="minimal"
-[ -n "$_full" ] && _variant="full"
+[ "$_full" = 1 ] && _variant="full"
 echo "📝 Baking image variant into wrapper: $_variant"
 if grep -q '^CLAUDEBOX_INSTALLED_VARIANT=' "$WRAPPER_TMP"; then
     _baked="$(mktemp /tmp/claude-wrapper-baked-XXXXXX.sh)"

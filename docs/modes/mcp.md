@@ -37,7 +37,7 @@ path escapes workspace root
 
 The check happens after resolution, so `..` segments and symlinks are both caught.
 
-What this does **not** sandbox is `run_prompt` — Claude Code runs with the container's own permissions and reaches whatever the container reaches. The confinement applies to the file tools, not to the agent.
+This does not sandbox `run_prompt`. Claude Code runs with the container's permissions and can reach whatever the container reaches. The confinement applies to the file tools, not to the agent.
 
 ## Auth
 
@@ -49,7 +49,7 @@ environment:
 
 Two things here that will bite you if you assume otherwise:
 
-- **An empty token means no auth at all.** Not "no access" — open. Anyone who can reach the port gets `run_prompt`, and `run_prompt` runs code. Leave it unset only when the port is bound to loopback or an internal network.
+- **An empty token disables authentication.** Anyone who can reach the port gets `run_prompt`, which can run code. Configure a token unless the endpoint is restricted to trusted callers.
 - **There is no fallback to the API token.** Setting `CLAUDEBOX_API_MODE_TOKEN` does nothing for MCP. To authenticate both surfaces, set both variables.
 
 The token is accepted as either a header or a query parameter, since not every MCP client can set headers:

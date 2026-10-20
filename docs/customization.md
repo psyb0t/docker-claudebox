@@ -1,113 +1,83 @@
 # Customization
 
-- [Custom scripts (`~/.claude/bin`)](#custom-scripts-claudebin)
-- [Init hooks (`~/.claude/init.d`)](#init-hooks-claudeinitd)
-- [Always-active skills (`~/.claude/.always-skills`)](#always-active-skills-claudealways-skills)
-- [MCP servers](#mcp-servers)
+[Back to README](../README.md)
+
+With the standard wrapper, the host's `~/.claude` supplies the persistent state directory. The entrypoint aliases it to `/home/aicode/.aicodebox` inside the container. In server Compose deployments, use the directory mounted at `/home/aicode/.aicodebox` instead.
 
 ## Custom scripts (`~/.claude/bin`)
 
-Any executable files placed in `~/.claude/bin/` are available on PATH inside every container session — interactive, programmatic, API, all modes.
+Executables in the state directory's `bin/` are on PATH before the system tools, in interactive and server modes, init scripts, and container shells.
 
 ```bash
 mkdir -p ~/.claude/bin
-echo '#!/bin/bash
-echo "hello from custom script"' > ~/.claude/bin/my-tool
+printf '#!/bin/sh\nprintf "hello from custom script\\n"\n' > ~/.claude/bin/my-tool
 chmod +x ~/.claude/bin/my-tool
-# my-tool is now available inside every claudebox session
 ```
+
+Only put trusted executables here. They can override system command names.
 
 ## Init hooks (`~/.claude/init.d`)
 
-Scripts placed in `~/.claude/init.d/*.sh` run once when a container is first created. They execute as root before the entrypoint drops to the `claude` user. They do not re-run on subsequent `docker start` — only on fresh containers.
+The base runs image scripts from `/aicodebox-init.d/*.sh`, then user scripts from the state directory's `init.d/*.sh`, in filename order. Both run as `aicode` with passwordless sudo, not root. Use sudo for system package installation.
 
 ```bash
 mkdir -p ~/.claude/init.d
-cat > ~/.claude/init.d/setup.sh << 'EOF'
-#!/bin/bash
-apt-get update && apt-get install -y some-package
-pip install some-library
-EOF
-chmod +x ~/.claude/init.d/setup.sh
+printf '#!/bin/bash\nset -euo pipefail\nsudo apt-get update\nsudo apt-get install -y make\n' > ~/.claude/init.d/setup.sh
 ```
 
-This is particularly useful with the minimal image — pre-install your tools once on first run so Claude doesn't burn tokens and time running `apt-get` on every session.
+The entrypoint invokes these files with Bash, so an executable bit is not required. Scripts run once per container. Restarting that container does not rerun them; creating another container does. A failing script is logged, and the entrypoint continues with the remaining scripts. Fix failures before relying on the installed tools.
 
 ## Always-active skills (`~/.claude/.always-skills`)
 
-Skill files placed in `~/.claude/.always-skills/` are automatically injected into the system prompt of every Claude invocation — interactive, programmatic, API, OpenAI adapter, MCP, Telegram, all of them. No slash commands, no per-request headers, no configuration needed.
-
-Each subdirectory should contain a `SKILL.md` file with instructions for Claude. The directory is scanned recursively in alphabetical order, and every `SKILL.md` found is appended to the system prompt with a prefix showing its full file path:
-
-```
-[Skill file: /home/aicode/.claude/.always-skills/caveman/SKILL.md]
-
-<contents of the skill file>
-```
-
-The path prefix is included so Claude knows exactly where the skill lives on disk and can read any adjacent files referenced by the skill.
-
-**Example: install the caveman skill to auto-activate every session:**
-
-```bash
-mkdir -p ~/.claude/.always-skills/caveman
-cp ~/.claude/plugins/cache/caveman/caveman/*/skills/caveman/SKILL.md \
-   ~/.claude/.always-skills/caveman/SKILL.md
-```
-
-**Example: write a custom skill:**
+Put a `SKILL.md` in each skill directory. The launcher and adapter scan recursively in sorted path order and append every nonempty skill to the system prompt on Claude prompt invocations across CLI and server modes.
 
 ```bash
 mkdir -p ~/.claude/.always-skills/my-rules
-cat > ~/.claude/.always-skills/my-rules/SKILL.md << 'EOF'
-When writing Go code, always use slog for structured logging, never fmt.Println.
-When writing Python, always use pathlib for file paths, never os.path.
-EOF
+printf 'Before editing, read the project documentation and applicable rules.\n' > ~/.claude/.always-skills/my-rules/SKILL.md
 ```
 
-Multiple skills stack — every `SKILL.md` found is injected. Any user-supplied `appendSystemPrompt` (via API request body, `--append-system-prompt` CLI flag, `X-Claude-Append-System-Prompt` header, etc.) is appended after the always-skills content, so per-request instructions take precedence.
+Each block starts with its container path:
 
-## MCP servers
+```text
+[Skill file: /home/aicode/.claude/.always-skills/my-rules/SKILL.md]
+```
 
-Claude Code reads MCP server definitions from a few standard locations. Inside claudebox, all of these work because `~/.claude` is mounted from the host and the workspace is mounted from the host cwd:
+Keep adjacent resources with the skill when its instructions refer to them. Copying only `SKILL.md` from another plugin may leave those references broken.
 
-| Scope     | Path                                                  | Description                                                                          |
-| --------- | ----------------------------------------------------- | ------------------------------------------------------------------------------------ |
-| Project   | `<workspace>/.mcp.json`                               | Per-repo, intended to be checked into git so the team shares the same servers        |
-| User      | `~/.claude.json` (under the `mcpServers` key)         | Global, available across every project on the host                                   |
-| Local     | `~/.claude.json` (per-project section)                | Default scope of `claude mcp add`, only affects the current project, not shared      |
+The shared system hint comes first, then always-active skills. The server adapter appends the caller's `appendSystemPrompt` afterward. This is prompt composition, not an enforced instruction-priority or security boundary. Utility subcommands such as `auth`, `mcp`, and `--version` bypass prompt injection.
 
-**File format** (same for `.mcp.json` and the `mcpServers` block inside `~/.claude.json`):
+Set `CLAUDEBOX_ALWAYS_SKILLS_DIR` or `CLAUDEBOX_SYSTEM_HINT_FILE` inside the container to change those sources. With the wrapper, use `CLAUDEBOX_ENV_CLAUDEBOX_ALWAYS_SKILLS_DIR` or `CLAUDEBOX_ENV_CLAUDEBOX_SYSTEM_HINT_FILE`.
+
+## External MCP servers
+
+This configures servers Claude Code can call. It is separate from exposing Claudebox itself through [MCP mode](modes/mcp.md).
+
+The image sets `CLAUDE_CONFIG_DIR=/home/aicode/.claude`. The current Claude init script and adapter use `$CLAUDE_CONFIG_DIR/.claude.json` for Claude configuration. With the standard wrapper, that is the host's `~/.claude/.claude.json`, not its separate `~/.claude.json`.
+
+| Scope | Location inside the container |
+| --- | --- |
+| Project | `<workspace>/.mcp.json` |
+| User | `$CLAUDE_CONFIG_DIR/.claude.json`, under `mcpServers` |
+| Local | Per-project entries in the same configuration file |
+
+A project example using a remote server:
 
 ```json
 {
   "mcpServers": {
     "my-server": {
-      "command": "npx",
-      "args": ["-y", "@some/mcp-server"],
-      "env": { "API_KEY": "..." }
-    },
-    "remote-http": {
       "type": "http",
-      "url": "https://example.com/mcp/"
+      "url": "https://mcp.example.net/mcp/"
     }
   }
 }
 ```
 
-**Add via CLI inside the container:**
+Add it through the installed wrapper:
 
 ```bash
-# project scope — writes to ./.mcp.json in the workspace (commit-friendly)
-claudebox mcp add --scope project my-server -- npx -y @some/mcp-server
-
-# user scope — writes to ~/.claude.json, available in every project
-claudebox mcp add --scope user my-server -- npx -y @some/mcp-server
-
-# local scope (default) — per-project entry inside ~/.claude.json
-claudebox mcp add my-server -- npx -y @some/mcp-server
+claudebox mcp add --transport http --scope project my-server https://mcp.example.net/mcp/
+claudebox mcp list
 ```
 
-**Inspect what's loaded:** run `/mcp` inside an interactive session.
-
-This is how cron and Telegram modes reach external systems — drop your server config in `.mcp.json` (project) or `~/.claude.json` (global) and reference it from the instruction.
+Use `--scope user` for configuration shared across projects, or omit the scope for a local project entry. Run `/mcp` in an interactive Claude session to inspect the loaded servers. Keep credentials out of tracked MCP configuration.

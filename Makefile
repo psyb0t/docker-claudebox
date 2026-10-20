@@ -15,23 +15,24 @@ CLAUDE_VERSION ?= 2.1.296
 
 all: build ## Build the minimal claudebox image on top of the published base
 
-version: ## Print version, or set-everywhere+commit+tag: make version V=X.Y.Z
-ifeq ($(strip $(V)),)
-	@echo $(TAG)
-else
-	@echo "$(V)" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+([-+][0-9A-Za-z.]+)?$$' || { echo "V must be semver (X.Y.Z), got '$(V)'" >&2; exit 1; }
-	@set -e; old="$(VERSION)"; \
-	( cd $(PKG) && uv version "$(V)" >/dev/null ); \
-	tmp=$$(mktemp); jq --arg v "$(V)" '.version=$$v' .agents/.codex-plugin/plugin.json >"$$tmp" && mv "$$tmp" .agents/.codex-plugin/plugin.json; \
-	git add $(PKG)/pyproject.toml $(PKG)/uv.lock .agents/.codex-plugin/plugin.json; \
-	git commit -q -m "v$(V)"; \
-	git tag -a "v$(V)" -m "$(PKG) v$(V)"; \
-	echo "[make version] v$$old -> v$(V): bumped pyproject+uv.lock+codex-manifest, committed, tagged"; \
-	if git --no-pager grep -In -e "$$old" -- ':!CHANGELOG.md' ':!uv.lock' ':!*server.json' ':!*package.json' >/dev/null 2>&1; then \
-		echo "⚠ v$$old still appears in tracked files make version does not manage — check for a missed version location:" >&2; \
-		git --no-pager grep -In -e "$$old" -- ':!CHANGELOG.md' ':!uv.lock' ':!*server.json' ':!*package.json' >&2; \
-	fi
-endif
+V ?=
+export V
+version: ## Print or synchronize version metadata without committing: make version V=X.Y.Z
+	@set -eu; \
+	if [ -z "$$V" ]; then printf '%s\n' "$(TAG)"; exit 0; fi; \
+	printf '%s\n' "$$V" | LC_ALL=C grep -qE '^[0-9]+\.[0-9]+\.[0-9]+([-+][0-9A-Za-z.]+)?$$' || { echo "V must be semver X.Y.Z" >&2; exit 1; }; \
+	(cd $(PKG) && uv version --no-sync "$$V"); \
+	tmp=$$(mktemp); trap 'rm -f "$$tmp"' EXIT; \
+	jq --arg v "$$V" '.version=$$v' .agents/.codex-plugin/plugin.json >"$$tmp"; \
+	mv "$$tmp" .agents/.codex-plugin/plugin.json; \
+	tmp=$$(mktemp); \
+	sed -E "s|^readonly CLAUDEBOX_RELEASE_REF=.*|readonly CLAUDEBOX_RELEASE_REF=\"v$$V\"|" install.sh >"$$tmp"; \
+	chmod 755 "$$tmp"; \
+	mv "$$tmp" install.sh
+
+.PHONY: test-entrypoint-identity
+test-entrypoint-identity: ## Verify Git identity aliases against the shared container entrypoint
+	bash tests/test_entrypoint_identity.sh
 
 pkg-lock: ## Refresh the Python lockfile under the current dependency pins
 	cd claudebox && uv lock

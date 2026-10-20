@@ -28,10 +28,16 @@ CLAUDE_IMAGE="${CLAUDEBOX_IMAGE:-${CLAUDE_IMAGE:-}}"
 # the original re-onboarding bug (config landed in an image without
 # CLAUDE_CONFIG_DIR). tests/test_image_select.sh guards this consistency.
 _full="${CLAUDEBOX_FULL:-${CLAUDE_FULL:-}}"
-# No runtime env override → fall back to the variant baked in at install time.
-[ -z "$_full" ] && [ "$CLAUDEBOX_INSTALLED_VARIANT" = "full" ] && _full=1
+case "$_full" in
+    "") [ "$CLAUDEBOX_INSTALLED_VARIANT" = full ] && _full=1 || _full=0 ;;
+    0 | 1) ;;
+    *)
+        echo "CLAUDEBOX_FULL must be 0 or 1" >&2
+        exit 1
+        ;;
+esac
 if [ -z "$CLAUDE_IMAGE" ]; then
-    if [ -n "$_full" ]; then
+    if [ "$_full" = 1 ]; then
         CLAUDE_IMAGE="psyb0t/claudebox:latest-full"
     else
         CLAUDE_IMAGE="psyb0t/claudebox:latest"

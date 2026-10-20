@@ -13,7 +13,7 @@ exclude-newer = "2026-10-12T00:00:00Z"
 
 [[package]]
 name = "aicodebox"
-version = "0.18.0"
+version = "0.18.1"
 source = { editable = "../../docker-aicodebox" }
 dependencies = [
     { name = "croniter" },
@@ -178,7 +178,7 @@ wheels = [
 
 [[package]]
 name = "claudebox"
-version = "2.8.3"
+version = "2.8.4"
 source = { editable = "." }
 
 [package.dev-dependencies]

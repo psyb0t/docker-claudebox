@@ -88,6 +88,14 @@ wrapper_image() {
     image_token "$(grep -m1 'run --name' "$TMPROOT/docker.log" || true)"
 }
 
+if [[ "$(wrapper_image "CLAUDEBOX_FULL=0")" != "psyb0t/claudebox:latest" ]]; then
+    fail "CLAUDEBOX_FULL=0 must select minimal"
+fi
+
+if CLAUDEBOX_FULL=2 bash "$WRAPPER" -p test >/dev/null 2>&1; then
+    fail "wrapper accepted invalid CLAUDEBOX_FULL"
+fi
+
 wrapper_programmatic_args() {
     : >"$TMPROOT/docker.log"
     (
@@ -120,8 +128,8 @@ assert_native_event_flags_require_stream_json() {
     [ "$status" -eq 1 ] ||
         fail "native event flags with json exited $status, expected 1"
     case "$output" in
-    *"require --output-format stream-json"*) ;;
-    *) fail "native event flag error did not explain the required stream format" ;;
+        *"require --output-format stream-json"*) ;;
+        *) fail "native event flag error did not explain the required stream format" ;;
     esac
 }
 
@@ -173,8 +181,8 @@ for required_flag in \
     --forward-subagent-text \
     --include-hook-events; do
     case "$stream_args" in
-    *"$required_flag"*) ;;
-    *) fail "stream-json missing native event flag: $required_flag" ;;
+        *"$required_flag"*) ;;
+        *) fail "stream-json missing native event flag: $required_flag" ;;
     esac
 done
 log INFO "A/stream-json-native-events PASS"

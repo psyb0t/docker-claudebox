@@ -1,6 +1,6 @@
-# API Mode
+# API mode
 
-Run the container as an HTTP API server with workspace management, file operations, and optional authentication. This is the mode that powers the OpenAI-compatible adapter and MCP server as well.
+Run the container as an HTTP API server with workspace management, file operations, and optional authentication. It includes the OpenAI-compatible adapter and can mount an optional MCP server.
 
 ```yaml
 # docker-compose.yml
@@ -36,16 +36,16 @@ The example publishes only to loopback and intentionally omits `/var/run/docker.
 | `CLAUDEBOX_API_MODE`       | Set to `1` to start in API server mode                              | _(none)_ |
 | `CLAUDEBOX_API_MODE_PORT`  | Port the API server listens on                                      | `8080`   |
 | `CLAUDEBOX_API_MODE_TOKEN` | Bearer token for API authentication (if unset, no auth is required) | _(none)_ |
-| `CLAUDEBOX_AVAILABLE_MODELS` | Comma separated model IDs returned by `/openai/v1/models`. Claudebox has a built-in list, but set it explicitly when you need to constrain or extend the advertised models. | `haiku,sonnet,opus,opusplan` |
+| `CLAUDEBOX_AVAILABLE_MODELS` | Comma separated model IDs returned by `/openai/v1/models`. Claudebox has a built-in list, but set it explicitly to change the advertised models. This is not a model-access restriction. | `haiku,sonnet,opus,opusplan` |
 | `DEBUG`                    | Set to `1` or `true` for structured JSON debug logging              | _(none)_ |
 
 > Legacy `CLAUDE_MODE_API`, `CLAUDE_MODE_API_PORT`, `CLAUDE_MODE_API_TOKEN` are still accepted as fallbacks.
 
 The API server outputs structured JSON logs (timestamp, level, logger, function name, line number, and file) for every request, error, and lifecycle event.
 
-## API Endpoints
+## API endpoints
 
-**`POST /run`** — send a prompt to Claude Code and get a JSON response:
+**`POST /run`**: send a prompt to Claude Code and get a JSON response:
 
 ```bash
 curl -X POST http://localhost:8080/run \
@@ -61,33 +61,29 @@ curl -X POST http://localhost:8080/run \
 | `model`              | string | Model alias or full model name (see [Model Selection](programmatic.md#model-selection))                  | account default |
 | `systemPrompt`       | string | Replace the default system prompt entirely                                                | _(none)_        |
 | `appendSystemPrompt` | string | Append text to the default system prompt without replacing it                             | _(none)_        |
-| `jsonSchema`         | object | A JSON Schema object for structured output. Claude will return JSON matching this schema | _(none)_        |
+| `jsonSchema`         | object | A JSON Schema for the final output. The server validates it and retries invalid output; persistent validation failure returns an error | _(none)_        |
 | `thinking`           | string | Claude reasoning level. `low`, `medium`, `high`, `xhigh`, and `max` map to Claude Code's `--effort` flag. `off` or `none` keep Claude Code's default. | _(none)_        |
 | `eventMode`          | string | `auto`, `none`, or `full`. `full` returns complete native Claude stream records           | `auto`          |
 | `outputFormat`       | string | Legacy compatibility: `json-verbose` selects full events while `eventMode` is `auto`; `text` and `json` do not change the response shape | _(none)_        |
 | `noContinue`         | bool   | If true, start a fresh session instead of continuing the previous one                     | `false`         |
 | `resume`             | string | Resume a specific session by its session ID                                               | _(none)_        |
 | `fireAndForget`      | bool   | Submit in the background and mark the immediate acknowledgement with `fireAndForget: true` | `false`         |
+| `extraArgs` | string[] | Additional Claude CLI arguments. Only allow trusted callers to set these | _(none)_ |
+| `toolsAllowlist` | string[] | Passed as Claude Code's `--allowedTools`; not a sandbox or an enforced tool restriction with permission bypass | _(none)_ |
+| `noTools` | bool | Disable the agent's internal tools | `false` |
+| `timeoutSeconds` | integer | Run timeout in seconds | _(none)_ |
+| `includeRaw` | bool | Include raw stdout and stderr. Failure diagnostics can include stderr regardless | `false` |
 | `async`              | bool   | If true, return immediately with a `runId` and run in the background                      | `false`         |
 
-Every response includes a `runId` field that uniquely identifies the run.
+Accepted runs receive a `runId` that identifies the run. Authentication and request-validation errors are not run results.
 
-The Claude adapter always requests its complete native stream, including partial
-assistant messages, tool use, tool results, hook events, subagent text, and
-final usage. Set `"eventMode": "full"` to return those records. Each response
-record has the stable envelope `{sequence, attempt, backend, eventType, event}`.
-The nested `event` is the original Claude record with no field removal or
-tool-result truncation. `"eventMode": "none"` returns only the final result.
-The default `"auto"` keeps the historical behavior of including events for a
-`jsonSchema` request or `"outputFormat": "json-verbose"`. `"outputFormat":
-"text"` and `"outputFormat": "json"` remain accepted legacy inputs but do not
-change the response serialization.
+The Claude adapter always requests its complete native stream, including partial assistant messages, tool use, tool results, hook events, subagent text, and final usage. Set `"eventMode": "full"` to return those records. Each response record has the stable envelope `{sequence, attempt, backend, eventType, event}`. The nested `event` is the original Claude record with no field removal or tool-result truncation. `"eventMode": "none"` returns only the final result. The default `"auto"` keeps the historical behavior of including events for a `jsonSchema` request or `"outputFormat": "json-verbose"`. `"outputFormat": "text"` and `"outputFormat": "json"` remain accepted legacy inputs but do not change the response serialization.
 
 `jsonSchema` validates only the final JSON output and can be combined with either event mode.
 
-Returns `application/json`. Returns **409** if the workspace is already busy with another request.
+`/run` returns completed `application/json`, not a live event stream. It returns **409** if that workspace path is already busy. Workspace path checks confine the file API, not the Claude subprocess. The agent can access other files and processes permitted by the container; workspace subpaths do not isolate untrusted tenants.
 
-**Async runs** — when `"async": true` is set, the request returns immediately with a run ID:
+**Async runs**: when `"async": true` is set, the request returns immediately with a run ID:
 
 ```bash
 # fire off an async run
@@ -103,9 +99,9 @@ curl "http://localhost:8080/run/result?runId=abc123" -H "Authorization: Bearer t
 # when done    → full result JSON with runId + workspace injected (see below)
 ```
 
-Completed results are cached until first read — once you fetch a completed result, it is purged from the cache. Results that are never read are automatically purged after 6 hours. Failed and cancelled results are also returned once and purged.
+Completed results are cached until first read: once you fetch a completed result, it is purged from the cache. Results that are never read are automatically purged after 6 hours. Failed and cancelled results are also returned once and purged.
 
-**`GET /run/result?runId=X`** — poll for the result of an async (or any) run:
+**`GET /run/result?runId=X`**: poll for the result of an async (or any) run:
 
 | Status      | Response                                                                                 |
 | ----------- | ---------------------------------------------------------------------------------------- |
@@ -130,7 +126,7 @@ Completed result example:
 }
 ```
 
-**`GET /files/{path}`** — list a directory or download a file:
+**`GET /files/{path}`**: list a directory or download a file:
 
 ```bash
 curl "http://localhost:8080/files" -H "Authorization: Bearer token"                         # list workspace root
@@ -152,7 +148,7 @@ Directory listing response:
 
 File download returns raw file content with appropriate content type.
 
-**`PUT /files/{path}`** — upload a file (parent directories are created automatically):
+**`PUT /files/{path}`**: upload a file (parent directories are created automatically):
 
 ```bash
 curl -X PUT "http://localhost:8080/files/myproject/src/main.py" \
@@ -160,7 +156,7 @@ curl -X PUT "http://localhost:8080/files/myproject/src/main.py" \
 # → {"status": "ok", "path": "/workspace/myproject/src/main.py", "size": 1234}
 ```
 
-**`DELETE /files/{path}`** — delete a file:
+**`DELETE /files/{path}`**: delete a file:
 
 ```bash
 curl -X DELETE "http://localhost:8080/files/myproject/src/old.py" -H "Authorization: Bearer token"
@@ -173,7 +169,7 @@ curl -X DELETE "http://localhost:8080/files/myproject/src/old.py" -H "Authorizat
 { "ok": true, "adapter": "claude" }
 ```
 
-**`GET /status`** — returns busy workspaces and all tracked runs (running, completed, failed, cancelled):
+**`GET /status`**: returns busy workspaces and all tracked runs (running, completed, failed, cancelled):
 
 ```json
 {
@@ -197,22 +193,23 @@ curl -X DELETE "http://localhost:8080/run/abc123" -H "Authorization: Bearer toke
 
 All file paths are relative to `/workspace`. Path traversal attempts outside the workspace root are blocked and return a 400 error.
 
-## OpenAI-Compatible Endpoints
+## OpenAI-compatible endpoints
 
-claudebox exposes an OpenAI-compatible adapter so tools like [LiteLLM](https://github.com/BerriAI/litellm), OpenAI SDKs, and anything that speaks the `chat/completions` protocol can connect directly. This is not a simple model proxy — every request runs the full Claude Code agentic CLI behind the scenes, meaning Claude can read and write files, run shell commands, and use all of its tools.
+Claudebox adapts the `chat/completions` protocol to Claude Code. Requests can run the agent's file and shell tools, subject to the request's tool settings and the container's permissions.
 
-**`GET /openai/v1/models`** — list available models:
+**`GET /openai/v1/models`**: list available models:
 
 ```bash
-curl http://localhost:8080/openai/v1/models
+curl http://localhost:8080/openai/v1/models -H "Authorization: Bearer your-secret-token"
 # {"object":"list","data":[{"id":"haiku",...},{"id":"sonnet",...},{"id":"opus",...},{"id":"opusplan",...}]}
 ```
 
-**`POST /openai/v1/chat/completions`** — chat completions (streaming and non-streaming):
+**`POST /openai/v1/chat/completions`**: chat completions (streaming and non-streaming):
 
 ```bash
 # non-streaming
 curl -X POST http://localhost:8080/openai/v1/chat/completions \
+  -H "Authorization: Bearer your-secret-token" \
   -H "Content-Type: application/json" \
   -d '{"model":"haiku","messages":[{"role":"user","content":"hello"}]}'
 
@@ -222,7 +219,7 @@ curl -X POST http://localhost:8080/openai/v1/chat/completions \
   -d '{"model":"haiku","messages":[{"role":"user","content":"hello"}],"stream":true}'
 ```
 
-**Model names:** use the same aliases as the CLI (`haiku`, `sonnet`, `opus`, `opusplan`). Provider prefixes are stripped automatically — `claudebox/haiku` becomes `haiku`, `openai/sonnet` becomes `sonnet`.
+**Model names:** use the same aliases as the CLI (`haiku`, `sonnet`, `opus`, `opusplan`). Provider prefixes are stripped automatically: `claudebox/haiku` becomes `haiku`, `openai/sonnet` becomes `sonnet`.
 
 **System messages:** messages with `role: "system"` are extracted and passed to Claude Code as `--system-prompt`.
 
@@ -236,20 +233,15 @@ curl -X POST http://localhost:8080/openai/v1/chat/completions \
 
 **Message handling:**
 
-- **Single user message** — sent directly as the prompt to Claude Code. This is the fast path with no overhead.
-- **Multi-turn conversations** — the full messages array is serialized to a JSON file in the workspace (`_oai_uploads/conv_<id>.json`). Claude Code reads the file and responds to the last user message, preserving the full conversation context.
-- **Multimodal content** — base64-encoded images and image URLs in message content are automatically downloaded or decoded and saved to the workspace. The content blocks are replaced with local file paths so Claude Code can access the images directly.
+- **Single user message**: sent directly as the prompt to Claude Code. This is the fast path with no overhead.
+- **Multi-turn conversations**: the full messages array is serialized to a JSON file in the workspace (`_oai_uploads/conv_<id>.json`). Claude Code reads the file and responds to the last user message, preserving the full conversation context.
+- **Multimodal content**: base64-encoded images and image URLs in message content are automatically downloaded or decoded and saved to the workspace. The content blocks are replaced with local file paths so Claude Code can access the images directly.
 
-**Streaming:** when `"stream": true` is set, the response is returned as standard SSE (Server-Sent Events). Content arrives in message-level chunks rather than character-by-character deltas, since Claude Code assembles complete messages internally.
+**Streaming:** with `"stream": true`, plain chat returns standard SSE in message-level chunks. This adapter extracts completed assistant messages for standard OpenAI text chunks. Requests using client-executed tools or schema-constrained output buffer the result before sending the SSE response. Native partial records remain available through the opt-in extension below.
 
-To receive every Claude native stream record too, add
-`"stream_options": {"include_aicodebox_events": true}`. The response emits a
-named `aicodebox.native` SSE event before normal OpenAI chunks. Its JSON payload
-is `{sequence, attempt, backend, eventType, event}` and does not alter the
-standard OpenAI chunk data. This remains opt-in so strict OpenAI SSE parsers can
-continue consuming only standard chunks.
+To receive every Claude native stream record too, add `"stream_options": {"include_aicodebox_events": true}`. The response emits a named `aicodebox.native` SSE event before normal OpenAI chunks. Its JSON payload is `{sequence, attempt, backend, eventType, event}` and does not alter the standard OpenAI chunk data. This remains opt-in so strict OpenAI SSE parsers can continue consuming only standard chunks.
 
-**File workflow tip:** for best performance with large inputs or outputs, upload files via `PUT /files/...`, reference them by path in your prompt, and then download output files via `GET /files/...`. This is significantly faster than embedding large content directly in message bodies.
+For large inputs or outputs, upload files with `PUT /files/...`, reference their paths in the prompt, and download the resulting files with `GET /files/...`.
 
 **Custom headers** for claudebox-specific behavior:
 
@@ -262,7 +254,7 @@ continue consuming only standard chunks.
 | `X-Aicodebox-Resume` | Specific session ID to resume. |
 | `X-Aicodebox-Extra-Args` | JSON array or comma-separated CLI arguments. |
 | `X-Aicodebox-Timeout-Seconds` | Positive timeout in seconds. |
-| `X-Aicodebox-Tools-Allowlist` | JSON array or comma-separated internal tool allowlist. |
+| `X-Aicodebox-Tools-Allowlist` | JSON array or comma-separated names passed as `--allowedTools`. Not a security boundary with permission bypass. |
 | `X-Aicodebox-No-Tools` | Boolean that disables internal agent tools. |
 
 **LiteLLM integration example:**
@@ -279,31 +271,6 @@ response = litellm.completion(
 print(response.choices[0].message.content)
 ```
 
-## MCP Server
+## MCP server
 
-claudebox exposes an [MCP (Model Context Protocol)](https://modelcontextprotocol.io/) server at `/mcp/` using streamable HTTP transport. Any MCP-compatible client — Claude Desktop, other Claude Code instances, AI agent frameworks — can connect to it and use Claude Code as a tool. The `claude_run` tool executes the full agentic CLI, meaning it can read/write files, run commands, and use tools in the workspace, not just generate text.
-
-**Configuration for MCP clients:**
-
-```json
-{
-  "mcpServers": {
-    "claudebox": {
-      "url": "http://localhost:8080/mcp/",
-      "headers": { "Authorization": "Bearer your-secret-token" }
-    }
-  }
-}
-```
-
-If your MCP client does not support custom headers, you can pass the API token as a query parameter instead: `http://localhost:8080/mcp/?apiToken=your-secret-token`
-
-**Available tools:**
-
-| Tool          | Description                                                                                                                                                             |
-| ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `claude_run`  | Run a prompt through Claude Code. Parameters: `prompt`, `model`, `system_prompt`, `append_system_prompt`, `json_schema`, `workspace`, `no_continue`, `resume`, `thinking` |
-| `list_files`  | List files and directories in the workspace                                                                                                                             |
-| `read_file`   | Read the contents of a file from the workspace                                                                                                                          |
-| `write_file`  | Write content to a file in the workspace (creates parent directories automatically)                                                                                     |
-| `delete_file` | Delete a file from the workspace                                                                                                                                        |
+Set `CLAUDEBOX_MCP_MODE=1` to mount MCP at `/mcp/` on the API port. Set `CLAUDEBOX_MCP_MODE_TOKEN` separately; the API token does not protect MCP. The prompt tool is `run_prompt`, not the old `claude_run` name. See [MCP mode](mcp.md) for tools, client configuration, standalone placement, and reverse-proxy allowlists.

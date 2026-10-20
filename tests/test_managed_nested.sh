@@ -1,6 +1,13 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+for launch_var in "${!AICODEBOX_HOST_@}"; do
+    unset "$launch_var"
+done
+unset AICODEBOX_LAUNCH_CONTEXT_VERSION
+
+unset AICODEBOX_HOST_HOME CLAUDEBOX_INSTALL_REF CLAUDEBOX_FULL CLAUDEBOX_IMAGE
+
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 readonly REPO
 TMP_ROOT="$(mktemp -d)"
@@ -21,6 +28,7 @@ exec "$@"
 EOF
 cat >"$FAKE_BIN/curl" <<EOF
 #!/usr/bin/env bash
+[[ "\${TEST_CURL_FAIL:-0}" == 1 ]] && exit 7
 printf '%s\n' "\$*" >>"$TMP_ROOT/curl.log"
 while [[ "\$#" -gt 0 ]]; do
     if [[ "\$1" == -o ]]; then
@@ -57,6 +65,8 @@ done
         AICODEBOX_HOST_CLAUDE_HOME="$TMP_ROOT/home/.claude" \
         AICODEBOX_HOST_PI_HOME="$TMP_ROOT/home/.pi" \
         AICODEBOX_HOST_WRAPPER_DIR="$TMP_ROOT/wrappers" \
+        CLAUDEBOX_GIT_NAME="Example User" \
+        CLAUDEBOX_GIT_EMAIL="example@example.invalid" \
         AICODEBOX_ENV_SHARED_VALUE=visible \
         AICODEBOX_MOUNT_SHARED="$TMP_ROOT/shared:/shared" \
         bash "$REPO/wrapper.sh" -p test --no-continue >/dev/null
@@ -68,6 +78,8 @@ for name in codexbox claudebox pibox; do
 done
 [[ "$launch" == *"AICODEBOX_HOST_HOME=$TMP_ROOT/home"* ]] || fail "missing host-home context"
 [[ "$launch" == *"SHARED_VALUE=visible"* ]] || fail "missing common environment"
+[[ "$launch" == *"CLAUDEBOX_GIT_NAME=Example User"* ]] || fail "missing Git name"
+[[ "$launch" == *"CLAUDEBOX_GIT_EMAIL=example@example.invalid"* ]] || fail "missing Git email"
 [[ "$launch" == *"$TMP_ROOT/shared:/shared"* ]] || fail "missing common mount"
 
 cp "$REPO/install.sh" "$TMP_ROOT/remote/install.sh"
@@ -77,7 +89,18 @@ HOME="$TMP_ROOT/home" PATH="$FAKE_BIN:$PATH" \
     bash "$TMP_ROOT/remote/install.sh" </dev/null >/dev/null
 [[ -x "$TMP_ROOT/wrappers/claudebox" ]] || fail "managed installer target"
 curl_call="$(cat "$TMP_ROOT/curl.log")"
-[[ "$curl_call" == *"/v2.5.0/wrapper.sh"* ]] || fail "wrapper download is not release-pinned"
+expected_ref="$(make --no-print-directory -s -C "${REPO}" version)"
+[[ "$curl_call" == *"/$expected_ref/wrapper.sh"* ]] || fail "wrapper download is not release-pinned"
+
+CLAUDEBOX_INSTALL_REF=reviewed-ref HOME="$TMP_ROOT/home" PATH="$FAKE_BIN:$PATH" \
+    CLAUDEBOX_INSTALL_DIR="$TMP_ROOT/wrappers" \
+    AICODEBOX_MANAGED_INSTALL=1 bash "$TMP_ROOT/remote/install.sh" </dev/null >/dev/null
+[[ "$(tail -n 1 "$TMP_ROOT/curl.log")" == *"/reviewed-ref/wrapper.sh"* ]] || fail "custom wrapper ref ignored"
+if TEST_CURL_FAIL=1 HOME="$TMP_ROOT/home" PATH="$FAKE_BIN:$PATH" \
+    CLAUDEBOX_INSTALL_DIR="$TMP_ROOT/wrappers" AICODEBOX_MANAGED_INSTALL=1 \
+    bash "$TMP_ROOT/remote/install.sh" </dev/null >/dev/null 2>&1; then
+    fail "installer accepted failed wrapper download"
+fi
 
 if AICODEBOX_LAUNCH_CONTEXT_VERSION=2 bash "$REPO/wrapper.sh" --version >/dev/null 2>&1; then
     fail "unsupported nested-launch context was accepted"

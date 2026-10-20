@@ -2,410 +2,106 @@
 
 [![CI](https://github.com/psyb0t/docker-claudebox/actions/workflows/pipeline.yml/badge.svg?branch=master)](https://github.com/psyb0t/docker-claudebox/actions/workflows/pipeline.yml)
 [![version](https://raw.githubusercontent.com/psyb0t/docker-claudebox/badges/version.svg)](https://github.com/psyb0t/docker-claudebox/releases)
-[![license](https://raw.githubusercontent.com/psyb0t/docker-claudebox/badges/license.svg)](LICENSE)
+[![license](https://raw.githubusercontent.com/psyb0t/docker-claudebox/badges/license.svg)](https://github.com/psyb0t/docker-claudebox/blob/master/LICENSE)
 [![Docker Pulls](https://img.shields.io/docker/pulls/psyb0t/claudebox?style=flat-square)](https://hub.docker.com/r/psyb0t/claudebox)
 
-A runtime harness for [Claude Code](https://claude.com/product/claude-code), the agentic coding CLI from Anthropic. The standard wrapper runs Claude in Docker with a mounted workspace, persistent Claude and SSH state, passwordless sudo, the host Docker socket, and `--permission-mode bypassPermissions` enabled by default.
+Run [Claude Code](https://claude.com/product/claude-code) in Docker, from an interactive terminal, a script, an HTTP client, MCP, Telegram, or a cron schedule. Claudebox adds Claude-specific setup to the shared [aicodebox](https://github.com/psyb0t/docker-aicodebox) runtime.
 
-> **v2.0.0 — rebased on `psyb0t/aicodebox`.** claudebox is now a thin child image of the shared aicodebox base (same pattern as `psyb0t/pibox`). Every mode surface (API / Telegram / Cron / MCP) is inherited from the base and stays in lockstep with future base fixes. See [`CHANGELOG.md`](CHANGELOG.md) for the full migration guide (endpoint shape changes, env-var namespace, path renames — all mitigated by aliases + symlinks so existing configs keep working).
+The wrapper mounts your current directory, persists Claude state and SSH keys, and resumes the workspace's last session by default.
 
-**Host boundary:** this is not a sandbox for untrusted prompts. The standard wrapper mounts `/var/run/docker.sock`, so Claude can control the host Docker daemon. The server Compose examples omit it. Keep the socket out of server deployments unless the workload needs that authority. Use memory, CPU, PID, and log limits for long running containers. The current image installs Claude Code on first start and changes its runtime identity during boot, so do not add `read_only: true` or drop all capabilities unless you have tested that exact image and launch path.
+**Not a security sandbox:** the standard wrapper uses host networking, mounts the host Docker socket, gives Claude passwordless sudo, and bypasses Claude's permission prompts. Use it only with trusted workloads. Separate workspace directories do not isolate untrusted tenants. Server examples omit the Docker socket.
 
-claudebox wraps Claude Code with several distinct interfaces:
+## Install
 
-- **Interactive CLI** — a drop-in replacement for the native `claude` command, with persistent containers and automatic session resumption across runs
-- **Programmatic CLI** — non-interactive mode for scripts, CI/CD pipelines, and automation; pass a prompt, get structured output, pipe it wherever you need
-- **HTTP API server** — a full REST API with workspace management, file operations, structured output formats, and workspace isolation for multi-tenant deployments
-- **OpenAI-compatible endpoint** — a `chat/completions` adapter that lets LiteLLM, OpenAI SDKs, and any OpenAI-compatible client talk to Claude Code, complete with streaming SSE, multi-turn conversations, and multimodal image handling
-- **MCP server** — a [Model Context Protocol](https://modelcontextprotocol.io/) endpoint over streamable HTTP so other AI agents and tools (Claude Desktop, other Claude Code instances, etc.) can use Claude Code as a tool
-- **Telegram bot** — a conversational interface with per-chat workspaces, configurable models and effort levels, file sharing, and group chat access control
-- **Cron scheduler** — YAML defined Claude jobs running on cron schedules with durable per-job artifacts, second resolution, and overlap protection
+You need Bash, Docker running and accessible to your user, curl, SSH key-generation tools, and sudo permission to install the wrapper. The installer pulls the image, creates Claude state and an SSH key, and installs the `claudebox` command.
 
-Beyond just running Claude Code in Docker, claudebox adds skill injection (auto-load `SKILL.md` files into every session), init hooks, custom script directories, structured JSON logging, and a workspace management layer that handles multi-tenant isolation with automatic busy/idle tracking.
-
-> **Renamed from `docker-claude-code`:** This project was previously called `docker-claude-code` with the Docker image at `psyb0t/claude-code`. Starting with v1.0.0, it is `claudebox` — the Docker image is now `psyb0t/claudebox`, the default binary name is `claudebox`, the GitHub repository is `psyb0t/docker-claudebox`, and the SSH key directory defaults to `~/.ssh/claudebox`. If you were using the old names, update your image references, wrapper scripts, and SSH paths accordingly.
-
-## Table of Contents
-
-- [Requirements](#requirements)
-- [Quick Start](#quick-start)
-- [Using the `claudebox` wrapper](#using-the-claudebox-wrapper)
-- [Image Variants](#image-variants)
-- [What's Inside (Full Image)](#whats-inside-full-image)
-- [Authentication](#authentication)
-- [Modes](#modes)
-  - [Interactive mode](docs/modes/interactive.md)
-  - [Programmatic mode](docs/modes/programmatic.md)
-  - [API mode](docs/modes/api.md)
-  - [Telegram mode](docs/modes/telegram.md)
-  - [Cron mode](docs/modes/cron.md)
-  - [MCP mode](docs/modes/mcp.md)
-- [Configuration](#configuration)
-- [GitHub Action](#github-action)
-- [Agent integrations](#agent-integrations)
-- [Gotchas](#gotchas)
-- [License](#license)
-
-## Requirements
-
-Docker installed and running. That's it.
-
-## Quick Start
-
-### One-liner install
-
-The install script pulls the Docker image, generates SSH keys for git operations inside the container, downloads the wrapper script, and installs it as a command on your system.
-
-```bash
-# minimal image — default; Claude installs what it needs on the fly
-curl -fsSL https://raw.githubusercontent.com/psyb0t/docker-claudebox/master/install.sh | bash
-
-# full image — every dev tool pre-installed (Go, Python, kubectl, terraform, ...)
-export CLAUDEBOX_FULL=1 && curl -fsSL https://raw.githubusercontent.com/psyb0t/docker-claudebox/master/install.sh | bash
-
-# custom binary name (e.g. if you want to call it 'claude' instead of 'claudebox')
-curl -fsSL https://raw.githubusercontent.com/psyb0t/docker-claudebox/master/install.sh | bash -s -- claude
-# or: export CLAUDEBOX_BIN_NAME=claude && curl -fsSL .../install.sh | bash
-```
-
-> **v2 note:** the variant naming flipped in v2. `latest` is now the minimal image (was the full image pre-v2); `latest-full` is the toolchain-loaded variant (was `latest` pre-v2). The `CLAUDEBOX_MINIMAL=1` opt-in from v1 is now a no-op — you already get minimal by default. Set `CLAUDEBOX_FULL=1` to opt into the toolchain image. Installing with `CLAUDEBOX_FULL=1` (as above) bakes the choice into the installed wrapper, so the full variant sticks for every run — you don't need to keep the env var set afterward.
-
-The remote installer downloads `wrapper.sh` from its matching release tag.
-Automation can set `CLAUDEBOX_INSTALL_DIR`, `CLAUDEBOX_BIN_NAME`, and
-`AICODEBOX_MANAGED_INSTALL=1` when it installs into a different command
-directory without prompting to replace an existing SSH key.
-
-> **Heads up on env vars:** `VAR=x curl … | bash` does **not** set `VAR` for the install script — bash semantics attach the var to `curl` only. Always `export` the var first (or put it on the `bash` side of the pipe).
-
-### Manual setup
-
-If you prefer not to pipe scripts to bash:
-
-```bash
-# 1. create the data directory
-mkdir -p ~/.claude
-
-# 2. create SSH keys for git operations inside the container
-mkdir -p "$HOME/.ssh/claudebox"
-ssh-keygen -t ed25519 -C "claude@claude.ai" -f "$HOME/.ssh/claudebox/id_ed25519" -N ""
-# then add the public key to GitHub/GitLab/wherever you push code
-
-# 3. pull the image
-docker pull psyb0t/claudebox:latest        # minimal (default)
-# or: docker pull psyb0t/claudebox:latest-full   # toolchain-loaded variant
-
-# 4. grab the wrapper script and install it
-# see install.sh for exactly how the wrapper is set up
-```
-
-## Using the `claudebox` wrapper
-
-Run `claudebox` from the directory you want Claude to work in. The wrapper
-mounts that directory at the same absolute path inside the container, persists
-`~/.claude` and `~/.ssh/claudebox`, and resumes the directory's interactive
-session by default.
-
-```bash
-claudebox                                  # interactive Claude in this directory
-claudebox --no-continue                    # interactive session without resuming
-claudebox -p "explain this codebase"        # one prompt, then exit
-claudebox setup-token                      # save OAuth credentials in ~/.claude
-claudebox doctor                           # passthrough to Claude Code diagnostics
-claudebox --version                        # passthrough to Claude Code
-claudebox stop                             # stop this directory's running container
-claudebox clear-session                    # remove saved sessions, keep auth/config
-```
-
-Set `ANTHROPIC_API_KEY` or `CLAUDE_CODE_OAUTH_TOKEN` on the host for a run, or
-use `claudebox setup-token` once. Use `claudebox -p "prompt"` for a direct
-programmatic run. See [Configuration](#configuration) for `CLAUDEBOX_ENV_*`,
-`CLAUDEBOX_MOUNT_*`, image selection, and mode settings.
-
-### Agent use and nested launches
-
-The installed wrapper is the normal interface for people and agents. An agent
-should run `claudebox` from the requested workspace instead of constructing a
-new `docker run` command. The wrapper preserves the workspace path, Claude
-state, SSH state, image choice, and container lifecycle.
-
-```bash
-claudebox -p "inspect this workspace and report the failing tests"
-CLAUDEBOX_FULL=1 claudebox -p "run the full test suite"
-claudebox -p "emit machine-readable events" --output-format stream-json
-```
-
-When one box needs another, install `claudebox`, `codexbox`, and `pibox` in
-the same command directory. A running box can call the sibling command
-directly. The parent wrapper passes the host launch context and mounts only
-the sibling wrapper file. Do not set `AICODEBOX_HOST_*`, copy a wrapper, or
-manually mount another box's state directory.
-
-The wrapper does not forward an SSH agent on its own. To give the box your agent, mount its socket and point `SSH_AUTH_SOCK` at it:
-
-```bash
-CLAUDEBOX_MOUNT_SSH="$SSH_AUTH_SOCK:/ssh-agent:ro" CLAUDEBOX_ENV_SSH_AUTH_SOCK=/ssh-agent claudebox
-```
-
-Every key loaded in that agent becomes usable inside the box.
-
-## Image Variants
-
-### `psyb0t/claudebox:latest` (minimal, default)
-
-The default v2 image. Just enough to run Claude Code on top of the aicodebox base: Ubuntu 24.04, git/curl/wget/jq, Node.js 24 LTS + npm, Python 3.14 + uv, Docker CE. Claude has passwordless sudo, so it will install whatever else it needs on the fly via `apt-get`, `pip`, `npm`, etc. Smaller image, faster pull, first run may take longer while Claude sorts out its own tooling.
-
-> **Claude Code is installed on first run, not baked into the image.** Anthropic's Claude Code CLI is proprietary and can't be redistributed, so the image ships only the pinned version (`CLAUDEBOX_CLAUDE_VERSION`, default set at build) and the entrypoint runs `npm install -g @anthropic-ai/claude-code@<version>` from npm the first time a fresh container starts. This means the published image redistributes none of Anthropic's software, and each container pulls Claude Code straight from npm. First container start needs network and takes a few extra seconds; warm restarts skip it. To pin a different version, set `CLAUDEBOX_CLAUDE_VERSION` at `docker run`.
+Minimal image, the default:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/psyb0t/docker-claudebox/master/install.sh | bash
 ```
 
-Use `/aicodebox-init.d/*.sh` hooks (see [Init Hooks](docs/customization.md#init-hooks-claudeinitd)) to pre-install your tools on first container create so Claude doesn't burn tokens figuring out package management.
-
-### `psyb0t/claudebox:latest-full` (toolchain-loaded)
-
-Everything pre-installed. This variant starts from the shared `aicodebox:latest-full` base, then adds only Claude-specific code. Aicodebox owns the shared Go, Python, Node, C/C++, DevOps, database, editor, and diagnostic toolchain; claudebox stays ready without rebuilding that stack.
+Full development image:
 
 ```bash
 export CLAUDEBOX_FULL=1 && curl -fsSL https://raw.githubusercontent.com/psyb0t/docker-claudebox/master/install.sh | bash
 ```
 
-### Comparison
+The full-image choice stays in the installed wrapper. Both variants install the pinned Claude Code CLI from npm when a fresh container first starts, so that start needs network access.
 
-|                                       | `latest` (minimal) | `latest-full` |
-| ------------------------------------- | :----------------: | :-----------: |
-| Ubuntu 24.04                          |       yes       |       yes        |
-| git, curl, wget, jq                   |       yes       |       yes        |
-| Node.js LTS + npm                     |       yes       |       yes        |
-| Docker CE + Compose                   |       yes       |       yes        |
-| Claude Code CLI                       |       yes       |       yes        |
-| Go 1.27.2 + tools                     |        -        |       yes       |
-| Python 3.14.8 runtime                 |       yes       |       yes       |
-| Python developer tools               |        -        |       yes       |
-| Node.js dev tools                     |        -        |       yes       |
-| C/C++ tools                           |        -        |       yes       |
-| DevOps (terraform, kubectl, helm, gh) |        -        |       yes       |
-| Database clients                      |        -        |       yes       |
-| Shell utilities (ripgrep, bat, etc.)  |        -        |       yes       |
+For a reviewed local install, a custom command name, image overrides, or wrapper updates, see [Installation and wrapper](https://github.com/psyb0t/docker-claudebox/blob/master/docs/wrapper.md). The remote installer currently fetches the wrapper from its embedded release ref, not necessarily `master`.
 
-## What's Inside (Full Image)
+## First run
 
-The shared toolchain is defined and released by [aicodebox](https://github.com/psyb0t/docker-aicodebox#full-image). Claudebox adds its own adapter, init hooks, configuration, and first-run Claude Code installation on top.
-
-**Languages and runtimes:**
-
-- **Go 1.27.2** with the full toolchain: golangci-lint, gopls, delve, staticcheck, gofumpt, gotests, impl, gomodifytags
-- **Python 3.14.8** with flake8, black, isort, autoflake, pyright, mypy, vulture, pytest, poetry, pipenv, and common libraries (requests, beautifulsoup4, lxml, pyyaml, toml)
-- **Node.js LTS** — eslint, prettier, typescript, ts-node, yarn, pnpm, nodemon, pm2, framework CLIs (React, Vue, Angular), newman, http-server, serve, lighthouse, storybook
-- **C/C++** — gcc, g++, make, cmake, clang-format, valgrind, gdb, strace, ltrace
-
-**DevOps and infrastructure:**
-
-- Docker CE with Docker Compose (docker-in-docker support)
-- Terraform, kubectl, helm, GitHub CLI (`gh`)
-
-**Database clients:**
-
-- sqlite3, postgresql-client (`psql`), mysql-client, redis-tools (`redis-cli`)
-
-**Shell and system utilities:**
-
-- jq, tree, ripgrep, bat, exa, fd-find, ag (silversearcher), htop, tmux, shellcheck, shfmt, httpie, vim, nano
-- Archive tools (zip, unzip, tar), networking (net-tools, iputils-ping, dnsutils)
-
-**Container automation:**
-
-- Auto-generated `CLAUDE.md` in each workspace listing all available tools, so Claude knows what it has access to
-- Git identity auto-configured from environment variables
-- Claude Code CLI with auto-updates disabled by default (opt in with `--update`)
-- Workspace trust dialog pre-accepted — no interactive prompts
-- Custom scripts via `~/.claude/bin` (added to PATH automatically)
-- Init hooks via `~/.claude/init.d/*.sh` (run once on first container create)
-- Always-active skills via `~/.claude/.always-skills/` (injected into every invocation)
-- Session continuity via `--continue` / `--no-continue` / `--resume <session_id>`
-- Structured JSON debug logging with `DEBUG=true`
-
-## Authentication
-
-You need either an Anthropic API key or an OAuth token. Set up once, use everywhere:
+Run from the directory Claude should work in:
 
 ```bash
-# interactive OAuth token setup (one-time)
-claudebox setup-token
-
-# then use the token for programmatic and headless runs
-CLAUDE_CODE_OAUTH_TOKEN=your-oauth-token claudebox -p "do stuff"
-
-# or use an API key directly
-ANTHROPIC_API_KEY=your-api-key claudebox -p "do stuff"
-```
-
-## Modes
-
-claudebox can run in several modes — pick the one that matches how you want to use Claude Code. Each has its own page with full setup, env vars, and examples.
-
-### [Interactive Mode →](docs/modes/interactive.md)
-
-Drop-in replacement for `claude`. Persistent per-workspace container, automatic session resumption, plus utility commands like `claudebox doctor`, `claudebox mcp list`, `claudebox stop`, and `claudebox clear-session`.
-
-```bash
+cd /path/to/project
 claudebox
 ```
 
-### [Programmatic Mode →](docs/modes/programmatic.md)
-
-Non-interactive prompt → response for scripts, pipelines, and automation. Plain text, JSON, and native stream-json output formats. Model selection, system prompt overrides, JSON-schema-constrained output, and session continuation. For a stable full-event response, use API mode with `eventMode: "full"`.
+Authenticate in Claude Code, or supply `ANTHROPIC_API_KEY` or `CLAUDE_CODE_OAUTH_TOKEN` through your environment. `claudebox setup-token` runs Claude Code's OAuth token flow; keep the resulting token in a secret store and export it when needed.
 
 ```bash
-claudebox -p "explain this codebase" --output-format json --model haiku
+claudebox --no-continue
+claudebox -p "explain this codebase"
+claudebox -p "review this codebase" --output-format json
+claudebox -p "inspect the workspace" --output-format stream-json
+claudebox stop
 ```
 
-### [API Mode →](docs/modes/api.md)
+The wrapper supports a defined set of flags, not every native Claude Code argument. See [Programmatic mode](https://github.com/psyb0t/docker-claudebox/blob/master/docs/modes/programmatic.md) for output formats, model selection, and session control.
 
-Run as a long-lived HTTP server. Full REST API for prompts and file ops with workspace isolation, async runs with run-id polling, OpenAI-compatible `chat/completions` endpoint (streaming + multimodal + LiteLLM compatible), and an [MCP](https://modelcontextprotocol.io/) endpoint over streamable HTTP so other agents can use Claude Code as a tool.
+## Image variants
 
-```yaml
-environment:
-  - CLAUDEBOX_API_MODE=1
-  - CLAUDEBOX_API_MODE_TOKEN=your-secret-token
-```
+| Image | Contents |
+| --- | --- |
+| `psyb0t/claudebox:latest` | Minimal aicodebox runtime, Claude adapter, and first-start setup. |
+| `psyb0t/claudebox:latest-full` | The same Claude interfaces plus aicodebox's shared development toolchain. |
 
-### [Telegram Mode →](docs/modes/telegram.md)
+The full variant adds Go and its tools, Python and Node development tools, C/C++ tools, infrastructure tools, database clients, and shell utilities. The shared [Dockerfile.full](https://github.com/psyb0t/docker-aicodebox/blob/main/Dockerfile.full) and lockfiles own the package inventory. Neither Claudebox variant bundles the Claude Code CLI in the published image.
 
-Talk to Claude from Telegram. Per-chat isolated workspaces, configurable models, effort, and system prompts, explicit chat and group user access control, file, photo, video, and voice ingestion, `/fetch`, `/cancel`, `/status`, `/config`, and `/reload` commands, plus `[SEND_FILE: path]` for Claude to send files back.
+Set `CLAUDEBOX_IMAGE` to use an explicit image tag or digest. An existing container keeps its original image and launch configuration until recreated. See [Wrapper lifecycle](https://github.com/psyb0t/docker-claudebox/blob/master/docs/wrapper.md#container-lifecycle).
 
-```yaml
-environment:
-  - CLAUDEBOX_TELEGRAM_MODE=1
-  - CLAUDEBOX_TELEGRAM_MODE_TOKEN=...
-```
+## Modes
 
-### [Cron Mode →](docs/modes/cron.md)
+| Interface | Guide |
+| --- | --- |
+| Interactive terminal with persistent sessions | [Interactive mode](https://github.com/psyb0t/docker-claudebox/blob/master/docs/modes/interactive.md) |
+| One prompt with text, JSON, or native NDJSON output | [Programmatic mode](https://github.com/psyb0t/docker-claudebox/blob/master/docs/modes/programmatic.md) |
+| HTTP `/run`, files, async polling, and OpenAI-compatible chat | [API mode](https://github.com/psyb0t/docker-claudebox/blob/master/docs/modes/api.md) |
+| Streamable HTTP tools for other agents | [MCP mode](https://github.com/psyb0t/docker-claudebox/blob/master/docs/modes/mcp.md) |
+| Chat workspaces, attachments, and access lists | [Telegram mode](https://github.com/psyb0t/docker-claudebox/blob/master/docs/modes/telegram.md) |
+| Scheduled jobs and durable run artifacts | [Cron mode](https://github.com/psyb0t/docker-claudebox/blob/master/docs/modes/cron.md) |
 
-YAML defined scheduled jobs. Use five field cron for minute resolution or six field cron for second resolution. Per-job artifacts live under `$HOME/.aicodebox/cron/history/`, `docker logs` shows each tick, and same-name overlaps are skipped. Set root defaults and override them per job as needed.
+For all native events from HTTP `POST /run`, request `"eventMode": "full"`. This works with or without `jsonSchema`. Events include the records Claude Code emits, such as tool calls, tool results, and available thinking content. It does not expose private reasoning that the CLI does not emit. `/run` returns a completed JSON response; use native `stream-json` for direct CLI streaming or the OpenAI endpoint's opt-in native SSE events.
 
-```yaml
-environment:
-  - CLAUDEBOX_CRON_MODE=1
-  - CLAUDEBOX_CRON_MODE_FILE=/home/aicode/.aicodebox/cron.yaml
-```
+API and MCP authentication are independent. An unset token leaves its endpoint open. Configure explicit Telegram chat access too. Use the loopback-bound deployment examples in each mode guide before exposing a server.
 
-### [MCP Mode →](docs/modes/mcp.md)
+## Configuration and extensions
 
-Expose Claude Code as an [MCP](https://modelcontextprotocol.io/) server over streamable HTTP so other agents can drive it as a tool through `run_prompt` and workspace-confined file tools. MCP is not a foreground mode. With `CLAUDEBOX_MCP_MODE=1`, it mounts at `/mcp/` in API mode or runs as a sidecar on its own port with Telegram, cron, or interactive mode.
+- [Environment variables](https://github.com/psyb0t/docker-claudebox/blob/master/docs/environment-variables.md): wrapper settings, forwarded variables, extra mounts, and sibling boxes.
+- [Customization](https://github.com/psyb0t/docker-claudebox/blob/master/docs/customization.md): user scripts, first-container init hooks, always-active skills, and external MCP servers.
+- [GitHub Action](https://github.com/psyb0t/docker-claudebox/blob/master/docs/github-action.md): one-shot jobs with a read-only context and a writable output directory.
+- [Agent integrations](https://github.com/psyb0t/docker-claudebox/blob/master/docs/agent-integrations.md): local wrapper skills and remote MCP connections for Claude Code, Codex, and OpenClaw.
 
-```yaml
-environment:
-  - CLAUDEBOX_MCP_MODE=1
-  - CLAUDEBOX_MCP_MODE_TOKEN=your-secret-token
-```
+Install sibling `claudebox`, `codexbox`, and `pibox` wrappers in the same command directory for nested launches. Each sibling mounts its own host state. Do not manually set `AICODEBOX_HOST_*`.
 
-## Configuration
-
-- **[Environment variables →](docs/environment-variables.md)** — full table of `CLAUDEBOX_*` settings the wrapper and entrypoint understand, plus `CLAUDEBOX_ENV_*` (forward arbitrary vars into the container) and `CLAUDEBOX_MOUNT_*` (extra volume mounts).
-- **[Customization →](docs/customization.md)** — extend Claude's container with custom scripts (`~/.claude/bin`), one-time init hooks (`~/.claude/init.d`), always-active skills auto-injected into every session (`~/.claude/.always-skills`), and MCP server definitions (project `.mcp.json` or global `~/.claude.json`).
-
-Install `claudebox`, `codexbox`, and `pibox` in the same command directory,
-normally `/usr/local/bin`, when one box needs to launch another. The wrapper
-finds sibling wrapper files there and mounts them read-only into the container.
-A sibling wrapper then runs through the host Docker daemon and mounts its own
-host data directory. Claudebox does not directly mount another agent's home.
-
-`AICODEBOX_HOST_*` is the versioned nested-launch context used by sibling
-wrappers. It records host bind-source paths and is set automatically by a
-wrapper. Do not set it for an ordinary host launch.
-
-## GitHub Action
-
-`action.yml` at the repo root runs claudebox one-shot in a workflow job, through this repo's own `wrapper.sh`. A context directory is mounted read-only at `/context`, and Claude writes into one output directory, which is its workspace.
-
-```yaml
-jobs:
-  summarize:
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    permissions:
-      contents: read
-    steps:
-      - uses: actions/checkout@v6
-        with:
-          persist-credentials: false
-      - id: claude
-        uses: psyb0t/docker-claudebox@master
-        with:
-          prompt: "Summarize /context/CHANGELOG.md into summary.md."
-          context-path: .
-          claude-code-oauth-token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-      - run: cat "${{ steps.claude.outputs.output-path }}/summary.md"
-```
-
-| Input | Default | Description |
-| --- | --- | --- |
-| `prompt` / `prompt-file` | | Prompt text, or a file relative to the workspace. Set exactly one. |
-| `context-path` | `.` | Directory mounted read-only at `/context`. |
-| `output-path` | `$RUNNER_TEMP/claudebox-output` | Writable output directory. Must not overlap `context-path`. |
-| `anthropic-api-key` / `claude-code-oauth-token` | | Set one or both. The action fails without either, masks both and forwards them as `CLAUDEBOX_ENV_*`. |
-| `image` | `psyb0t/claudebox:latest` | Image. The default follows the latest minimal release. Pin a tag or digest to freeze it. |
-| `model`, `effort` | | Passed as `--model` and `--effort`. |
-| `stream` | `true` | With `output-format: json`, print Claude's messages, tool calls and tool results to the job log as they happen. The `result` output is unchanged. |
-| `output-format` | `json` | `json`, `text` or `stream-json`. |
-
-Outputs are `result` (Claude's final text) and `output-path`. Set `timeout-minutes` on the job, because a composite action cannot. The action fails when claudebox exits non-zero or the JSON result has `is_error` set.
-
-A fixed preamble tells Claude that everything under `/context` is untrusted data. It may install the tools it needs, but uses the network only for package and image downloads, never sends `/context` or credentials anywhere and never pushes. `~/.claude` and the SSH directory are empty job-local directories, and `SSH_AUTH_SOCK` is unset.
-
-**Use it only on ephemeral runners.** The wrapper always mounts `/var/run/docker.sock` and uses host networking, so Claude can drive the runner's Docker daemon, which is root on the runner. On a GitHub-hosted runner that VM holds only the job's context and the Claude credential. Give the job `contents: read`, pass no other secret, and treat everything in the output directory as untrusted.
-
-## Agent integrations
-
-The [skill](.agents/skills/claudebox) works in any agent that reads `.agents/skills/` (such as [peen](https://github.com/psyb0t/peen)). It tells agents to use the installed wrapper for local work and to use MCP only for an already-running remote server. It installs natively in the clients below.
-
-### Claude Code
+## Development
 
 ```bash
-claude plugin marketplace add psyb0t/agents
-claude plugin install claudebox@psyb0t
+make help
+make test-unit
+make test-image-select
+make test-agent-launcher
+make build
+make build-full
 ```
 
-Claude Code prompts for the claudebox server URL and, if the MCP surface has auth enabled, the bearer token — the token is stored in your OS keychain.
+Builds use the minimal or full aicodebox parent respectively. See [Makefile](https://github.com/psyb0t/docker-claudebox/blob/master/Makefile) for base-image overrides and the remaining checks. The adapter lives in [claudebox/claudebox/adapter.py](https://github.com/psyb0t/docker-claudebox/blob/master/claudebox/claudebox/adapter.py); the shared server modes live in aicodebox.
 
-### Codex
+## Migration and license
 
-```bash
-codex plugin marketplace add psyb0t/agents
-codex plugin add claudebox@psyb0t
-```
+Previously named `docker-claude-code` with image `psyb0t/claude-code`. Current names are `docker-claudebox`, `psyb0t/claudebox`, and `claudebox`. In v2, `latest` became minimal and `latest-full` became the full variant. See [CHANGELOG.md](https://github.com/psyb0t/docker-claudebox/blob/master/CHANGELOG.md) for migration history.
 
-Installed via the marketplace, the skill invokes as `$claudebox:claudebox`. Codex also picks the skill up automatically, with no install, in any repo containing `.agents/skills/` — there it invokes as plain `$claudebox`.
-
-### OpenClaw
-
-The skill is published to ClawHub on every release:
-
-```bash
-openclaw skills install @psyb0t/claudebox
-```
-
-For MCP clients that speak local stdio, the [`@psyb0t/claudebox`](.agents/plugins/claudebox) plugin bridges to the service's `/mcp/` endpoint:
-
-```bash
-openclaw plugins install clawhub:@psyb0t/claudebox
-```
-
-Then set `CLAUDEBOX_URL` (and `CLAUDEBOX_MCP_MODE_TOKEN` if the server requires auth).
-
-## Gotchas
-
-- **`--permission-mode bypassPermissions`** is the adapter's default (modern equivalent of the pre-v2 `--dangerously-skip-permissions`). Claude has full, unrestricted access to the container. That's the entire point. Override per-request via `RunRequest.extra_args`.
-- **SSH keys** are mounted from the host for git push/pull inside the container. Do not share your container or image with untrusted parties.
-- **Host paths are preserved** — your project at `/home/you/project` is mounted at the same path inside the container. This means Docker volume mounts that Claude creates from within the container resolve correctly against host paths.
-- **UID/GID matching** — the container's `claude` user UID/GID is automatically adjusted to match the host directory owner on startup. File permissions should just work without manual `chown`.
-- **Docker-in-Docker** — the Docker socket is mounted into the container. Claude can build images and run containers from within its container. This is by design.
-- **Two containers per workspace** — the wrapper creates `claude-<path>` for interactive (TTY) sessions and `claude-<path>_prog` for programmatic (no TTY) sessions. Both share the same mounted volumes and data.
-- **Workspace busy tracking** — in API mode, each workspace can only have one active Claude process at a time. Concurrent requests to the same workspace return a 409 Conflict response. Use different workspace subpaths for parallel work.
-- **Telegram config fallback is open by default** — without `telegram.yml`, `TELEGRAM_CHAT_ID` becomes the only allowed chat. If both are absent, the compatibility fallback permits every chat. Use an explicit `allowed_chats` list before exposing the bot.
-- **Auto-updates disabled** — Claude Code CLI auto-updates are disabled by default inside the container to ensure reproducible behavior. Opt in with `claudebox --update` when you want to update.
-
-## License
-
-[WTFPL](http://www.wtfpl.net/) — do what the fuck you want to.
+[WTFPL](https://github.com/psyb0t/docker-claudebox/blob/master/LICENSE).

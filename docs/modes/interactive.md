@@ -4,7 +4,7 @@
 claudebox
 ```
 
-Works just like the native `claude` CLI but runs inside a container. The container persists between runs, and `--continue` is applied automatically so each session picks up where you left off.
+Runs an interactive Claude Code session inside a persistent container. The launcher applies `--continue` by default, with a fresh-session fallback when resuming fails. The wrapper supports its own flag set, not every native CLI argument. See [Programmatic mode](programmatic.md) and [wrapper lifecycle](../wrapper.md#container-lifecycle).
 
 ```bash
 claudebox --update        # opt in to a Claude Code CLI update on this run
