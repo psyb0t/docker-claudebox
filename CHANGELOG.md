@@ -4,6 +4,14 @@ All notable changes to **claudebox** (formerly `docker-claude-code`).
 
 Format roughly follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [v2.8.3], 2026-10-19: refresh Claude and shared toolchains
+
+- Updates Claude Code to 2.1.296 and the plugin's mcp-remote bridge to 0.14.3. Pins the Python development tools and refreshes their lockfile.
+- Both image variants follow Aicodebox `latest` or `latest-full`, bringing Python 3.14.8 and Node 24.21.0. The full variant includes Go 1.27.2.
+- Updates the full-image environment template and excludes local environments and release receipts from build contexts.
+- Default-branch pushes build both image variants and publish per-commit SHA tags. Release tags wait for that same commit's successful default-branch run, then promote its images without rebuilding and create the GitHub release from the annotated tag notes.
+- Spreads scheduled issue polling across repository-specific hours.
+
 ## [v2.8.2], 2026-10-17: unpinned action example
 
 - The README's GitHub Action example uses `psyb0t/docker-claudebox@master` instead of `@v2.6.0`, so copying it gets the current action.

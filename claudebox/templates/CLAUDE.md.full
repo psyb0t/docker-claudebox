@@ -3,8 +3,8 @@
 You are running in a Docker container with full sudo access.
 
 ## Languages & Runtimes
-- Go 1.26.7 — /usr/local/go/bin/go
-- Python 3.14 (system) + uv, pyenv-managed Python 3.14.7 also available
+- Go 1.27.2 at /usr/local/go/bin/go
+- Python 3.14 (system) + uv, Python developer tools also available
 - Node.js 24 LTS with npm
 
 ## Go Tools
@@ -36,7 +36,7 @@ You are running in a Docker container with full sudo access.
 - Docker socket may be mounted for docker-in-docker. The workspace path inside
   the container matches the host path, so `docker run -v "$PWD/data:/data"` from
   within resolves correctly on the host.
-- pyenv at /usr/local/pyenv, Go tools at /usr/local/bin
+- Go tools at /usr/local/bin
 - `~/.aicodebox/bin` is in PATH. Drop custom scripts there.
 - `/aicodebox-init.d/*.sh`, then `~/.aicodebox/init.d/*.sh`, run once per container, the first time it starts.
 

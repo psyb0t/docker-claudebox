@@ -4,12 +4,12 @@ PKG        := claudebox
 # is THE truth. Override at build time: `VERSION=2.0.0-rc1 make build`.
 VERSION    ?= $(shell awk -F\" '/^version *= *"/ {print $$2; exit}' claudebox/pyproject.toml)
 TAG        := v$(VERSION)
-# Default to the published aicodebox base, digest-pinned (keep in sync with the
+# Default to the published aicodebox base (keep in sync with the
 # ARG default in Dockerfile) — override with `make build BASE_IMAGE=...` to point
 # at a locally-built base image.
-BASE_IMAGE ?= psyb0t/aicodebox:v0.17.0@sha256:c75a87509d4cb40f18b85e883244c34bc77bca6e48519753b9658b25c6c31d2f
-FULL_BASE_IMAGE ?= psyb0t/aicodebox:v0.17.0-full@sha256:b217c509b18a04c4d9bf370d46dee4053c49fbdf872c8075b9a888ecd9eec9d9
-CLAUDE_VERSION ?= 2.1.280
+BASE_IMAGE ?= psyb0t/aicodebox:latest
+FULL_BASE_IMAGE ?= psyb0t/aicodebox:latest-full
+CLAUDE_VERSION ?= 2.1.296
 
 .PHONY: all build build-full build-all pull-base pull-full-base test test-unit test-smoke test-persist test-image-select test-agent-launcher test-managed-nested test-cron-shortcut test-entrypoint-aliases clean help version pkg-lock
 

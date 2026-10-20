@@ -36,7 +36,7 @@
     "node": ">=18"
   },
   "dependencies": {
-    "mcp-remote": "0.1.38"
+    "mcp-remote": "0.14.3"
   },
   "publishConfig": {
     "access": "public"

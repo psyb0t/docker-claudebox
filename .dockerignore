@@ -11,6 +11,13 @@ base/
 *.md
 desc.txt
 git-update.sh
+git-update.sh.debot
+.env
+.env.*
+*.env
+**/.venv/
+**/__pycache__/
+**/*.pyc
 docker-compose.dev.yaml
 # stale pre-v2 files (removed but the dockerignore hedges in case a stray
 # copy still exists in the working tree).

@@ -164,7 +164,7 @@ Use `/aicodebox-init.d/*.sh` hooks (see [Init Hooks](docs/customization.md#init-
 
 ### `psyb0t/claudebox:latest-full` (toolchain-loaded)
 
-Everything pre-installed. This variant starts from the immutable `aicodebox:v0.17.0-full` base, then adds only Claude-specific code. Aicodebox owns the shared Go, Python, Node, C/C++, DevOps, database, editor, and diagnostic toolchain; claudebox stays ready without rebuilding that stack.
+Everything pre-installed. This variant starts from the shared `aicodebox:latest-full` base, then adds only Claude-specific code. Aicodebox owns the shared Go, Python, Node, C/C++, DevOps, database, editor, and diagnostic toolchain; claudebox stays ready without rebuilding that stack.
 
 ```bash
 export CLAUDEBOX_FULL=1 && curl -fsSL https://raw.githubusercontent.com/psyb0t/docker-claudebox/master/install.sh | bash
@@ -179,8 +179,9 @@ export CLAUDEBOX_FULL=1 && curl -fsSL https://raw.githubusercontent.com/psyb0t/d
 | Node.js LTS + npm                     |       yes       |       yes        |
 | Docker CE + Compose                   |       yes       |       yes        |
 | Claude Code CLI                       |       yes       |       yes        |
-| Go 1.26.8 + tools                     |        -        |       yes       |
-| Python 3.14.7 + tools                 |        -        |       yes       |
+| Go 1.27.2 + tools                     |        -        |       yes       |
+| Python 3.14.8 runtime                 |       yes       |       yes       |
+| Python developer tools               |        -        |       yes       |
 | Node.js dev tools                     |        -        |       yes       |
 | C/C++ tools                           |        -        |       yes       |
 | DevOps (terraform, kubectl, helm, gh) |        -        |       yes       |
@@ -193,8 +194,8 @@ The shared toolchain is defined and released by [aicodebox](https://github.com/p
 
 **Languages and runtimes:**
 
-- **Go 1.26.8** with the full toolchain: golangci-lint, gopls, delve, staticcheck, gofumpt, gotests, impl, gomodifytags
-- **Python 3.14.7** via pyenv — flake8, black, isort, autoflake, pyright, mypy, vulture, pytest, poetry, pipenv, plus common libraries (requests, beautifulsoup4, lxml, pyyaml, toml)
+- **Go 1.27.2** with the full toolchain: golangci-lint, gopls, delve, staticcheck, gofumpt, gotests, impl, gomodifytags
+- **Python 3.14.8** with flake8, black, isort, autoflake, pyright, mypy, vulture, pytest, poetry, pipenv, and common libraries (requests, beautifulsoup4, lxml, pyyaml, toml)
 - **Node.js LTS** — eslint, prettier, typescript, ts-node, yarn, pnpm, nodemon, pm2, framework CLIs (React, Vue, Angular), newman, http-server, serve, lighthouse, storybook
 - **C/C++** — gcc, g++, make, cmake, clang-format, valgrind, gdb, strace, ltrace
 

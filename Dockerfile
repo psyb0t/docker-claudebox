@@ -4,13 +4,13 @@
 #   docker build -t aicodebox-base:local ../docker-aicodebox/
 #   docker build --build-arg BASE_IMAGE=aicodebox-base:local -t claudebox:local .
 #
-# Minimal variant. Dockerfile.full starts separately from the immutable
+# Minimal variant. Dockerfile.full starts separately from the shared
 # aicodebox full base, then adds the same Claude-specific layer.
 #
 # NOTE on hardening: the base sets `aicode` (UID 1000) as its runtime user via
 # `setpriv` inside `aicodebox-entrypoint`. This Dockerfile switches to root
 # only for the install steps below; runtime drops back to aicode automatically.
-ARG BASE_IMAGE=psyb0t/aicodebox:v0.17.0@sha256:c75a87509d4cb40f18b85e883244c34bc77bca6e48519753b9658b25c6c31d2f
+ARG BASE_IMAGE=psyb0t/aicodebox:latest
 FROM ${BASE_IMAGE}
 
 # MCP Registry ownership verification label.
@@ -25,7 +25,7 @@ USER root
 # global, on the same shared PATH as before) on first container start if it
 # isn't already present — so each user's own container fetches it from npm at
 # runtime rather than us redistributing Anthropic's software.
-ARG CLAUDE_VERSION=2.1.280
+ARG CLAUDE_VERSION=2.1.296
 ENV CLAUDEBOX_CLAUDE_VERSION=${CLAUDE_VERSION}
 
 # claudebox python package (ClaudecodeAdapter). aicodebox already exists in the
