@@ -4,6 +4,12 @@ All notable changes to **claudebox** (formerly `docker-claude-code`).
 
 Format roughly follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [v2.8.5], 2026-10-22: preserve native output and refresh the shared runtime
+
+- Refreshes the Aicodebox runtime to v0.18.2, including workspace and Docker socket identity collision fixes. Both variants continue to follow the shared `latest` and `latest-full` images.
+- Silences successful first-start Claude Code installation so programmatic text, JSON, and NDJSON output stays clean. Keeps installation failure diagnostics on stderr.
+- Corrects programmatic tests to accept native JSON field names and reject removed `json-verbose` output. Adds credential-free checks for malformed streams, failed commands, and wrapper passthrough to `make test`.
+
 ## [v2.8.4], 2026-10-20: fix wrapper installation and Git identity
 
 - Keeps the installer wrapper ref aligned with the release version. Version updates synchronize package, lockfile, plugin manifest, and installer ref without committing or tagging.

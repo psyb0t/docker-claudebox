@@ -2,6 +2,8 @@
 
 Pass `-p` and a prompt to get a response. No TTY required. It works from scripts, cron jobs, CI pipelines, and anywhere else you need non-interactive output.
 
+Successful first-start CLI installation is silent. Stdout contains only native CLI output; installation failures remain visible on stderr.
+
 ```bash
 claudebox -p "explain this codebase"                                       # plain text output (default)
 claudebox -p "explain this codebase" --output-format json                  # structured JSON response

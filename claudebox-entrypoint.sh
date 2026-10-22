@@ -104,12 +104,12 @@ fi
 # privileges. Fresh container installs once; a warm restart finds it and skips.
 # Same install command + flags as the previous Dockerfile step.
 if ! command -v claude >/dev/null 2>&1; then
-    echo "[claudebox] Claude Code not present — installing @anthropic-ai/claude-code@${CLAUDEBOX_CLAUDE_VERSION:-latest} from npm (first run)..." >&2
-    if npm install -g --no-audit --no-fund "@anthropic-ai/claude-code@${CLAUDEBOX_CLAUDE_VERSION:-latest}"; then
-        echo "[claudebox] Claude Code installed." >&2
-    else
-        echo "[claudebox] WARNING: could not install Claude Code (offline or npm error) — modes that need it will fail until it installs; check network and restart." >&2
+    # Successful installation must not contaminate CLI output on either channel.
+    if ! install_output="$(npm install -g --no-audit --no-fund "@anthropic-ai/claude-code@${CLAUDEBOX_CLAUDE_VERSION:-latest}" 2>&1)"; then
+        printf '%s\n' "$install_output" >&2
+        printf '%s\n' '[claudebox] WARNING: could not install Claude Code. Check the network and restart; modes requiring the CLI will fail until installation succeeds.' >&2
     fi
+    unset install_output
 fi
 
 # Hand off to the base — it owns UID/GID rematch, init.d dispatch, mode

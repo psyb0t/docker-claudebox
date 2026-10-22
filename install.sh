@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-readonly CLAUDEBOX_RELEASE_REF="v2.8.4"
+readonly CLAUDEBOX_RELEASE_REF="v2.8.5"
 readonly WRAPPER_URL="https://raw.githubusercontent.com/psyb0t/docker-claudebox/${CLAUDEBOX_INSTALL_REF:-$CLAUDEBOX_RELEASE_REF}/wrapper.sh"
 
 _full="${CLAUDEBOX_FULL:-${CLAUDE_FULL:-0}}"

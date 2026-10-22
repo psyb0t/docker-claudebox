@@ -86,6 +86,14 @@ test-persist: build ## Assert .claude.json (theme/login/onboarding) persists on 
 test-image-select: ## Assert wrapper.sh resolves the right image (CLAUDEBOX_FULL/MINIMAL/override); no build needed
 	bash tests/test_image_select.sh
 
+.PHONY: test-programmatic-contract
+test-programmatic-contract: ## Check native CLI output assertions without provider credentials
+	bash tests/programmatic/check-contract.sh
+
+.PHONY: test-install-output
+test-install-output: ## Check first-start installation output in disposable containers
+	bash tests/programmatic/check-install-output.sh
+
 test-agent-launcher: ## Assert claudebox-agent.sh restores interactive defaults (--continue/skip-permissions/markers); no build needed
 	bash tests/test_agent_launcher.sh
 
@@ -98,7 +106,7 @@ test-cron-shortcut: ## Assert the wrapper's cron shortcut passes the canonical c
 test-entrypoint-aliases: ## Assert the entrypoint maps every claudebox mode env name to AICODEBOX_*; needs docker, no build
 	bash tests/test_entrypoint_aliases.sh
 
-test: test-unit ## Alias for test-unit
+test: test-unit test-programmatic-contract test-install-output ## Run adapter, programmatic, and first-start output tests
 
 clean: ## Remove built images (keeps the aicodebox base)
 	docker rmi $(IMAGE_NAME):$(TAG) 2>/dev/null || true

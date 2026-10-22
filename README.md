@@ -93,6 +93,7 @@ Install sibling `claudebox`, `codexbox`, and `pibox` wrappers in the same comman
 make help
 make test-unit
 make test-image-select
+make test-programmatic-contract
 make test-agent-launcher
 make build
 make build-full

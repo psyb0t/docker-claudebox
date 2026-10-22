@@ -19,25 +19,31 @@ _prog_cleanup() {
 }
 
 _prog_run() {
-    [ -z "$_prog_data_dir" ] && { echo "BUG: _prog_setup not called"; return 1; }
+    [ -z "$_prog_data_dir" ] && {
+        echo "BUG: _prog_setup not called"
+        return 1
+    }
     CLAUDE_IMAGE="$IMAGE" \
-    CLAUDE_DATA_DIR="$_prog_data_dir" \
-    CLAUDE_SSH_DIR="$_prog_ssh_dir" \
-    CLAUDE_CODE_OAUTH_TOKEN="$CLAUDE_CODE_OAUTH_TOKEN" \
-    CLAUDE_CONTAINER_NAME="$_prog_container_name" \
-    bash "$WORKDIR/wrapper.sh" "$@"
+        CLAUDE_DATA_DIR="$_prog_data_dir" \
+        CLAUDE_SSH_DIR="$_prog_ssh_dir" \
+        CLAUDE_CODE_OAUTH_TOKEN="$CLAUDE_CODE_OAUTH_TOKEN" \
+        CLAUDE_CONTAINER_NAME="$_prog_container_name" \
+        bash "$WORKDIR/wrapper.sh" "$@"
 }
 
 _prog_run_with_token() {
-    [ -z "$_prog_data_dir" ] && { echo "BUG: _prog_setup not called"; return 1; }
+    [ -z "$_prog_data_dir" ] && {
+        echo "BUG: _prog_setup not called"
+        return 1
+    }
     local token="$1"
     shift
     CLAUDE_IMAGE="$IMAGE" \
-    CLAUDE_DATA_DIR="$_prog_data_dir" \
-    CLAUDE_SSH_DIR="$_prog_ssh_dir" \
-    CLAUDE_CODE_OAUTH_TOKEN="$token" \
-    CLAUDE_CONTAINER_NAME="$_prog_container_name" \
-    bash "$WORKDIR/wrapper.sh" "$@"
+        CLAUDE_DATA_DIR="$_prog_data_dir" \
+        CLAUDE_SSH_DIR="$_prog_ssh_dir" \
+        CLAUDE_CODE_OAUTH_TOKEN="$token" \
+        CLAUDE_CONTAINER_NAME="$_prog_container_name" \
+        bash "$WORKDIR/wrapper.sh" "$@"
 }
 
 # ── table: prompts with expected output ──────────────────────────────────────
@@ -53,12 +59,15 @@ PROMPT_CASES=(
 test_programmatic_prompts() {
     local entry label extra prompt expected
     for entry in "${PROMPT_CASES[@]}"; do
-        IFS='|' read -r label extra prompt expected <<< "$entry"
+        IFS='|' read -r label extra prompt expected <<<"$entry"
         _prog_setup
         local out
         # shellcheck disable=SC2086
         out=$(_prog_run -p "$prompt" $extra --model "$TEST_MODEL" --no-continue 2>&1)
-        assert_contains "$out" "$expected" "$label" || { _prog_cleanup; return 1; }
+        assert_contains "$out" "$expected" "$label" || {
+            _prog_cleanup
+            return 1
+        }
         _prog_cleanup
     done
     echo "OK: programmatic_prompts (${#PROMPT_CASES[@]} cases)"
@@ -78,7 +87,10 @@ test_programmatic_models() {
         local out
         out=$(_prog_run -p "respond with exactly YES" \
             --output-format text --model "$alias" --no-continue 2>&1)
-        assert_contains "$out" "YES" "model: $alias" || { _prog_cleanup; return 1; }
+        assert_contains "$out" "YES" "model: $alias" || {
+            _prog_cleanup
+            return 1
+        }
     done
 
     echo "OK: programmatic_models (${#MODEL_CASES[@]} models)"
@@ -96,12 +108,15 @@ SYSTEM_PROMPT_CASES=(
 test_programmatic_system_prompts() {
     local entry label flag flag_value prompt expected
     for entry in "${SYSTEM_PROMPT_CASES[@]}"; do
-        IFS='|' read -r label flag flag_value prompt expected <<< "$entry"
+        IFS='|' read -r label flag flag_value prompt expected <<<"$entry"
         _prog_setup
         local out
         out=$(_prog_run -p "$prompt" "$flag" "$flag_value" \
             --output-format text --model "$TEST_MODEL" --no-continue 2>&1)
-        assert_contains "$out" "$expected" "$label" || { _prog_cleanup; return 1; }
+        assert_contains "$out" "$expected" "$label" || {
+            _prog_cleanup
+            return 1
+        }
         _prog_cleanup
     done
     echo "OK: programmatic_system_prompts (${#SYSTEM_PROMPT_CASES[@]} cases)"
@@ -115,11 +130,11 @@ test_programmatic_bad_auth() {
     # use a completely separate container name to avoid reusing a container with valid auth
     local bad_name="${CONTAINER_PREFIX}-badauth-$$-$RANDOM"
     CLAUDE_IMAGE="$IMAGE" \
-    CLAUDE_DATA_DIR="$_prog_data_dir" \
-    CLAUDE_SSH_DIR="$_prog_ssh_dir" \
-    CLAUDE_CODE_OAUTH_TOKEN="sk-ant-oat01-INVALID" \
-    CLAUDE_CONTAINER_NAME="$bad_name" \
-    bash "$WORKDIR/wrapper.sh" \
+        CLAUDE_DATA_DIR="$_prog_data_dir" \
+        CLAUDE_SSH_DIR="$_prog_ssh_dir" \
+        CLAUDE_CODE_OAUTH_TOKEN="sk-ant-oat01-INVALID" \
+        CLAUDE_CONTAINER_NAME="$bad_name" \
+        bash "$WORKDIR/wrapper.sh" \
         -p "hello" --output-format text --model "$TEST_MODEL" --no-continue >/dev/null 2>&1
     local rc=$?
     docker rm -f "$bad_name" "${bad_name}_prog" >/dev/null 2>&1 || true
@@ -135,45 +150,73 @@ test_programmatic_bad_auth() {
     _prog_cleanup
 }
 
-# ── camelCase normalization ──────────────────────────────────────────────────
-
-test_programmatic_json_camelcase() {
+test_programmatic_json_native() {
     _prog_setup
     local out
     out=$(_prog_run -p "respond with exactly CAMELTEST" \
-        --output-format json --model "$TEST_MODEL" --no-continue 2>&1)
-    assert_contains "$out" "CAMELTEST" "json has response" || { _prog_cleanup; return 1; }
-    assert_no_snake_keys "$out" "json no snake_case keys" || { _prog_cleanup; return 1; }
-    echo "OK: programmatic_json_camelcase"
+        --output-format json --model "$TEST_MODEL" --no-continue) || {
+        _prog_cleanup
+        return 1
+    }
+    jq -se '
+        length == 1 and (.[0] |
+        type == "object" and .type == "result" and
+        .is_error == false and (.session_id | type == "string" and length > 0) and
+        (.result | type == "string" and contains("CAMELTEST")))
+    ' <<<"$out" >/dev/null || {
+        _prog_cleanup
+        return 1
+    }
+    echo "OK: programmatic_json_native"
     _prog_cleanup
 }
 
-test_programmatic_json_verbose_camelcase() {
+test_programmatic_json_verbose_rejected() {
     _prog_setup
-    local out
-    out=$(_prog_run -p "read the file /etc/hostname" \
-        --output-format json-verbose --model "$TEST_MODEL" --no-continue 2>&1)
-    assert_contains "$out" '"turns"' "json-verbose has turns" || { _prog_cleanup; return 1; }
-    assert_no_snake_keys "$out" "json-verbose no snake_case keys" || { _prog_cleanup; return 1; }
-    echo "OK: programmatic_json_verbose_camelcase"
+    local out status
+    status=0
+    out=$(_prog_run -p "unused prompt" \
+        --output-format json-verbose --no-continue 2>&1) || status=$?
+    [[ "$status" == 2 ]] || {
+        _prog_cleanup
+        return 1
+    }
+    assert_contains "$out" "json-verbose is v1-only" "removed format explains migration" || {
+        _prog_cleanup
+        return 1
+    }
+    echo "OK: programmatic_json_verbose_rejected"
     _prog_cleanup
 }
 
-test_programmatic_stream_json_camelcase() {
+test_programmatic_stream_json_native() {
     _prog_setup
     local out
     out=$(_prog_run -p "respond with exactly STREAMTEST" \
-        --output-format stream-json --model "$TEST_MODEL" --no-continue 2>&1)
-    assert_contains "$out" "STREAMTEST" "stream-json has response" || { _prog_cleanup; return 1; }
-    # check each JSON line
+        --output-format stream-json --model "$TEST_MODEL" --no-continue) || {
+        _prog_cleanup
+        return 1
+    }
     local line
-    local failed=0
     while IFS= read -r line; do
-        echo "$line" | python3 -c "import json,sys; json.load(sys.stdin)" 2>/dev/null || continue
-        assert_no_snake_keys "$line" "stream-json line" || { failed=1; break; }
-    done <<< "$out"
-    [ "$failed" = "1" ] && { _prog_cleanup; return 1; }
-    echo "OK: programmatic_stream_json_camelcase"
+        jq -se 'length == 1 and (.[0] | type == "object")' <<<"$line" >/dev/null || {
+            _prog_cleanup
+            return 1
+        }
+    done <<<"$out"
+    jq -se '
+        length > 0 and
+        (any(.[]; .type == "system" and .subtype == "init")) and
+        (any(.[]; .type == "stream_event")) and
+        (any(.[]; .type == "assistant")) and
+        (last | .type == "result" and .is_error == false and
+            (.session_id | type == "string" and length > 0) and
+            (.result | type == "string" and contains("STREAMTEST")))
+    ' <<<"$out" >/dev/null || {
+        _prog_cleanup
+        return 1
+    }
+    echo "OK: programmatic_stream_json_native"
     _prog_cleanup
 }
 
@@ -187,12 +230,16 @@ test_programmatic_always_skills() {
     skills_dir=$(mktemp -d "$WORKDIR/tests/.tmp-prog-skills-XXXXX")
     mkdir -p "$skills_dir/testskill"
     printf 'When the user says PROGTRIG you MUST respond with only the word PROGSKILL and nothing else.' \
-        > "$skills_dir/testskill/SKILL.md"
+        >"$skills_dir/testskill/SKILL.md"
 
     # negative: no skills dir mounted
     local out_neg
     out_neg=$(_prog_run -p "PROGTRIG" --output-format text --model "$TEST_MODEL" --no-continue 2>&1)
-    assert_not_contains "$out_neg" "PROGSKILL" "entrypoint skill trigger ignored without mount" || { _prog_cleanup; rm -rf "$skills_dir"; return 1; }
+    assert_not_contains "$out_neg" "PROGSKILL" "entrypoint skill trigger ignored without mount" || {
+        _prog_cleanup
+        rm -rf "$skills_dir"
+        return 1
+    }
     _prog_cleanup
 
     # positive: mount skills dir into .claude/.always-skills
@@ -202,7 +249,11 @@ test_programmatic_always_skills() {
 
     local out
     out=$(_prog_run -p "PROGTRIG" --output-format text --model "$TEST_MODEL" --no-continue 2>&1)
-    assert_contains "$out" "PROGSKILL" "entrypoint skill trigger fires with always-skills dir" || { _prog_cleanup; rm -rf "$skills_dir"; return 1; }
+    assert_contains "$out" "PROGSKILL" "entrypoint skill trigger fires with always-skills dir" || {
+        _prog_cleanup
+        rm -rf "$skills_dir"
+        return 1
+    }
 
     echo "OK: programmatic_always_skills"
     _prog_cleanup
@@ -214,8 +265,8 @@ ALL_TESTS+=(
     test_programmatic_models
     test_programmatic_system_prompts
     test_programmatic_bad_auth
-    test_programmatic_json_camelcase
-    test_programmatic_json_verbose_camelcase
-    test_programmatic_stream_json_camelcase
+    test_programmatic_json_native
+    test_programmatic_json_verbose_rejected
+    test_programmatic_stream_json_native
     test_programmatic_always_skills
 )
