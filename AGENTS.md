@@ -1,4 +1,4 @@
-# docker-claudebox
+# claudebox
 
 Instructions for AI agents and people who change this repository. Users of the image start at the [README](README.md) and the [documentation site](https://psyb0t.github.io/docker-claudebox/).
 
@@ -14,9 +14,9 @@ The published image does not contain the Claude Code CLI. It is proprietary with
 
 ## Architecture
 
-- `Dockerfile` (`:latest`, on `psyb0t/aicodebox:latest`) and `Dockerfile.full` (`:latest-full`, on `psyb0t/aicodebox:latest-full`) add the same layer: the `claudebox` Python package, `claudebox/init.d/` copied to `/aicodebox-init.d/`, the launcher, the entrypoint, and the environment (`AICODEBOX_ADAPTER`, `AICODEBOX_AGENT_BINARY`, `CLAUDE_CONFIG_DIR`, `DISABLE_AUTOUPDATER`, `CLAUDEBOX_IMAGE_VARIANT`, `CLAUDEBOX_CLAUDE_VERSION`).
+- `Dockerfile` (`:latest`, on `psyb0t/aicodebox:v0.18.4`) and `Dockerfile.full` (`:latest-full`, on `psyb0t/aicodebox:v0.18.4-full`) add the same layer: the `claudebox` Python package, `claudebox/init.d/` copied to `/aicodebox-init.d/`, the launcher, the entrypoint, and the environment (`AICODEBOX_ADAPTER`, `AICODEBOX_AGENT_BINARY`, `CLAUDE_CONFIG_DIR`, `DISABLE_AUTOUPDATER`, `CLAUDEBOX_IMAGE_VARIANT`, `CLAUDEBOX_CLAUDE_VERSION`).
 - `claudebox-entrypoint.sh` (installed as `/usr/local/bin/claudebox-entrypoint`, the image `ENTRYPOINT`): copies `CLAUDEBOX_<name>` to `AICODEBOX_<name>` for the names in `_CLAUDEBOX_ALIASES` and the legacy names in `_LEGACY_MODE_MAP`, links `/workspaces` and `~/.claude` to `~/.aicodebox`, runs `npm install -g @anthropic-ai/claude-code@$CLAUDEBOX_CLAUDE_VERSION` when `claude` is missing, then `exec`s the base `aicodebox-entrypoint`.
-- `claudebox-agent.sh` (installed as `claudebox-agent`, named by `AICODEBOX_AGENT_BINARY`): the CLI path for interactive and `-p` sessions. Adds `--permission-mode bypassPermissions`, the system hint and always-skills as `--append-system-prompt`, `--continue` with a fresh-session fallback, and handles the wrapper's update and no-continue marker files.
+- `claudebox-agent.sh` (installed as `claudebox-agent`, named by `AICODEBOX_AGENT_BINARY`): the CLI path for interactive and `-p` sessions. Adds `--permission-mode bypassPermissions`, the system hint and always-skills as `--append-system-prompt`, `--continue` with a fresh-session fallback, and handles the wrapper's update and no-continue marker files and the `.<container>-args` file that gives a reused `_prog` container the new call's arguments.
 - `claudebox/claudebox/adapter.py`: `ClaudecodeAdapter`, the aicodebox `AgentAdapter` for the server modes. `build_argv` turns a `RunRequest` into a `claude -p --output-format stream-json` command line, `parse_output`, `parse_events` and `parse_stream_event` read Claude's native stream. Server modes never go through the launcher.
 - `claudebox/init.d/`: first-start scripts the base runs once per container: `.claude.json` patch, workspace `CLAUDE.md` seed from `claudebox/templates/`, always-skills directory and default system hint.
 - `wrapper.sh`: the host command. Resolves the image, names containers after `$PWD`, mounts the workspace, `~/.claude`, `~/.ssh/claudebox` and the Docker socket, forwards `CLAUDEBOX_ENV_*` and `AICODEBOX_ENV_*`, validates `-p` flags, and creates or restarts the interactive, `_prog` and `_cron` containers.

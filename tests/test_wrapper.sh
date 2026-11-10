@@ -355,11 +355,12 @@ test_wrapper_container_reuse() {
     fi
     echo "  OK: prog container persisted"
 
-    # second run should reuse — verify it doesn't error and produces output
+    # second run should reuse the container and answer the new prompt, not
+    # replay the first one
     local out2 rc2
     out2=$(_wrapper_run -p "respond with exactly REUSED" --model "$TEST_MODEL" --output-format text --no-continue 2>&1)
     rc2=$?
-    if [ "$rc2" -eq 0 ] && [ -n "$out2" ]; then
+    if [ "$rc2" -eq 0 ] && [[ "$out2" == *REUSED* ]]; then
         echo "  OK: second run succeeded (exit=$rc2, output=${#out2} chars)"
     else
         echo "  FAIL: second run failed (exit=$rc2, output: ${out2:0:200})"

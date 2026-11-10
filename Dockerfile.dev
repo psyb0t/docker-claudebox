@@ -4,7 +4,7 @@
 # adapter tests import the real `aicodebox` package from the base's system
 # Python. It adds Make and the pinned Python lint and test tools. It is never
 # published. Build it with `make dev-image`.
-ARG BASE_IMAGE=psyb0t/aicodebox:latest
+ARG BASE_IMAGE=psyb0t/aicodebox:v0.18.4@sha256:4962442c598356a0e570ea16d6ab22af83a5c4fb874165665010b83b256b00e9
 FROM ${BASE_IMAGE}
 
 USER root

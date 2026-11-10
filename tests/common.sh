@@ -157,8 +157,13 @@ start_container() {
 # ── setup / cleanup ─────────────────────────────────────────────────────────
 
 setup() {
-    echo "building claudebox image (--target minimal)..."
-    docker build --target minimal -t "$IMAGE" "$WORKDIR" >/dev/null 2>&1
+    echo "building claudebox image..."
+    local build_output
+    if ! build_output="$(docker build -t "$IMAGE" "$WORKDIR" 2>&1)"; then
+        printf '%s\n' "$build_output" >&2
+        echo "image build failed" >&2
+        return 1
+    fi
     mkdir -p "$WORKDIR/tests/.fixtures/mounts"
 }
 

@@ -86,9 +86,9 @@ Set `CLAUDEBOX_GIT_NAME` and `CLAUDEBOX_GIT_EMAIL` on the host to configure Git 
 
 ## Container lifecycle
 
-For a normal host launch, the wrapper keeps an interactive `claude-<path>` container and a separate `claude-<path>_prog` programmatic container. They share mounted files and Claude state. The cron shortcut creates `claude-<path>_cron`. Nested one-shot launches use temporary containers instead.
+For a normal host launch, the wrapper keeps an interactive `claude-<path>` container and a separate `claude-<path>_prog` programmatic container. They share mounted files and Claude state. Every `claudebox -p` call after the first restarts the same `_prog` container with that call's prompt and flags. The cron shortcut creates `claude-<path>_cron`. Nested one-shot launches use temporary containers instead.
 
-`claudebox stop` stops the interactive container for the current workspace. It does not delete containers or pull a new image. `claudebox clear-session` deletes that workspace's saved session directory but keeps authentication and other configuration.
+`claudebox stop` stops the interactive container for the current workspace, or the cron container when `CLAUDEBOX_CRON_MODE` is set. It does not delete containers or pull a new image. `claudebox clear-session` deletes that workspace's saved session directory but keeps authentication and other configuration.
 
 Image tags, mounts, and environment settings are set when the container is created. Pulling a newer image or changing those settings does not update a reused container. Stop the exact affected container, inspect it, and remove only that container if you want the wrapper to create its replacement. Back up any files stored only in its writable container layer first. Mounted files remain on the host.
 

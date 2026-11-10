@@ -20,6 +20,8 @@
 #   - --append-system-prompt = system-hint + always-skills (same sources/order
 #     as the adapter's _compose_append_system_prompt).
 #   - `claude update` when the wrapper's --update wrote the .<container>-update marker.
+#   - the arguments in .<container>-args, which the wrapper writes for a reused
+#     _prog container, in place of the arguments `docker start` replays.
 set -euo pipefail
 
 readonly CLAUDE_BIN="claude"
@@ -30,6 +32,20 @@ dbg() {
     [ "${DEBUG:-}" = "true" ] && printf '[claudebox-agent] %s\n' "$*" >&2
     return 0
 }
+
+# A reused _prog container: `docker start` replays the arguments the container
+# was created with, so the wrapper writes this call's arguments to
+# .<container>-args, one per NUL-ended entry. They replace the replayed ones.
+args_file="$CFG/.${CONTAINER}-args"
+if [ -n "$CONTAINER" ] && [ -f "$args_file" ]; then
+    dbg "args file present, using its arguments"
+    file_args=()
+    while IFS= read -r -d '' arg; do
+        file_args+=("$arg")
+    done <"$args_file"
+    rm -f "$args_file" || true
+    set -- ${file_args[@]+"${file_args[@]}"}
+fi
 
 # Subcommands that must run verbatim — no session/permission/append injection.
 case "${1:-}" in

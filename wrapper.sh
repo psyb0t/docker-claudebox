@@ -192,8 +192,15 @@ if [ "${1:-}" = "setup-token" ]; then
     exit 0
 fi
 
+# cron mode settings. Accepts the canonical CLAUDEBOX_CRON_MODE names plus the
+# v1 CLAUDEBOX_MODE_CRON and CLAUDE_MODE_CRON spellings, and always passes the
+# canonical names inward. Read before `stop` so cron mode stops the cron
+# container.
+_mode_cron="${CLAUDEBOX_CRON_MODE:-${CLAUDEBOX_MODE_CRON:-${CLAUDE_MODE_CRON:-}}}"
+_mode_cron_file="${CLAUDEBOX_CRON_MODE_FILE:-${CLAUDEBOX_MODE_CRON_FILE:-${CLAUDE_MODE_CRON_FILE:-}}}"
+
 # stop — kill running interactive container for this workspace
-if [ "${1:-}" = "stop" ]; then
+if [ "${1:-}" = "stop" ] && [ -z "$_mode_cron" ]; then
     if docker ps --format '{{.Names}}' | grep -q "^${container_name}$"; then
         docker stop "$container_name" >/dev/null 2>&1
         echo "stopped $container_name"
@@ -216,11 +223,7 @@ if [ "${1:-}" = "clear-session" ]; then
     exit 0
 fi
 
-# cron mode — long-running daemon container, named <base>_cron. Accepts the
-# canonical CLAUDEBOX_CRON_MODE names plus the v1 CLAUDEBOX_MODE_CRON and
-# CLAUDE_MODE_CRON spellings, and always passes the canonical names inward.
-_mode_cron="${CLAUDEBOX_CRON_MODE:-${CLAUDEBOX_MODE_CRON:-${CLAUDE_MODE_CRON:-}}}"
-_mode_cron_file="${CLAUDEBOX_CRON_MODE_FILE:-${CLAUDEBOX_MODE_CRON_FILE:-${CLAUDE_MODE_CRON_FILE:-}}}"
+# cron mode — long-running daemon container, named <base>_cron.
 if [ -n "$_mode_cron" ]; then
     cron_name="${container_name}_cron"
     dbg "cron container: $cron_name"
@@ -421,6 +424,11 @@ if [ $# -gt 0 ]; then
             exit $?
         fi
         prog_rc=0
+        # `docker start` replays the arguments the container was created with,
+        # so a reused container reads this call's arguments from this file.
+        # claudebox-agent reads and removes it. One argument per NUL-ended entry.
+        prog_args_file="$CLAUDE_DIR/.${prog_name}-args"
+        rm -f "$prog_args_file"
         if ! docker ps -a --format '{{.Names}}' | grep -q "^${prog_name}$"; then
             dbg "prog: container does not exist, creating with docker run"
             docker run --name "$prog_name" "${DOCKER_ARGS[@]}" -e CLAUDEBOX_CONTAINER_NAME="$prog_name" "$CLAUDE_IMAGE" "${PASS_ARGS[@]}"
@@ -428,8 +436,8 @@ if [ $# -gt 0 ]; then
             dbg "prog: docker run exited with $prog_rc"
         else
             dbg "prog: container exists, writing args file and starting"
-            trap 'rm -f "$CLAUDE_DIR/.${prog_name}-args"' EXIT
-            printf '%q ' "${PASS_ARGS[@]}" >"$CLAUDE_DIR/.${prog_name}-args"
+            trap 'rm -f "$prog_args_file"' EXIT
+            printf '%s\0' "${PASS_ARGS[@]}" >"$prog_args_file"
             dbg "prog: docker start -a $prog_name"
             docker start -a "$prog_name"
             prog_rc=$?

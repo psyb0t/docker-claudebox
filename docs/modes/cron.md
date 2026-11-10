@@ -104,7 +104,7 @@ CLAUDEBOX_CRON_MODE=1 \
 
 Unlike other container settings, these two need no `CLAUDEBOX_ENV_` prefix. The wrapper passes `CLAUDEBOX_CRON_MODE=1`, the file path and `CLAUDEBOX_WORKSPACE` set to the current directory. The file path is read inside the container, so put the YAML in the host's `~/.claude` (mounted at `/home/aicode/.claude`) or in the workspace. If the container is already running, the wrapper prints its name and exits. If it exists but is stopped, the wrapper starts it again with its original settings.
 
-Follow it with `docker logs -f <name>` and stop it with `docker stop <name>`. `claudebox stop` stops the interactive container, not this one, even with `CLAUDEBOX_CRON_MODE` set.
+Follow it with `docker logs -f <name>`. Stop it with `CLAUDEBOX_CRON_MODE=1 claudebox stop`; without the cron setting, `claudebox stop` stops the interactive container instead.
 
 The wrapper's cron container gets the same host access as the interactive one, including the Docker socket. Use the Compose example above for a server.
 

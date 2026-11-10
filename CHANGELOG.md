@@ -4,6 +4,14 @@ All notable changes to **claudebox** (formerly `docker-claude-code`).
 
 Format roughly follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [v2.8.7], 2026-11-10: fix container reuse and cron stop
+
+- Builds on aicodebox v0.18.4, now pinned by tag and digest instead of following `latest`. That release fixes a 500 on OpenAI messages with null content, checks image-fetch redirects, rejects workspace symlinks that escape the root, makes MCP `run_prompt` take the workspace lock and retry `json_schema` runs, stops the Telegram bot on a malformed `TELEGRAM_CHAT_ID`, and prints cron `{system_datetime}` in UTC.
+- A reused programmatic (`-p`) container now runs the new call's prompt and flags. It used to replay the prompt it was created with.
+- `CLAUDEBOX_CRON_MODE=1 claudebox stop` stops the cron container instead of the interactive one.
+- `./test.sh` builds the image again and loads only the test files that register end-to-end tests. Removes two test files for modules that v2 removed.
+- Fixes the CI install-output check on a host without a cached base image. v2.8.6 never published images because that check failed, so its changes ship in this release.
+
 ## [v2.8.6], 2026-11-10: publish the documentation site
 
 - Publishes the documentation at https://psyb0t.github.io/docker-claudebox/ and moves the reference material out of the README into it. Adds the full `CLAUDEBOX_*` to `AICODEBOX_*` alias table, the wrapper's cron shortcut and the Telegram `TELEGRAM_CHAT_ID` fallback. Documents `docker stop <name>` for cron containers, because `claudebox stop` stops the interactive container.

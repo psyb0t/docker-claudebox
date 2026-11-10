@@ -28,7 +28,7 @@ EOF
 }
 
 _install_build_minimal() {
-    docker build --target minimal -t "$MINIMAL_IMAGE_TAG" "$WORKDIR" >/dev/null 2>&1
+    docker build -t "$MINIMAL_IMAGE_TAG" "$WORKDIR" >/dev/null 2>&1
 }
 
 test_install_minimal_end_to_end() {
@@ -38,7 +38,7 @@ test_install_minimal_end_to_end() {
         return 1
     fi
 
-    echo "  building minimal claudebox image (target=minimal)..."
+    echo "  building minimal claudebox image..."
     if ! _install_build_minimal; then
         echo "  FAIL: failed to build $MINIMAL_IMAGE_TAG"
         return 1

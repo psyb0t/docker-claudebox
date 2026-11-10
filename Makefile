@@ -7,8 +7,8 @@ TAG        := v$(VERSION)
 # Default to the published aicodebox base (keep in sync with the
 # ARG default in Dockerfile). Override with `make build BASE_IMAGE=...` to point
 # at a locally-built base image.
-BASE_IMAGE ?= psyb0t/aicodebox:latest
-FULL_BASE_IMAGE ?= psyb0t/aicodebox:latest-full
+BASE_IMAGE ?= psyb0t/aicodebox:v0.18.4@sha256:4962442c598356a0e570ea16d6ab22af83a5c4fb874165665010b83b256b00e9
+FULL_BASE_IMAGE ?= psyb0t/aicodebox:v0.18.4-full@sha256:dcacf5779530eaf346979e50cb134ab5f6be56bba1654cc334f158f37b7d884d
 CLAUDE_VERSION ?= 2.1.296
 
 # Lint, CI tests and the docs build run in containers, so the host needs only
@@ -106,6 +106,10 @@ test-image-select: ## Assert wrapper.sh resolves the right image (CLAUDEBOX_FULL
 test-programmatic-contract: ## Check native CLI output assertions without provider credentials
 	bash tests/programmatic/check-contract.sh
 
+.PHONY: test-prog-reuse
+test-prog-reuse: ## Assert a reused _prog container runs the new call's arguments; no build needed
+	bash tests/programmatic/check-prog-reuse.sh
+
 .PHONY: test-install-output
 test-install-output: ## Check first-start installation output in disposable containers
 	bash tests/programmatic/check-install-output.sh
@@ -143,6 +147,7 @@ test-ci: dev-image ## Run the credential-free tests CI runs: adapter, wrapper, l
 	$(DEV_RUN) bash tests/test_agent_launcher.sh
 	$(DEV_RUN) bash tests/test_managed_nested.sh
 	$(DEV_RUN) bash tests/test_cron_shortcut.sh
+	$(DEV_RUN) bash tests/programmatic/check-prog-reuse.sh
 	$(DEV_RUN_DOCKER) bash tests/programmatic/check-install-output.sh
 	$(DEV_RUN_DOCKER) bash tests/test_entrypoint_aliases.sh
 	$(DEV_RUN_DOCKER) bash tests/test_entrypoint_identity.sh

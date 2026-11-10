@@ -8,7 +8,7 @@ source "$REPO/tests/test-common.sh"
 trap 'log ERROR "Git identity contract failed at line $LINENO"' ERR
 readonly LOG_FILE="${TEST_LOG_FILE:-/tmp/claudebox-git-identity.log}"
 exec > >(tee -a "$LOG_FILE") 2>&1
-readonly BASE_IMAGE="${BASE_IMAGE:-psyb0t/aicodebox:latest}"
+readonly BASE_IMAGE="${BASE_IMAGE:-psyb0t/aicodebox:v0.18.4@sha256:4962442c598356a0e570ea16d6ab22af83a5c4fb874165665010b83b256b00e9}"
 readonly PREFIX="claudebox-identity-$$"
 
 run_identity() {

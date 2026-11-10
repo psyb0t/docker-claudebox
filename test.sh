@@ -7,7 +7,10 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 source "$SCRIPT_DIR/tests/common.sh"
 
 # shellcheck disable=SC1090
+# Only files that register e2e tests are sourced. The other tests/test_*.sh
+# files are standalone scripts that run on load and exit.
 for f in "$SCRIPT_DIR"/tests/test_*.sh; do
+    grep -q '^ALL_TESTS+=(' "$f" || continue
     source "$f"
 done
 

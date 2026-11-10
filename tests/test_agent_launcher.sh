@@ -113,4 +113,14 @@ tail -1 "$LOG" | grep -qF -- "--continue" && fail "7: fallback invocation still 
 tail -1 "$LOG" | grep -qF -- "--permission-mode bypassPermissions" || fail "7: fallback lost --permission-mode bypassPermissions"
 log INFO "  PASS (resume then fresh)"
 
+# ── 8. args file replaces the replayed arguments and is consumed ─────────────
+log INFO "8: .<container>-args replaces the arguments docker start replays"
+printf '%s\0' -p "new  prompt" --no-continue >"$CFG/.${CONTAINER}-args"
+run_launcher "" -p "old prompt"
+log_has "old prompt" && fail "8: replayed arguments used ($(cat "$LOG"))"
+log_has "-p new  prompt" || fail "8: args file arguments missing ($(cat "$LOG"))"
+log_has "--continue" && fail "8: --no-continue in the args file was ignored ($(cat "$LOG"))"
+[ -f "$CFG/.${CONTAINER}-args" ] && fail "8: args file not consumed"
+log INFO "  PASS"
+
 log INFO "ALL AGENT-LAUNCHER TESTS PASSED"

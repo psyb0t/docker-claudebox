@@ -57,7 +57,7 @@ make format   # rewrite shell and Python sources in place
 
 - the adapter unit tests in [`claudebox/tests/`](https://github.com/psyb0t/docker-claudebox/tree/master/claudebox/tests);
 - [`tests/programmatic/check-contract.sh`](https://github.com/psyb0t/docker-claudebox/blob/master/tests/programmatic/check-contract.sh), which feeds recorded native output through the wrapper and checks it comes out byte for byte;
-- the wrapper and launcher tests `test_image_select.sh`, `test_agent_launcher.sh`, `test_managed_nested.sh` and `test_cron_shortcut.sh`, which put a fake `docker` or `claude` on `PATH`;
+- the wrapper and launcher tests `test_image_select.sh`, `test_agent_launcher.sh`, `test_managed_nested.sh`, `test_cron_shortcut.sh` and `programmatic/check-prog-reuse.sh`, which put a fake `docker` or `claude` on `PATH`;
 - with the host Docker socket, `check-install-output.sh`, `test_entrypoint_aliases.sh` and `test_entrypoint_identity.sh`, which run the entrypoint in throwaway containers to check the first-start install, the variable aliases, and the Git identity.
 
 The end-to-end suites spend real Claude usage. Put a token in `tests/.env`, using [`tests/.env.example`](https://github.com/psyb0t/docker-claudebox/blob/master/tests/.env.example) as the template, and run `./test.sh --help` for the list of suites.

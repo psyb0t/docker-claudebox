@@ -41,6 +41,9 @@ mkdir -p "$FAKEBIN" "$TMPROOT/claude" "$TMPROOT/ssh"
 cat >"$FAKEBIN/docker" <<EOF
 #!/bin/bash
 printf '%s\n' "\$*" >> "$TMPROOT/docker.log"
+if [ "\$1" = "ps" ] && [ -f "$TMPROOT/ps.txt" ]; then
+    cat "$TMPROOT/ps.txt"
+fi
 exit 0
 EOF
 chmod +x "$FAKEBIN/docker"
@@ -101,6 +104,27 @@ done
 line="$(cron_run_line "CLAUDEBOX_CRON_MODE=1")"
 [[ "$line" != *"CRON_MODE_FILE"* ]] ||
     fail_case "no file var set, but a cron file was passed: $line"
+
+# `stop` with cron mode set must stop the <name>_cron container, not the
+# interactive one. Both are reported as running.
+cron_name="$(sed -E 's/^run -d --name ([^ ]+) .*/\1/' <<<"$line")"
+printf '%s\n%s\n' "${cron_name%_cron}" "$cron_name" >"$TMPROOT/ps.txt"
+: >"$TMPROOT/docker.log"
+(
+    cd "$TMPROOT"
+    clear_inherited_env
+    PATH="$FAKEBIN:$PATH" \
+        CLAUDEBOX_DATA_DIR="$TMPROOT/claude" \
+        CLAUDEBOX_SSH_DIR="$TMPROOT/ssh" \
+        CLAUDEBOX_CRON_MODE=1 bash "$WRAPPER" stop >/dev/null 2>&1
+) || true
+stops="$(grep '^stop ' "$TMPROOT/docker.log" || true)"
+rm -f "$TMPROOT/ps.txt"
+if [[ "$stops" == "stop $cron_name" ]]; then
+    log INFO "pass: stop with cron mode stops $cron_name"
+else
+    fail_case "stop with cron mode stopped the wrong container: ${stops:-none}"
+fi
 
 if ((failures > 0)); then
     log ERROR "cron shortcut contract failed failures=$failures"
