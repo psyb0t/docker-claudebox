@@ -8,4 +8,3 @@ Prefix: ADP. `ClaudecodeAdapter` in `claudebox/claudebox/adapter.py` implements 
 - **ADP4:** Session handling: `resume` wins, then `no_continue` leaves `--continue` out, otherwise `--continue` is added. Tools: `no_tools` sends `--disallowedTools '*'`, otherwise `tools_allowlist` becomes `--allowedTools`. `extra_args` go last.
 - **ADP5:** `CLAUDE_MODELS` and `CLAUDE_THINKING_LEVELS` are what the servers advertise. Effort levels must stay ones `claude --effort` accepts. A change updates `docs/modes/api.md`, `docs/modes/telegram.md` and the skill.
 - **ADP6:** `parse_events` returns native records unchanged through `parse_native_event_lines`. Never filter, rename or truncate fields there; the API's full event mode promises the original records.
-- **ADP7:** Every behavior change in `build_argv` or a parser gets a test in `claudebox/tests/test_adapter.py`.
