@@ -19,13 +19,16 @@ _wrapper_cleanup() {
 }
 
 _wrapper_run() {
-    [ -z "$TEST_DATA_DIR" ] && { echo "BUG: _wrapper_setup not called"; return 1; }
+    [ -z "$TEST_DATA_DIR" ] && {
+        echo "BUG: _wrapper_setup not called"
+        return 1
+    }
     CLAUDE_IMAGE="$IMAGE" \
-    CLAUDE_DATA_DIR="$TEST_DATA_DIR" \
-    CLAUDE_SSH_DIR="$TEST_SSH_DIR" \
-    CLAUDE_CODE_OAUTH_TOKEN="$CLAUDE_CODE_OAUTH_TOKEN" \
-    CLAUDE_CONTAINER_NAME="$_wrapper_container_name" \
-    bash "$WRAPPER" "$@"
+        CLAUDE_DATA_DIR="$TEST_DATA_DIR" \
+        CLAUDE_SSH_DIR="$TEST_SSH_DIR" \
+        CLAUDE_CODE_OAUTH_TOKEN="$CLAUDE_CODE_OAUTH_TOKEN" \
+        CLAUDE_CONTAINER_NAME="$_wrapper_container_name" \
+        bash "$WRAPPER" "$@"
 }
 
 # ── table: passthrough commands ──────────────────────────────────────────────
@@ -41,7 +44,7 @@ test_wrapper_passthrough() {
 
     local entry cmd expected
     for entry in "${PASSTHROUGH_CASES[@]}"; do
-        IFS='|' read -r cmd expected <<< "$entry"
+        IFS='|' read -r cmd expected <<<"$entry"
         local out
         # shellcheck disable=SC2086
         out=$(_wrapper_run $cmd 2>&1)
@@ -160,11 +163,14 @@ test_wrapper_clear_session() {
     local project_path
     project_path="${PWD//\//-}"
     mkdir -p "$TEST_DATA_DIR/projects/${project_path}"
-    echo "fake session" > "$TEST_DATA_DIR/projects/${project_path}/session.jsonl"
+    echo "fake session" >"$TEST_DATA_DIR/projects/${project_path}/session.jsonl"
 
     local out
     out=$(_wrapper_run clear-session 2>&1)
-    assert_contains "$out" "cleared session" "clear-session works" || { _wrapper_cleanup; return 1; }
+    assert_contains "$out" "cleared session" "clear-session works" || {
+        _wrapper_cleanup
+        return 1
+    }
 
     if [ -d "$TEST_DATA_DIR/projects/${project_path}" ]; then
         echo "  FAIL: session dir still exists after clear"
@@ -174,7 +180,10 @@ test_wrapper_clear_session() {
     echo "  OK: session dir removed"
 
     out=$(_wrapper_run clear-session 2>&1)
-    assert_contains "$out" "no session found" "clear-session on empty" || { _wrapper_cleanup; return 1; }
+    assert_contains "$out" "no session found" "clear-session on empty" || {
+        _wrapper_cleanup
+        return 1
+    }
 
     _wrapper_cleanup
 }
@@ -199,12 +208,12 @@ test_wrapper_env_forwarding() {
     # tell claude to run a bash command that prints the env var — proves it's actually inside the container
     local out
     out=$(CLAUDE_ENV_MY_TEST_VAR="ENVFORWARD42" \
-    CLAUDE_IMAGE="$IMAGE" \
-    CLAUDE_DATA_DIR="$TEST_DATA_DIR" \
-    CLAUDE_SSH_DIR="$TEST_SSH_DIR" \
-    CLAUDE_CODE_OAUTH_TOKEN="$CLAUDE_CODE_OAUTH_TOKEN" \
-    CLAUDE_CONTAINER_NAME="$_wrapper_container_name" \
-    bash "$WRAPPER" -p 'run: echo $MY_TEST_VAR' \
+        CLAUDE_IMAGE="$IMAGE" \
+        CLAUDE_DATA_DIR="$TEST_DATA_DIR" \
+        CLAUDE_SSH_DIR="$TEST_SSH_DIR" \
+        CLAUDE_CODE_OAUTH_TOKEN="$CLAUDE_CODE_OAUTH_TOKEN" \
+        CLAUDE_CONTAINER_NAME="$_wrapper_container_name" \
+        bash "$WRAPPER" -p 'run: echo $MY_TEST_VAR' \
         --model "$TEST_MODEL" --output-format text --no-continue 2>&1)
     assert_contains "$out" "ENVFORWARD42" "env var accessible inside container via wrapper"
 
@@ -218,17 +227,17 @@ test_wrapper_volume_mounting() {
 
     local mount_dir
     mount_dir=$(mktemp -d "$WORKDIR/tests/.fixtures/mounts/legacy-XXXXX")
-    echo "MOUNTTEST99" > "$mount_dir/testfile.txt"
+    echo "MOUNTTEST99" >"$mount_dir/testfile.txt"
 
     # verify mount works: tell claude to read the file from inside the container
     local out
     out=$(CLAUDE_MOUNT_TESTDIR="$mount_dir" \
-    CLAUDE_IMAGE="$IMAGE" \
-    CLAUDE_DATA_DIR="$TEST_DATA_DIR" \
-    CLAUDE_SSH_DIR="$TEST_SSH_DIR" \
-    CLAUDE_CODE_OAUTH_TOKEN="$CLAUDE_CODE_OAUTH_TOKEN" \
-    CLAUDE_CONTAINER_NAME="${_wrapper_container_name}-mnt" \
-    bash "$WRAPPER" -p "run: cat $mount_dir/testfile.txt" --model "$TEST_MODEL" --output-format text --no-continue 2>&1)
+        CLAUDE_IMAGE="$IMAGE" \
+        CLAUDE_DATA_DIR="$TEST_DATA_DIR" \
+        CLAUDE_SSH_DIR="$TEST_SSH_DIR" \
+        CLAUDE_CODE_OAUTH_TOKEN="$CLAUDE_CODE_OAUTH_TOKEN" \
+        CLAUDE_CONTAINER_NAME="${_wrapper_container_name}-mnt" \
+        bash "$WRAPPER" -p "run: cat $mount_dir/testfile.txt" --model "$TEST_MODEL" --output-format text --no-continue 2>&1)
     assert_contains "$out" "MOUNTTEST99" "CLAUDE_MOUNT_* file accessible inside container"
 
     docker rm -f "${_wrapper_container_name}-mnt" "${_wrapper_container_name}-mnt_prog" >/dev/null 2>&1 || true
@@ -243,12 +252,12 @@ test_wrapper_env_forwarding_claudebox() {
 
     local out
     out=$(CLAUDEBOX_ENV_MY_TEST_VAR="ENVFORWARD_CB42" \
-    CLAUDEBOX_IMAGE="$IMAGE" \
-    CLAUDEBOX_DATA_DIR="$TEST_DATA_DIR" \
-    CLAUDEBOX_SSH_DIR="$TEST_SSH_DIR" \
-    CLAUDEBOX_ENV_CLAUDE_CODE_OAUTH_TOKEN="$CLAUDE_CODE_OAUTH_TOKEN" \
-    CLAUDEBOX_CONTAINER_NAME="$_wrapper_container_name" \
-    bash "$WRAPPER" -p 'run: echo $MY_TEST_VAR' \
+        CLAUDEBOX_IMAGE="$IMAGE" \
+        CLAUDEBOX_DATA_DIR="$TEST_DATA_DIR" \
+        CLAUDEBOX_SSH_DIR="$TEST_SSH_DIR" \
+        CLAUDEBOX_ENV_CLAUDE_CODE_OAUTH_TOKEN="$CLAUDE_CODE_OAUTH_TOKEN" \
+        CLAUDEBOX_CONTAINER_NAME="$_wrapper_container_name" \
+        bash "$WRAPPER" -p 'run: echo $MY_TEST_VAR' \
         --model "$TEST_MODEL" --output-format text --no-continue 2>&1)
     assert_contains "$out" "ENVFORWARD_CB42" "CLAUDEBOX_ENV_* forwarded into container"
 
@@ -262,16 +271,16 @@ test_wrapper_volume_mounting_claudebox() {
 
     local mount_dir
     mount_dir=$(mktemp -d "$WORKDIR/tests/.fixtures/mounts/cb-XXXXX")
-    echo "MOUNTTEST_CB99" > "$mount_dir/testfile.txt"
+    echo "MOUNTTEST_CB99" >"$mount_dir/testfile.txt"
 
     local out
     out=$(CLAUDEBOX_MOUNT_TESTDIR="$mount_dir" \
-    CLAUDEBOX_IMAGE="$IMAGE" \
-    CLAUDEBOX_DATA_DIR="$TEST_DATA_DIR" \
-    CLAUDEBOX_SSH_DIR="$TEST_SSH_DIR" \
-    CLAUDEBOX_ENV_CLAUDE_CODE_OAUTH_TOKEN="$CLAUDE_CODE_OAUTH_TOKEN" \
-    CLAUDEBOX_CONTAINER_NAME="${_wrapper_container_name}-mnt" \
-    bash "$WRAPPER" -p "run: cat $mount_dir/testfile.txt" --model "$TEST_MODEL" --output-format text --no-continue 2>&1)
+        CLAUDEBOX_IMAGE="$IMAGE" \
+        CLAUDEBOX_DATA_DIR="$TEST_DATA_DIR" \
+        CLAUDEBOX_SSH_DIR="$TEST_SSH_DIR" \
+        CLAUDEBOX_ENV_CLAUDE_CODE_OAUTH_TOKEN="$CLAUDE_CODE_OAUTH_TOKEN" \
+        CLAUDEBOX_CONTAINER_NAME="${_wrapper_container_name}-mnt" \
+        bash "$WRAPPER" -p "run: cat $mount_dir/testfile.txt" --model "$TEST_MODEL" --output-format text --no-continue 2>&1)
     assert_contains "$out" "MOUNTTEST_CB99" "CLAUDEBOX_MOUNT_* file accessible inside container"
 
     docker rm -f "${_wrapper_container_name}-mnt" "${_wrapper_container_name}-mnt_prog" >/dev/null 2>&1 || true
@@ -332,7 +341,10 @@ test_wrapper_container_reuse() {
     # first run creates the prog container
     local out1
     out1=$(_wrapper_run -p "respond with exactly FIRST" --model "$TEST_MODEL" --output-format text --no-continue 2>&1)
-    assert_contains "$out1" "FIRST" "first run" || { _wrapper_cleanup; return 1; }
+    assert_contains "$out1" "FIRST" "first run" || {
+        _wrapper_cleanup
+        return 1
+    }
 
     # container should exist and be stopped (not removed)
     local prog_name="${_wrapper_container_name}_prog"
@@ -391,7 +403,10 @@ test_wrapper_exit_code() {
     # successful run should exit 0
     _wrapper_run -p "say OK" --model "$TEST_MODEL" --output-format text --no-continue >/dev/null 2>&1
     local rc=$?
-    assert_eq "$rc" "0" "success exits 0" || { _wrapper_cleanup; return 1; }
+    assert_eq "$rc" "0" "success exits 0" || {
+        _wrapper_cleanup
+        return 1
+    }
 
     _wrapper_cleanup
 }

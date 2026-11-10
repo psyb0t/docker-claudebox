@@ -1,3 +1,10 @@
+---
+title: "API mode"
+description: "The claudebox HTTP API: POST /run with native events and async polling, workspace file endpoints, and the OpenAI-compatible chat endpoint."
+nav_order: 3
+parent: "Modes"
+---
+
 # API mode
 
 Run the container as an HTTP API server with workspace management, file operations, and optional authentication. It includes the OpenAI-compatible adapter and can mount an optional MCP server.

@@ -23,8 +23,8 @@
 set -euo pipefail
 
 readonly IMAGE="${IMAGE:-psyb0t/claudebox:latest}"
-readonly MOUNT="/home/aicode/.claude"      # where wrapper.sh bind-mounts ~/.claude
-readonly AICODE_UID=1000                    # the in-image agent user
+readonly MOUNT="/home/aicode/.claude" # where wrapper.sh bind-mounts ~/.claude
+readonly AICODE_UID=1000              # the in-image agent user
 # A NON-default theme: Claude Code omits the default ("dark") from .claude.json,
 # so seeding "dark" would legitimately vanish. A non-default value is what a real
 # "I picked a theme" choice looks like and must survive.
@@ -70,8 +70,8 @@ vol_sh "chown ${AICODE_UID}:${AICODE_UID} /m && chmod 700 /m"
 log INFO "Test 1: agent process sees CLAUDE_CONFIG_DIR pointing at the mount"
 ccd="$(docker run --rm -v "$VOL":"$MOUNT" -e AICODEBOX_AGENT_BINARY=printenv \
     "$IMAGE" CLAUDE_CONFIG_DIR 2>/dev/null | tr -d '\r' | tail -1)"
-[ "$ccd" = "$MOUNT" ] \
-    || fail "agent CLAUDE_CONFIG_DIR='$ccd', expected '$MOUNT' — config would go to ephemeral \$HOME/.claude.json and re-onboard"
+[ "$ccd" = "$MOUNT" ] ||
+    fail "agent CLAUDE_CONFIG_DIR='$ccd', expected '$MOUNT' — config would go to ephemeral \$HOME/.claude.json and re-onboard"
 log INFO "  PASS (CLAUDE_CONFIG_DIR=$ccd)"
 
 # ── Test 2 — Claude Code persists its own config ON THE MOUNT ─────────────────
@@ -80,16 +80,16 @@ log INFO "  PASS (CLAUDE_CONFIG_DIR=$ccd)"
 # persisted first. The mounted file must carry a claude-written key, proving
 # Claude Code wrote to the mount and not to the ephemeral $HOME.
 log INFO "Test 2: claude persists its config (with $CLAUDE_WRITTEN_KEY) to the mount"
-docker run --rm -v "$VOL":"$MOUNT" "$IMAGE" -p "hi" >/dev/null 2>&1 \
-    || true   # non-zero exit expected without auth; the config write happens first
-vol_sh 'test -f /m/.claude.json' \
-    || fail "no .claude.json on the mount after a run — config went to ephemeral \$HOME"
+docker run --rm -v "$VOL":"$MOUNT" "$IMAGE" -p "hi" >/dev/null 2>&1 ||
+    true # non-zero exit expected without auth; the config write happens first
+vol_sh 'test -f /m/.claude.json' ||
+    fail "no .claude.json on the mount after a run — config went to ephemeral \$HOME"
 has_key="$(
-    vol_sh 'cat /m/.claude.json' \
-        | python3 -c "import json,sys; print('${CLAUDE_WRITTEN_KEY}' in json.load(sys.stdin))"
+    vol_sh 'cat /m/.claude.json' |
+        python3 -c "import json,sys; print('${CLAUDE_WRITTEN_KEY}' in json.load(sys.stdin))"
 )"
-[ "$has_key" = "True" ] \
-    || fail "mounted .claude.json lacks '$CLAUDE_WRITTEN_KEY' — Claude Code wrote its config to ephemeral \$HOME; only the init.d seed persisted"
+[ "$has_key" = "True" ] ||
+    fail "mounted .claude.json lacks '$CLAUDE_WRITTEN_KEY' — Claude Code wrote its config to ephemeral \$HOME; only the init.d seed persisted"
 log INFO "  PASS ($CLAUDE_WRITTEN_KEY present on the mounted config)"
 
 # ── Test 3 — a pre-seeded onboarding config survives a run ────────────────────
@@ -100,15 +100,15 @@ vol_sh "cat > /m/.claude.json <<'JSON'
 {\"theme\":\"${SEED_THEME}\",\"hasCompletedOnboarding\":true,\"oauthAccount\":{\"accountUuid\":\"${SEED_ACCOUNT}\"}}
 JSON
 chown ${AICODE_UID}:${AICODE_UID} /m/.claude.json"
-docker run --rm -v "$VOL":"$MOUNT" "$IMAGE" -p "hi" >/dev/null 2>&1 \
-    || true   # non-zero exit expected without auth; config merge happens first
+docker run --rm -v "$VOL":"$MOUNT" "$IMAGE" -p "hi" >/dev/null 2>&1 ||
+    true # non-zero exit expected without auth; config merge happens first
 survived="$(
-    vol_sh 'cat /m/.claude.json' \
-        | python3 -c "import json,sys; d=json.load(sys.stdin); print('|'.join([str(d.get('theme')), str(d.get('hasCompletedOnboarding')), str((d.get('oauthAccount') or {}).get('accountUuid'))]))"
+    vol_sh 'cat /m/.claude.json' |
+        python3 -c "import json,sys; d=json.load(sys.stdin); print('|'.join([str(d.get('theme')), str(d.get('hasCompletedOnboarding')), str((d.get('oauthAccount') or {}).get('accountUuid'))]))"
 )"
 readonly EXPECTED_SURVIVED="${SEED_THEME}|True|${SEED_ACCOUNT}"
-[ "$survived" = "$EXPECTED_SURVIVED" ] \
-    || fail "seeded onboarding state did not survive (got '$survived', want '$EXPECTED_SURVIVED') — theme/login would re-prompt"
+[ "$survived" = "$EXPECTED_SURVIVED" ] ||
+    fail "seeded onboarding state did not survive (got '$survived', want '$EXPECTED_SURVIVED') — theme/login would re-prompt"
 log INFO "  PASS (theme+onboarding+account persisted)"
 
 log INFO "ALL PERSISTENCE TESTS PASSED"

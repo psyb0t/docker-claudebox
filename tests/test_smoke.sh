@@ -23,7 +23,8 @@ cleanup() {
 trap cleanup EXIT INT TERM
 
 log() {
-    local level="$1"; shift
+    local level="$1"
+    shift
     printf '{"time":"%s","level":"%s","file":"test_smoke.sh","msg":"%s"}\n' \
         "$(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)" "$level" "$*" >&2
 }
@@ -37,7 +38,7 @@ fail() {
 rm -rf "$FIXTURE_DIR"
 mkdir -p "$FIXTURE_DIR"
 
-cat > "${FIXTURE_DIR}/mock-claude" <<'MOCK'
+cat >"${FIXTURE_DIR}/mock-claude" <<'MOCK'
 #!/bin/bash
 if [ "${1:-}" = "--version" ]; then
     echo "claude-code mock 0.0.1"
@@ -55,7 +56,7 @@ chmod +x "${FIXTURE_DIR}/mock-claude"
 
 # Skill fixture — the .always-skills injection assertion looks for the marker.
 mkdir -p "${FIXTURE_DIR}/always-skills/skill-echo"
-cat > "${FIXTURE_DIR}/always-skills/skill-echo/SKILL.md" <<'SKILL'
+cat >"${FIXTURE_DIR}/always-skills/skill-echo/SKILL.md" <<'SKILL'
 [SMOKE-SKILL-MARKER-abc123]
 
 This skill's presence in the outbound --append-system-prompt is what the
@@ -67,8 +68,8 @@ log INFO "Test 1: passthrough claude --version"
 version_out=$(docker run --rm \
     -v "${FIXTURE_DIR}/mock-claude:${MOCK_TARGET}:ro" \
     "$IMAGE" --version 2>&1) || fail "passthrough exited non-zero"
-echo "$version_out" | grep -q "claude-code mock" \
-    || fail "expected mock version banner, got: $version_out"
+echo "$version_out" | grep -q "claude-code mock" ||
+    fail "expected mock version banner, got: $version_out"
 log INFO "  PASS"
 
 # ── Test 2 — API mode /healthz ───────────────────────────────────────────────
@@ -99,8 +100,8 @@ fi
 log INFO "  API up on :${API_PORT}"
 
 health=$(curl -fsS "http://localhost:${API_PORT}/healthz")
-echo "$health" | jq -e '.ok == true' >/dev/null \
-    || fail "expected healthz.ok=true, got: $health"
+echo "$health" | jq -e '.ok == true' >/dev/null ||
+    fail "expected healthz.ok=true, got: $health"
 log INFO "  PASS"
 
 # ── Test 3 — /openai/v1/models honors AICODEBOX_AVAILABLE_MODELS ─────────────
@@ -108,14 +109,14 @@ log INFO "Test 3: /openai/v1/models"
 models=$(curl -fsS \
     -H "Authorization: Bearer smoke-token" \
     "http://localhost:${API_PORT}/openai/v1/models")
-echo "$models" | jq -e '.data | map(.id) | contains(["haiku","sonnet","opus","opusplan"])' >/dev/null \
-    || fail "expected all four models in list, got: $models"
+echo "$models" | jq -e '.data | map(.id) | contains(["haiku","sonnet","opus","opusplan"])' >/dev/null ||
+    fail "expected all four models in list, got: $models"
 log INFO "  PASS"
 
 # ── Test 4 — init.d completion + .claude.json patch ──────────────────────────
 log INFO "Test 4: init.d completion + .claude.json patch"
-docker exec "${CONTAINER_PREFIX}-api" test -f /var/lib/aicodebox/init-done \
-    || fail "init-done marker missing"
+docker exec "${CONTAINER_PREFIX}-api" test -f /var/lib/aicodebox/init-done ||
+    fail "init-done marker missing"
 
 patched=$(docker exec "${CONTAINER_PREFIX}-api" jq -r '
     .installMethod + "|" + (.autoUpdates|tostring) + "|" + (.autoUpdatesProtectedForNative|tostring)
@@ -128,8 +129,8 @@ log INFO "  PASS"
 # ── Test 5 — /workspaces compat symlink resolves to /workspace ───────────────
 log INFO "Test 5: /workspaces compat symlink"
 resolved=$(docker exec "${CONTAINER_PREFIX}-api" readlink -f /workspaces)
-[ "$resolved" = "/workspace" ] \
-    || fail "expected /workspaces -> /workspace, got: $resolved"
+[ "$resolved" = "/workspace" ] ||
+    fail "expected /workspaces -> /workspace, got: $resolved"
 log INFO "  PASS"
 
 docker rm -f "${CONTAINER_PREFIX}-api" >/dev/null
@@ -153,9 +154,9 @@ alias_out=$(docker run --rm \
         echo "API=${AICODEBOX_API_MODE:-} TOKEN=${AICODEBOX_API_MODE_TOKEN:-} MODELS=${AICODEBOX_AVAILABLE_MODELS:-}"
     ' 2>&1 | tail -1)
 
-if ! (echo "$alias_out" | grep -q "API=1" \
-    && echo "$alias_out" | grep -q "TOKEN=alias-token" \
-    && echo "$alias_out" | grep -q "MODELS=haiku"); then
+if ! (echo "$alias_out" | grep -q "API=1" &&
+    echo "$alias_out" | grep -q "TOKEN=alias-token" &&
+    echo "$alias_out" | grep -q "MODELS=haiku"); then
     fail "env alias not applied — got: $alias_out"
 fi
 log INFO "  PASS"
@@ -176,8 +177,8 @@ argv = ClaudecodeAdapter().build_argv(RunRequest(prompt='hi'))
 i = argv.index('--append-system-prompt')
 print(argv[i+1])
 ")
-echo "$argv_out" | grep -q "SMOKE-SKILL-MARKER-abc123" \
-    || fail "expected SKILL marker in --append-system-prompt payload, got: $argv_out"
+echo "$argv_out" | grep -q "SMOKE-SKILL-MARKER-abc123" ||
+    fail "expected SKILL marker in --append-system-prompt payload, got: $argv_out"
 log INFO "  PASS"
 
 # ── Test 8 — RunRequest.extra_args appended verbatim ─────────────────────────
@@ -192,8 +193,8 @@ from aicodebox.adapters.base import RunRequest
 argv = ClaudecodeAdapter().build_argv(RunRequest(prompt='hi', extra_args=['--foo','bar']))
 print(argv[-2], argv[-1])
 ")
-[ "$extra_out" = "--foo bar" ] \
-    || fail "expected trailing '--foo bar', got: $extra_out"
+[ "$extra_out" = "--foo bar" ] ||
+    fail "expected trailing '--foo bar', got: $extra_out"
 log INFO "  PASS"
 
 # ── Test 9 — --permission-mode bypassPermissions default ─────────────────────
@@ -209,8 +210,8 @@ argv = ClaudecodeAdapter().build_argv(RunRequest(prompt='hi'))
 i = argv.index('--permission-mode')
 print(argv[i+1])
 ")
-[ "$pm_out" = "bypassPermissions" ] \
-    || fail "expected bypassPermissions, got: $pm_out"
+[ "$pm_out" = "bypassPermissions" ] ||
+    fail "expected bypassPermissions, got: $pm_out"
 log INFO "  PASS"
 
 log INFO "ALL 9 SMOKE TESTS PASSED"

@@ -10,7 +10,7 @@ MINIMAL_IMAGE_TAG="psyb0t/claudebox:latest-minimal"
 _install_build_runner() {
     local dockerfile_dir
     dockerfile_dir=$(mktemp -d "$WORKDIR/tests/.tmp-install-runner-XXXXX")
-    cat > "$dockerfile_dir/Dockerfile" <<'EOF'
+    cat >"$dockerfile_dir/Dockerfile" <<'EOF'
 FROM ubuntu:24.04
 RUN apt-get update && apt-get install -y --no-install-recommends \
     docker.io openssh-client curl ca-certificates sudo bash jq && \

@@ -29,7 +29,7 @@ TELETHON_IMAGE="psyb0t/telethon-plus"
 _e2e_check_env() {
     local missing=()
     for v in CLAUDEBOX_TELEGRAM_BOT_TOKEN TELEGRAM_CHAT_ID \
-             TELETHON_API_ID TELETHON_API_HASH TELETHON_SESSION TELETHON_AUTH_KEY; do
+        TELETHON_API_ID TELETHON_API_HASH TELETHON_SESSION TELETHON_AUTH_KEY; do
         if [ -z "${!v:-}" ]; then
             missing+=("$v")
         fi
@@ -57,7 +57,7 @@ _e2e_cleanup_dirs() {
 # Write the telegram.yml config with our test chat allowed and haiku as model.
 _e2e_write_telegram_yml() {
     local path="$1"
-    cat > "$path" <<EOF
+    cat >"$path" <<EOF
 allowed_chats:
   - $TELEGRAM_CHAT_ID
 default:
@@ -114,8 +114,8 @@ _e2e_dump_and_kill() {
 # Args: <testname>
 _e2e_teardown_containers() {
     local testname="$1"
-    _e2e_dump_and_kill "${E2E_CLAUDEBOX_NAME:-}"  "claudebox" "$testname"
-    _e2e_dump_and_kill "${E2E_TELETHON_NAME:-}"   "telethon"  "$testname"
+    _e2e_dump_and_kill "${E2E_CLAUDEBOX_NAME:-}" "claudebox" "$testname"
+    _e2e_dump_and_kill "${E2E_TELETHON_NAME:-}" "telethon" "$testname"
     E2E_CLAUDEBOX_NAME=""
     E2E_TELETHON_NAME=""
     # Give Telegram a moment to release the bot polling slot before next test
@@ -186,8 +186,8 @@ tg_send_text() {
     local payload
     payload=$(CHAT="$TG_BOT_REF" TEXT="$1" REPLY_TO="" _tg_send_json)
     _tg_curl -X POST "$E2E_TELETHON_URL/api/messages" \
-        -H "Content-Type: application/json" -d "$payload" \
-        | python3 -c 'import json,sys; print(json.load(sys.stdin)["result"]["id"])'
+        -H "Content-Type: application/json" -d "$payload" |
+        python3 -c 'import json,sys; print(json.load(sys.stdin)["result"]["id"])'
 }
 
 # Reply to a specific bot message id. Args: <text> <reply_to_id>.
@@ -195,14 +195,14 @@ tg_reply() {
     local payload
     payload=$(CHAT="$TG_BOT_REF" TEXT="$1" REPLY_TO="$2" _tg_send_json)
     _tg_curl -X POST "$E2E_TELETHON_URL/api/messages" \
-        -H "Content-Type: application/json" -d "$payload" \
-        | python3 -c 'import json,sys; print(json.load(sys.stdin)["result"]["id"])'
+        -H "Content-Type: application/json" -d "$payload" |
+        python3 -c 'import json,sys; print(json.load(sys.stdin)["result"]["id"])'
 }
 
 # Latest message id in the user-bot DM, or 0 if chat empty.
 tg_latest_msg_id() {
-    _tg_curl "$E2E_TELETHON_URL/api/messages?chat=$TG_BOT_REF&limit=1" \
-        | python3 -c 'import json,sys
+    _tg_curl "$E2E_TELETHON_URL/api/messages?chat=$TG_BOT_REF&limit=1" |
+        python3 -c 'import json,sys
 d = json.load(sys.stdin).get("result", [])
 print(d[0]["id"] if d else 0)'
 }
@@ -212,13 +212,17 @@ print(d[0]["id"] if d else 0)'
 # On success prints "<id>\n<text>" to stdout and returns 0.
 tg_wait_for_bot_message() {
     local baseline="$1" substr="$2" timeout="${3:-90}"
-    local bot_numeric i resp
+    local bot_numeric resp
     bot_numeric=$(TG_BOT_USER_ID)
-    for i in $(seq 1 "$timeout"); do
-        resp=$(_tg_curl "$E2E_TELETHON_URL/api/messages?chat=$TG_BOT_REF&limit=30" 2>/dev/null) \
-            || { sleep 1; continue; }
+    for _ in $(seq 1 "$timeout"); do
+        resp=$(_tg_curl "$E2E_TELETHON_URL/api/messages?chat=$TG_BOT_REF&limit=30" 2>/dev/null) ||
+            {
+                sleep 1
+                continue
+            }
         local hit
-        hit=$(BASELINE="$baseline" BOT_ID="$bot_numeric" SUBSTR="$substr" RESP="$resp" python3 - <<'PY'
+        hit=$(
+            BASELINE="$baseline" BOT_ID="$bot_numeric" SUBSTR="$substr" RESP="$resp" python3 - <<'PY'
 import json, os, sys
 data = json.loads(os.environ["RESP"]).get("result", [])
 baseline = int(os.environ["BASELINE"])
@@ -240,7 +244,7 @@ for m in reversed(data):
     sys.exit(0)
 sys.exit(1)
 PY
-)
+        )
         if [ -n "$hit" ]; then
             echo "$hit"
             return 0
@@ -281,12 +285,19 @@ test_e2e_cron_message_renders_without_placeholder_leak() {
     _e2e_check_env || return 0
     _e2e_resolve_bot || return 1
     _e2e_setup_dirs
-    _e2e_start_telethon || { _e2e_cleanup_dirs; return 1; }
-    _e2e_ensure_chat_initialized || { _e2e_teardown_containers init; _e2e_cleanup_dirs; return 1; }
+    _e2e_start_telethon || {
+        _e2e_cleanup_dirs
+        return 1
+    }
+    _e2e_ensure_chat_initialized || {
+        _e2e_teardown_containers init
+        _e2e_cleanup_dirs
+        return 1
+    }
     local TNAME=test_e2e_cron_message_renders_without_placeholder_leak
 
     local cron_file="$E2E_TMP/cron.yaml"
-    cat > "$cron_file" <<EOF
+    cat >"$cron_file" <<EOF
 telegram_chat_id: $TELEGRAM_CHAT_ID
 jobs:
   - name: leakcheck
@@ -310,14 +321,17 @@ EOF
     local result bot_msg_id bot_msg_text
     if ! result=$(tg_wait_for_bot_message "$baseline" "Logs" 90); then
         echo "  FAIL: no bot message containing 'Logs' arrived within 90s"
-        _e2e_teardown_containers "$TNAME"; _e2e_cleanup_dirs; return 1
+        _e2e_teardown_containers "$TNAME"
+        _e2e_cleanup_dirs
+        return 1
     fi
     bot_msg_id=$(echo "$result" | head -1)
     bot_msg_text=$(echo "$result" | tail -n +2)
     echo "  OK: bot delivered cron message id=$bot_msg_id"
 
     local leak
-    leak=$(TEXT="$bot_msg_text" python3 - <<'PY'
+    leak=$(
+        TEXT="$bot_msg_text" python3 - <<'PY'
 import os, re
 text = os.environ["TEXT"]
 for ch in ("", "", "\x00"):
@@ -328,17 +342,27 @@ else:
     if m:
         print(f"sentinel leak: {m.group()!r}")
 PY
-)
+    )
     if [ -n "$leak" ]; then
         echo "  FAIL: $leak"
         echo "  raw bot message:"
         echo "$bot_msg_text" | sed 's/^/    /'
-        _e2e_teardown_containers "$TNAME"; _e2e_cleanup_dirs; return 1
+        _e2e_teardown_containers "$TNAME"
+        _e2e_cleanup_dirs
+        return 1
     fi
     echo "  OK: rendered text has no PUA/NUL/CB-sentinel leak"
 
-    assert_contains "$bot_msg_text" "Logs"          "heading 'Logs' present"          || { _e2e_teardown_containers "$TNAME"; _e2e_cleanup_dirs; return 1; }
-    assert_contains "$bot_msg_text" "Docker Health" "heading 'Docker Health' present" || { _e2e_teardown_containers "$TNAME"; _e2e_cleanup_dirs; return 1; }
+    assert_contains "$bot_msg_text" "Logs" "heading 'Logs' present" || {
+        _e2e_teardown_containers "$TNAME"
+        _e2e_cleanup_dirs
+        return 1
+    }
+    assert_contains "$bot_msg_text" "Docker Health" "heading 'Docker Health' present" || {
+        _e2e_teardown_containers "$TNAME"
+        _e2e_cleanup_dirs
+        return 1
+    }
 
     local history_root="$E2E_TMP/home/.claude/cron/history"
     local tg_json
@@ -346,20 +370,28 @@ PY
     if [ -z "$tg_json" ]; then
         echo "  FAIL: telegram.json was not written into history dir"
         find "$history_root" -type f 2>&1 | sed 's/^/    /'
-        _e2e_teardown_containers "$TNAME"; _e2e_cleanup_dirs; return 1
+        _e2e_teardown_containers "$TNAME"
+        _e2e_cleanup_dirs
+        return 1
     fi
     echo "  OK: telegram.json written at $tg_json"
 
     local saved_chat_id saved_msg_id
     saved_chat_id=$(python3 -c "import json; print(json.load(open('$tg_json'))['chat_id'])")
-    saved_msg_id=$(python3 -c  "import json; print(json.load(open('$tg_json'))['message_id'])")
-    assert_eq "$saved_chat_id" "$TELEGRAM_CHAT_ID" "telegram.json chat_id matches" \
-        || { _e2e_teardown_containers "$TNAME"; _e2e_cleanup_dirs; return 1; }
+    saved_msg_id=$(python3 -c "import json; print(json.load(open('$tg_json'))['message_id'])")
+    assert_eq "$saved_chat_id" "$TELEGRAM_CHAT_ID" "telegram.json chat_id matches" ||
+        {
+            _e2e_teardown_containers "$TNAME"
+            _e2e_cleanup_dirs
+            return 1
+        }
     # Bot API (what cron writes here) and telethon's MTProto report different
     # ids for the same logical message, so we just assert sanity (positive int).
     if ! [[ "$saved_msg_id" =~ ^[0-9]+$ ]] || [ "$saved_msg_id" -le 0 ]; then
         echo "  FAIL: telegram.json message_id is not a positive int: $saved_msg_id"
-        _e2e_teardown_containers "$TNAME"; _e2e_cleanup_dirs; return 1
+        _e2e_teardown_containers "$TNAME"
+        _e2e_cleanup_dirs
+        return 1
     fi
     echo "  OK: telegram.json message_id is a positive int ($saved_msg_id, Bot API view)"
 
@@ -375,12 +407,19 @@ test_e2e_reply_to_cron_message_triggers_claude_with_history() {
     _e2e_check_env || return 0
     _e2e_resolve_bot || return 1
     _e2e_setup_dirs
-    _e2e_start_telethon || { _e2e_cleanup_dirs; return 1; }
-    _e2e_ensure_chat_initialized || { _e2e_teardown_containers init; _e2e_cleanup_dirs; return 1; }
+    _e2e_start_telethon || {
+        _e2e_cleanup_dirs
+        return 1
+    }
+    _e2e_ensure_chat_initialized || {
+        _e2e_teardown_containers init
+        _e2e_cleanup_dirs
+        return 1
+    }
     local TNAME=test_e2e_reply_to_cron_message_triggers_claude_with_history
 
     local cron_file="$E2E_TMP/cron.yaml"
-    cat > "$cron_file" <<EOF
+    cat >"$cron_file" <<EOF
 telegram_chat_id: $TELEGRAM_CHAT_ID
 jobs:
   - name: replytarget
@@ -398,7 +437,9 @@ EOF
     local result cron_msg_id
     if ! result=$(tg_wait_for_bot_message "$baseline" "CRONREPLYTARGET" 90); then
         echo "  FAIL: cron didn't deliver CRONREPLYTARGET message within 90s"
-        _e2e_teardown_containers "$TNAME"; _e2e_cleanup_dirs; return 1
+        _e2e_teardown_containers "$TNAME"
+        _e2e_cleanup_dirs
+        return 1
     fi
     cron_msg_id=$(echo "$result" | head -1)
     echo "  OK: cron message landed id=$cron_msg_id"
@@ -412,18 +453,32 @@ EOF
     local resp resp_text
     if ! resp=$(tg_wait_for_bot_message "$reply_baseline" "$marker" 120); then
         echo "  FAIL: Claude did not respond with marker $marker within 120s"
-        _e2e_teardown_containers "$TNAME"; _e2e_cleanup_dirs; return 1
+        _e2e_teardown_containers "$TNAME"
+        _e2e_cleanup_dirs
+        return 1
     fi
     resp_text=$(echo "$resp" | tail -n +2)
-    assert_contains "$resp_text" "$marker" "claude reply contains the marker" \
-        || { _e2e_teardown_containers "$TNAME"; _e2e_cleanup_dirs; return 1; }
+    assert_contains "$resp_text" "$marker" "claude reply contains the marker" ||
+        {
+            _e2e_teardown_containers "$TNAME"
+            _e2e_cleanup_dirs
+            return 1
+        }
 
     local logs
     logs=$(docker logs "$E2E_CLAUDEBOX_NAME" 2>&1)
-    assert_contains "$logs" "reply to cron job replytarget" "bot logged cron reply" \
-        || { _e2e_teardown_containers "$TNAME"; _e2e_cleanup_dirs; return 1; }
-    assert_contains "$logs" "history_dir=" "bot logged history_dir on cron reply" \
-        || { _e2e_teardown_containers "$TNAME"; _e2e_cleanup_dirs; return 1; }
+    assert_contains "$logs" "reply to cron job replytarget" "bot logged cron reply" ||
+        {
+            _e2e_teardown_containers "$TNAME"
+            _e2e_cleanup_dirs
+            return 1
+        }
+    assert_contains "$logs" "history_dir=" "bot logged history_dir on cron reply" ||
+        {
+            _e2e_teardown_containers "$TNAME"
+            _e2e_cleanup_dirs
+            return 1
+        }
 
     _e2e_teardown_containers "$TNAME"
     _e2e_cleanup_dirs
@@ -437,12 +492,19 @@ test_e2e_non_cron_text_message_triggers_claude() {
     _e2e_check_env || return 0
     _e2e_resolve_bot || return 1
     _e2e_setup_dirs
-    _e2e_start_telethon || { _e2e_cleanup_dirs; return 1; }
-    _e2e_ensure_chat_initialized || { _e2e_teardown_containers init; _e2e_cleanup_dirs; return 1; }
+    _e2e_start_telethon || {
+        _e2e_cleanup_dirs
+        return 1
+    }
+    _e2e_ensure_chat_initialized || {
+        _e2e_teardown_containers init
+        _e2e_cleanup_dirs
+        return 1
+    }
     local TNAME=test_e2e_non_cron_text_message_triggers_claude
 
     local cron_file="$E2E_TMP/cron.yaml"
-    cat > "$cron_file" <<'EOF'
+    cat >"$cron_file" <<'EOF'
 jobs:
   - name: never_fires
     schedule: "0 0 1 1 *"
@@ -451,7 +513,7 @@ EOF
     chown 1000:1000 "$cron_file" 2>/dev/null || sudo chown 1000:1000 "$cron_file"
 
     _e2e_run_claudebox_cron_tg "$cron_file"
-    sleep 6   # let the bot register its long-poll
+    sleep 6 # let the bot register its long-poll
 
     local marker="TEXTECHO$RANDOM$$"
     local baseline
@@ -462,11 +524,17 @@ EOF
     local resp resp_text
     if ! resp=$(tg_wait_for_bot_message "$baseline" "$marker" 120); then
         echo "  FAIL: Claude did not respond with marker $marker within 120s"
-        _e2e_teardown_containers "$TNAME"; _e2e_cleanup_dirs; return 1
+        _e2e_teardown_containers "$TNAME"
+        _e2e_cleanup_dirs
+        return 1
     fi
     resp_text=$(echo "$resp" | tail -n +2)
-    assert_contains "$resp_text" "$marker" "claude reply contains marker" \
-        || { _e2e_teardown_containers "$TNAME"; _e2e_cleanup_dirs; return 1; }
+    assert_contains "$resp_text" "$marker" "claude reply contains marker" ||
+        {
+            _e2e_teardown_containers "$TNAME"
+            _e2e_cleanup_dirs
+            return 1
+        }
 
     _e2e_teardown_containers "$TNAME"
     _e2e_cleanup_dirs
@@ -480,12 +548,19 @@ test_e2e_reply_to_non_cron_bot_message_acknowledged() {
     _e2e_check_env || return 0
     _e2e_resolve_bot || return 1
     _e2e_setup_dirs
-    _e2e_start_telethon || { _e2e_cleanup_dirs; return 1; }
-    _e2e_ensure_chat_initialized || { _e2e_teardown_containers init; _e2e_cleanup_dirs; return 1; }
+    _e2e_start_telethon || {
+        _e2e_cleanup_dirs
+        return 1
+    }
+    _e2e_ensure_chat_initialized || {
+        _e2e_teardown_containers init
+        _e2e_cleanup_dirs
+        return 1
+    }
     local TNAME=test_e2e_reply_to_non_cron_bot_message_acknowledged
 
     local cron_file="$E2E_TMP/cron.yaml"
-    cat > "$cron_file" <<'EOF'
+    cat >"$cron_file" <<'EOF'
 jobs:
   - name: never_fires
     schedule: "0 0 1 1 *"
@@ -502,7 +577,9 @@ EOF
     tg_send_text "Reply with exactly the token $seed_marker and nothing else." >/dev/null
     if ! seed_resp=$(tg_wait_for_bot_message "$b1" "$seed_marker" 120); then
         echo "  FAIL: bot did not produce seed response with $seed_marker"
-        _e2e_teardown_containers "$TNAME"; _e2e_cleanup_dirs; return 1
+        _e2e_teardown_containers "$TNAME"
+        _e2e_cleanup_dirs
+        return 1
     fi
     seed_resp_id=$(echo "$seed_resp" | head -1)
     echo "  OK: seed bot message id=$seed_resp_id ready to be replied to"
@@ -515,11 +592,17 @@ EOF
     local resp2 resp2_text
     if ! resp2=$(tg_wait_for_bot_message "$b2" "$reply_marker" 120); then
         echo "  FAIL: Claude did not respond to plain-reply with $reply_marker"
-        _e2e_teardown_containers "$TNAME"; _e2e_cleanup_dirs; return 1
+        _e2e_teardown_containers "$TNAME"
+        _e2e_cleanup_dirs
+        return 1
     fi
     resp2_text=$(echo "$resp2" | tail -n +2)
-    assert_contains "$resp2_text" "$reply_marker" "claude responded to non-cron reply" \
-        || { _e2e_teardown_containers "$TNAME"; _e2e_cleanup_dirs; return 1; }
+    assert_contains "$resp2_text" "$reply_marker" "claude responded to non-cron reply" ||
+        {
+            _e2e_teardown_containers "$TNAME"
+            _e2e_cleanup_dirs
+            return 1
+        }
 
     local logs
     logs=$(docker logs "$E2E_CLAUDEBOX_NAME" 2>&1)
@@ -528,7 +611,9 @@ EOF
     # assert that *some* "reply to message <int> kind=text" line was logged.
     if ! echo "$logs" | grep -Eq "reply to message [0-9]+ kind=text"; then
         echo "  FAIL: bot did not log a 'reply to message <id> kind=text' line"
-        _e2e_teardown_containers "$TNAME"; _e2e_cleanup_dirs; return 1
+        _e2e_teardown_containers "$TNAME"
+        _e2e_cleanup_dirs
+        return 1
     fi
     echo "  OK: bot logged non-cron reply with kind=text"
 

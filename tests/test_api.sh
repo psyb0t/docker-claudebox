@@ -44,10 +44,13 @@ test_api_endpoints() {
 
     local entry label method path expected
     for entry in "${ENDPOINT_CASES[@]}"; do
-        IFS='|' read -r label method path expected <<< "$entry"
+        IFS='|' read -r label method path expected <<<"$entry"
         local out
         out=$(curl -sf -X "$method" "$API_BASE$path")
-        assert_contains "$out" "$expected" "$label" || { _api_stop; return 1; }
+        assert_contains "$out" "$expected" "$label" || {
+            _api_stop
+            return 1
+        }
     done
 
     echo "OK: api_endpoints (${#ENDPOINT_CASES[@]} cases)"
@@ -72,14 +75,20 @@ test_api_run() {
 
     local entry label body expected
     for entry in "${RUN_CASES[@]}"; do
-        IFS='|' read -r label body expected <<< "$entry"
+        IFS='|' read -r label body expected <<<"$entry"
         local out
         out=$(post "$API_BASE/run" "$body")
-        assert_contains "$out" "$expected" "$label" || { _api_stop; return 1; }
+        assert_contains "$out" "$expected" "$label" || {
+            _api_stop
+            return 1
+        }
     done
 
     # check camelCase on last response
-    assert_no_snake_keys "$out" "api json no snake_case keys" || { _api_stop; return 1; }
+    assert_no_snake_keys "$out" "api json no snake_case keys" || {
+        _api_stop
+        return 1
+    }
 
     echo "OK: api_run (${#RUN_CASES[@]} cases)"
     _api_stop
@@ -101,16 +110,22 @@ test_api_file_ops() {
 
     local entry label method path data expected check_type
     for entry in "${FILE_CASES[@]}"; do
-        IFS='|' read -r label method path data expected check_type <<< "$entry"
+        IFS='|' read -r label method path data expected check_type <<<"$entry"
         local out code
         case "$check_type" in
             code)
                 code=$(curl -s -o /dev/null -w "%{http_code}" -X "$method" "$API_BASE$path")
-                assert_eq "$code" "$expected" "$label" || { _api_stop; return 1; }
+                assert_eq "$code" "$expected" "$label" || {
+                    _api_stop
+                    return 1
+                }
                 ;;
             eq)
                 out=$(curl -sf -X "$method" "$API_BASE$path")
-                assert_eq "$out" "$expected" "$label" || { _api_stop; return 1; }
+                assert_eq "$out" "$expected" "$label" || {
+                    _api_stop
+                    return 1
+                }
                 ;;
             contains)
                 if [ -n "$data" ]; then
@@ -118,7 +133,10 @@ test_api_file_ops() {
                 else
                     out=$(curl -sf -X "$method" "$API_BASE$path")
                 fi
-                assert_contains "$out" "$expected" "$label" || { _api_stop; return 1; }
+                assert_contains "$out" "$expected" "$label" || {
+                    _api_stop
+                    return 1
+                }
                 ;;
         esac
     done
@@ -142,7 +160,7 @@ test_api_auth() {
 
     local entry label endpoint auth_header expected_code expected_body
     for entry in "${AUTH_CASES[@]}"; do
-        IFS='|' read -r label endpoint auth_header expected_code expected_body <<< "$entry"
+        IFS='|' read -r label endpoint auth_header expected_code expected_body <<<"$entry"
         local code out
         if [ -n "$auth_header" ]; then
             code=$(curl -s -o /dev/null -w "%{http_code}" -H "Authorization: $auth_header" "$API_BASE$endpoint")
@@ -151,9 +169,15 @@ test_api_auth() {
             code=$(curl -s -o /dev/null -w "%{http_code}" "$API_BASE$endpoint")
             out=$(curl -sf "$API_BASE$endpoint" 2>/dev/null || true)
         fi
-        assert_eq "$code" "$expected_code" "auth: $label (status)" || { _api_stop "${API_CONTAINER}-auth"; return 1; }
+        assert_eq "$code" "$expected_code" "auth: $label (status)" || {
+            _api_stop "${API_CONTAINER}-auth"
+            return 1
+        }
         if [ -n "$expected_body" ]; then
-            assert_contains "$out" "$expected_body" "auth: $label (body)" || { _api_stop "${API_CONTAINER}-auth"; return 1; }
+            assert_contains "$out" "$expected_body" "auth: $label (body)" || {
+                _api_stop "${API_CONTAINER}-auth"
+                return 1
+            }
         fi
     done
 
@@ -175,12 +199,15 @@ test_api_path_traversal() {
 
     local entry label workspace
     for entry in "${TRAVERSAL_CASES[@]}"; do
-        IFS='|' read -r label workspace <<< "$entry"
+        IFS='|' read -r label workspace <<<"$entry"
         local code
         code=$(curl -s -o /dev/null -w "%{http_code}" -X POST "$API_BASE/run" \
             -H "Content-Type: application/json" \
             -d "{\"prompt\":\"test\",\"workspace\":\"$workspace\"}")
-        assert_eq "$code" "400" "traversal: $label" || { _api_stop "${API_CONTAINER}-trav"; return 1; }
+        assert_eq "$code" "400" "traversal: $label" || {
+            _api_stop "${API_CONTAINER}-trav"
+            return 1
+        }
     done
 
     echo "OK: api_path_traversal (${#TRAVERSAL_CASES[@]} cases)"
@@ -221,7 +248,11 @@ test_api_cancel() {
 
     local out
     out=$(curl -sf -X POST "$API_BASE/run/cancel")
-    assert_contains "$out" '"ok"' "cancel returns ok" || { wait; _api_stop "${API_CONTAINER}-cancel"; return 1; }
+    assert_contains "$out" '"ok"' "cancel returns ok" || {
+        wait
+        _api_stop "${API_CONTAINER}-cancel"
+        return 1
+    }
 
     wait
     _api_stop "${API_CONTAINER}-cancel"
@@ -245,10 +276,16 @@ test_api_json_verbose() {
 
     local entry label expected
     for entry in "${JSON_VERBOSE_CHECKS[@]}"; do
-        IFS='|' read -r label expected <<< "$entry"
-        assert_contains "$out" "$expected" "json-verbose $label" || { _api_stop "${API_CONTAINER}-jv"; return 1; }
+        IFS='|' read -r label expected <<<"$entry"
+        assert_contains "$out" "$expected" "json-verbose $label" || {
+            _api_stop "${API_CONTAINER}-jv"
+            return 1
+        }
     done
-    assert_no_snake_keys "$out" "json-verbose no snake_case keys" || { _api_stop "${API_CONTAINER}-jv"; return 1; }
+    assert_no_snake_keys "$out" "json-verbose no snake_case keys" || {
+        _api_stop "${API_CONTAINER}-jv"
+        return 1
+    }
 
     echo "OK: api_json_verbose (${#JSON_VERBOSE_CHECKS[@]} checks)"
     _api_stop "${API_CONTAINER}-jv"
@@ -264,8 +301,14 @@ test_api_large_output() {
     local out
     out=$(post "$API_BASE/run" \
         "{\"prompt\": \"run: wc -c /workspaces/bigtest.txt\", \"model\": \"$TEST_MODEL\", \"noContinue\": true}")
-    assert_contains "$out" "result" "large output returns valid json" || { _api_stop "${API_CONTAINER}-large"; return 1; }
-    assert_contains "$out" "70" "large output reports character count" || { _api_stop "${API_CONTAINER}-large"; return 1; }
+    assert_contains "$out" "result" "large output returns valid json" || {
+        _api_stop "${API_CONTAINER}-large"
+        return 1
+    }
+    assert_contains "$out" "70" "large output reports character count" || {
+        _api_stop "${API_CONTAINER}-large"
+        return 1
+    }
 
     echo "OK: api_large_output"
     _api_stop "${API_CONTAINER}-large"
@@ -286,22 +329,40 @@ test_api_openai_chat() {
     # verify models endpoint first
     local models
     models=$(curl -sf "$API_BASE/openai/v1/models")
-    assert_contains "$models" '"object":"list"' "openai models returns list" || { _api_stop "${API_CONTAINER}-oai"; return 1; }
-    assert_contains "$models" '"haiku"' "openai models has haiku" || { _api_stop "${API_CONTAINER}-oai"; return 1; }
+    assert_contains "$models" '"object":"list"' "openai models returns list" || {
+        _api_stop "${API_CONTAINER}-oai"
+        return 1
+    }
+    assert_contains "$models" '"haiku"' "openai models has haiku" || {
+        _api_stop "${API_CONTAINER}-oai"
+        return 1
+    }
 
     # run table-driven chat cases
     local entry label body expected
     for entry in "${OAI_CHAT_CASES[@]}"; do
-        IFS='|' read -r label body expected <<< "$entry"
+        IFS='|' read -r label body expected <<<"$entry"
         local out
         out=$(post "$API_BASE/openai/v1/chat/completions" "$body")
-        assert_contains "$out" "$expected" "openai: $label" || { _api_stop "${API_CONTAINER}-oai"; return 1; }
+        assert_contains "$out" "$expected" "openai: $label" || {
+            _api_stop "${API_CONTAINER}-oai"
+            return 1
+        }
     done
 
     # verify response structure on last response
-    assert_contains "$out" '"object"' "openai: has object field" || { _api_stop "${API_CONTAINER}-oai"; return 1; }
-    assert_contains "$out" '"choices"' "openai: has choices field" || { _api_stop "${API_CONTAINER}-oai"; return 1; }
-    assert_contains "$out" '"usage"' "openai: has usage field" || { _api_stop "${API_CONTAINER}-oai"; return 1; }
+    assert_contains "$out" '"object"' "openai: has object field" || {
+        _api_stop "${API_CONTAINER}-oai"
+        return 1
+    }
+    assert_contains "$out" '"choices"' "openai: has choices field" || {
+        _api_stop "${API_CONTAINER}-oai"
+        return 1
+    }
+    assert_contains "$out" '"usage"' "openai: has usage field" || {
+        _api_stop "${API_CONTAINER}-oai"
+        return 1
+    }
 
     echo "OK: api_openai_chat (models + ${#OAI_CHAT_CASES[@]} chat cases)"
     _api_stop "${API_CONTAINER}-oai"
@@ -326,8 +387,11 @@ test_api_openai_stream() {
 
     local entry label expected
     for entry in "${OAI_STREAM_CHECKS[@]}"; do
-        IFS='|' read -r label expected <<< "$entry"
-        assert_contains "$out" "$expected" "openai stream: $label" || { _api_stop "${API_CONTAINER}-oai-st"; return 1; }
+        IFS='|' read -r label expected <<<"$entry"
+        assert_contains "$out" "$expected" "openai stream: $label" || {
+            _api_stop "${API_CONTAINER}-oai-st"
+            return 1
+        }
     done
 
     echo "OK: api_openai_stream (${#OAI_STREAM_CHECKS[@]} checks)"
@@ -346,7 +410,10 @@ test_api_openai_workspace_header() {
         -H "Content-Type: application/json" \
         -H "X-Claude-Workspace: oaiws" \
         -d "{\"model\":\"$TEST_MODEL\",\"messages\":[{\"role\":\"user\",\"content\":\"run: cat /workspaces/oaiws/marker.txt\"}]}")
-    assert_contains "$out" "WSMARKER7742" "openai workspace header routes to correct dir" || { _api_stop "${API_CONTAINER}-oai-ws"; return 1; }
+    assert_contains "$out" "WSMARKER7742" "openai workspace header routes to correct dir" || {
+        _api_stop "${API_CONTAINER}-oai-ws"
+        return 1
+    }
 
     echo "OK: api_openai_workspace_header"
     _api_stop "${API_CONTAINER}-oai-ws"
@@ -366,7 +433,10 @@ test_api_openai_continue_header() {
         -H "Content-Type: application/json" \
         -H "X-Claude-Continue: true" \
         -d "{\"model\":\"$TEST_MODEL\",\"messages\":[{\"role\":\"user\",\"content\":\"what word did I ask you to remember? reply with just the word\"}]}")
-    assert_contains "$out" "CONTTEST" "openai X-Claude-Continue recalls context" || { _api_stop "${API_CONTAINER}-oai-cont"; return 1; }
+    assert_contains "$out" "CONTTEST" "openai X-Claude-Continue recalls context" || {
+        _api_stop "${API_CONTAINER}-oai-cont"
+        return 1
+    }
 
     echo "OK: api_openai_continue_header"
     _api_stop "${API_CONTAINER}-oai-cont"
@@ -389,15 +459,21 @@ test_api_openai_rejects_unsupported() {
 
     local entry label body expected
     for entry in "${OAI_REJECT_CASES[@]}"; do
-        IFS='|' read -r label body expected <<< "$entry"
+        IFS='|' read -r label body expected <<<"$entry"
         local code body_out
         code=$(curl -s -o /dev/null -w "%{http_code}" -X POST "$API_BASE/openai/v1/chat/completions" \
             -H "Content-Type: application/json" -d "$body")
-        assert_eq "$code" "400" "openai reject $label (status)" || { _api_stop "${API_CONTAINER}-oai-rej"; return 1; }
+        assert_eq "$code" "400" "openai reject $label (status)" || {
+            _api_stop "${API_CONTAINER}-oai-rej"
+            return 1
+        }
 
         body_out=$(curl -s -X POST "$API_BASE/openai/v1/chat/completions" \
             -H "Content-Type: application/json" -d "$body")
-        assert_contains "$body_out" "$expected" "openai reject $label (hint)" || { _api_stop "${API_CONTAINER}-oai-rej"; return 1; }
+        assert_contains "$body_out" "$expected" "openai reject $label (hint)" || {
+            _api_stop "${API_CONTAINER}-oai-rej"
+            return 1
+        }
     done
 
     # response_format=text (or any non-json_object) must still be accepted
@@ -405,7 +481,10 @@ test_api_openai_rejects_unsupported() {
     code=$(curl -s -o /dev/null -w "%{http_code}" -X POST "$API_BASE/openai/v1/chat/completions" \
         -H "Content-Type: application/json" \
         -d "{\"model\":\"$TEST_MODEL\",\"messages\":[{\"role\":\"user\",\"content\":\"respond with exactly RFTEXT\"}],\"response_format\":{\"type\":\"text\"}}")
-    assert_eq "$code" "200" "openai accepts response_format=text" || { _api_stop "${API_CONTAINER}-oai-rej"; return 1; }
+    assert_eq "$code" "200" "openai accepts response_format=text" || {
+        _api_stop "${API_CONTAINER}-oai-rej"
+        return 1
+    }
 
     echo "OK: api_openai_rejects_unsupported (${#OAI_REJECT_CASES[@]} cases)"
     _api_stop "${API_CONTAINER}-oai-rej"
@@ -423,12 +502,18 @@ test_api_openai_finish_reason() {
     local out fr
     out=$(post "$API_BASE/openai/v1/chat/completions" \
         "{\"model\":\"$TEST_MODEL\",\"messages\":[{\"role\":\"user\",\"content\":\"respond with exactly FROK\"}]}")
-    assert_contains "$out" "FROK" "openai finish_reason: non-stream produced response" || { _api_stop "${API_CONTAINER}-oai-fr"; return 1; }
-    assert_contains "$out" '"finish_reason"' "openai finish_reason: field present" || { _api_stop "${API_CONTAINER}-oai-fr"; return 1; }
+    assert_contains "$out" "FROK" "openai finish_reason: non-stream produced response" || {
+        _api_stop "${API_CONTAINER}-oai-fr"
+        return 1
+    }
+    assert_contains "$out" '"finish_reason"' "openai finish_reason: field present" || {
+        _api_stop "${API_CONTAINER}-oai-fr"
+        return 1
+    }
 
     fr=$(echo "$out" | python3 -c "import json,sys; print(json.load(sys.stdin)['choices'][0]['finish_reason'])")
     case "$fr" in
-        stop|length|tool_calls|content_filter)
+        stop | length | tool_calls | content_filter)
             echo "  OK: openai finish_reason: value '$fr' is openai-spec"
             ;;
         *)
@@ -443,8 +528,14 @@ test_api_openai_finish_reason() {
     stream=$(curl -sf -X POST "$API_BASE/openai/v1/chat/completions" \
         -H "Content-Type: application/json" \
         -d "{\"model\":\"$TEST_MODEL\",\"messages\":[{\"role\":\"user\",\"content\":\"respond with exactly FRSTREAM\"}],\"stream\":true}")
-    assert_contains "$stream" "FRSTREAM" "openai finish_reason stream: produced response" || { _api_stop "${API_CONTAINER}-oai-fr"; return 1; }
-    assert_contains "$stream" '"finish_reason":"stop"' "openai finish_reason stream: final chunk has finish_reason=stop" || { _api_stop "${API_CONTAINER}-oai-fr"; return 1; }
+    assert_contains "$stream" "FRSTREAM" "openai finish_reason stream: produced response" || {
+        _api_stop "${API_CONTAINER}-oai-fr"
+        return 1
+    }
+    assert_contains "$stream" '"finish_reason":"stop"' "openai finish_reason stream: final chunk has finish_reason=stop" || {
+        _api_stop "${API_CONTAINER}-oai-fr"
+        return 1
+    }
 
     echo "OK: api_openai_finish_reason"
     _api_stop "${API_CONTAINER}-oai-fr"
@@ -471,7 +562,10 @@ test_api_openai_multiturn_workspace() {
             {\"role\":\"assistant\",\"content\":\"got it\"},
             {\"role\":\"user\",\"content\":\"reply with exactly the password I told you, nothing else\"}
         ]}")
-    assert_contains "$out" "QUINOA42" "openai multiturn+workspace: recalls earlier turn" || { _api_stop "${API_CONTAINER}-oai-mtw"; return 1; }
+    assert_contains "$out" "QUINOA42" "openai multiturn+workspace: recalls earlier turn" || {
+        _api_stop "${API_CONTAINER}-oai-mtw"
+        return 1
+    }
 
     echo "OK: api_openai_multiturn_workspace"
     _api_stop "${API_CONTAINER}-oai-mtw"
@@ -514,8 +608,11 @@ test_api_mcp_init() {
 
     local entry label expected
     for entry in "${MCP_INIT_CHECKS[@]}"; do
-        IFS='|' read -r label expected <<< "$entry"
-        assert_contains "$out" "$expected" "mcp init: $label" || { _api_stop "${API_CONTAINER}-mcp"; return 1; }
+        IFS='|' read -r label expected <<<"$entry"
+        assert_contains "$out" "$expected" "mcp init: $label" || {
+            _api_stop "${API_CONTAINER}-mcp"
+            return 1
+        }
     done
 
     echo "OK: api_mcp_init (${#MCP_INIT_CHECKS[@]} checks)"
@@ -528,14 +625,20 @@ test_api_mcp_tools_list() {
     _api_start "${API_CONTAINER}-mcp-tl" || return 1
 
     _mcp_init "$API_BASE/mcp/"
-    assert_not_empty "$MCP_SESSION" "mcp session id" || { _api_stop "${API_CONTAINER}-mcp-tl"; return 1; }
+    assert_not_empty "$MCP_SESSION" "mcp session id" || {
+        _api_stop "${API_CONTAINER}-mcp-tl"
+        return 1
+    }
 
     local out
     out=$(_mcp_call "$API_BASE/mcp/" '{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}')
 
     local tool
     for tool in "${MCP_TOOLS[@]}"; do
-        assert_contains "$out" "$tool" "mcp tools/list has $tool" || { _api_stop "${API_CONTAINER}-mcp-tl"; return 1; }
+        assert_contains "$out" "$tool" "mcp tools/list has $tool" || {
+            _api_stop "${API_CONTAINER}-mcp-tl"
+            return 1
+        }
     done
 
     echo "OK: api_mcp_tools_list (${#MCP_TOOLS[@]} tools)"
@@ -550,7 +653,10 @@ test_api_mcp_claude_run() {
     local out
     out=$(_mcp_call "$API_BASE/mcp/" \
         '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"claude_run","arguments":{"prompt":"respond with exactly MCPTEST","model":"'"$TEST_MODEL"'","no_continue":true}}}')
-    assert_contains "$out" "MCPTEST" "mcp claude_run returns response" || { _api_stop "${API_CONTAINER}-mcp-run"; return 1; }
+    assert_contains "$out" "MCPTEST" "mcp claude_run returns response" || {
+        _api_stop "${API_CONTAINER}-mcp-run"
+        return 1
+    }
 
     echo "OK: api_mcp_claude_run"
     _api_stop "${API_CONTAINER}-mcp-run"
@@ -571,11 +677,14 @@ test_api_mcp_file_ops() {
 
     local entry label mid tool args expected
     for entry in "${MCP_FILE_OPS[@]}"; do
-        IFS='|' read -r label mid tool args expected <<< "$entry"
+        IFS='|' read -r label mid tool args expected <<<"$entry"
         local out
         out=$(_mcp_call "$API_BASE/mcp/" \
             "{\"jsonrpc\":\"2.0\",\"id\":$mid,\"method\":\"tools/call\",\"params\":{\"name\":\"$tool\",\"arguments\":{$args}}}")
-        assert_contains "$out" "$expected" "mcp $label" || { _api_stop "${API_CONTAINER}-mcp-f"; return 1; }
+        assert_contains "$out" "$expected" "mcp $label" || {
+            _api_stop "${API_CONTAINER}-mcp-f"
+            return 1
+        }
     done
 
     echo "OK: api_mcp_file_ops (${#MCP_FILE_OPS[@]} ops)"
@@ -594,12 +703,12 @@ test_api_mcp_auth() {
 
     local entry label method expected_code expected_body
     for entry in "${MCP_AUTH_CASES[@]}"; do
-        IFS='|' read -r label method expected_code expected_body <<< "$entry"
+        IFS='|' read -r label method expected_code expected_body <<<"$entry"
         local url="$API_BASE/mcp/" auth_args=()
         case "$method" in
-            none)   ;;
+            none) ;;
             header) auth_args=(-H "Authorization: Bearer mcpsecret") ;;
-            query)  url="$API_BASE/mcp/?apiToken=mcpsecret" ;;
+            query) url="$API_BASE/mcp/?apiToken=mcpsecret" ;;
         esac
         local out
         out=$(curl -s -D - -X POST "$url" \
@@ -608,9 +717,15 @@ test_api_mcp_auth() {
             -d "$_MCP_INIT")
         local code
         code=$(echo "$out" | head -1 | grep -o '[0-9][0-9][0-9]')
-        assert_eq "$code" "$expected_code" "mcp auth: $label (status)" || { _api_stop "${API_CONTAINER}-mcp-auth"; return 1; }
+        assert_eq "$code" "$expected_code" "mcp auth: $label (status)" || {
+            _api_stop "${API_CONTAINER}-mcp-auth"
+            return 1
+        }
         if [ -n "$expected_body" ]; then
-            assert_contains "$out" "$expected_body" "mcp auth: $label (body)" || { _api_stop "${API_CONTAINER}-mcp-auth"; return 1; }
+            assert_contains "$out" "$expected_body" "mcp auth: $label (body)" || {
+                _api_stop "${API_CONTAINER}-mcp-auth"
+                return 1
+            }
         fi
     done
 
@@ -633,7 +748,7 @@ _test_skill_trigger() {
 
     _skills_setup
     mkdir -p "$_SKILLS_TMP/testskill"
-    printf '%s' "$skill_content" > "$_SKILLS_TMP/testskill/SKILL.md"
+    printf '%s' "$skill_content" >"$_SKILLS_TMP/testskill/SKILL.md"
 
     # negative: no mount
     _api_start "${API_CONTAINER}-skill-${suffix}-neg" || return 1
@@ -654,7 +769,8 @@ _test_skill_trigger() {
             ;;
     esac
     assert_not_contains "$out_neg" "$expected" "$endpoint skill: trigger ignored without mount" || {
-        _api_stop "${API_CONTAINER}-skill-${suffix}-neg"; return 1
+        _api_stop "${API_CONTAINER}-skill-${suffix}-neg"
+        return 1
     }
     _api_stop "${API_CONTAINER}-skill-${suffix}-neg"
 
@@ -678,7 +794,9 @@ _test_skill_trigger() {
             ;;
     esac
     assert_contains "$out" "$expected" "$endpoint skill: trigger fires with mount" || {
-        _api_stop "${API_CONTAINER}-skill-${suffix}"; rm -rf "$_SKILLS_TMP"; return 1
+        _api_stop "${API_CONTAINER}-skill-${suffix}"
+        rm -rf "$_SKILLS_TMP"
+        return 1
     }
     _api_stop "${API_CONTAINER}-skill-${suffix}"
     rm -rf "$_SKILLS_TMP"
@@ -706,7 +824,7 @@ test_api_always_skills_with_user_append() {
     _skills_setup
     mkdir -p "$_SKILLS_TMP/testskill"
     printf 'When the user says SKILLTRIG you MUST include the word SKILLAPPLIED in your response.' \
-        > "$_SKILLS_TMP/testskill/SKILL.md"
+        >"$_SKILLS_TMP/testskill/SKILL.md"
 
     _api_start "${API_CONTAINER}-skill-asp" \
         -v "$_SKILLS_TMP:/home/claude/.claude/.always-skills" || return 1
@@ -714,8 +832,16 @@ test_api_always_skills_with_user_append() {
     local out
     out=$(post "$API_BASE/run" \
         "{\"prompt\": \"SKILLTRIG\", \"model\": \"$TEST_MODEL\", \"noContinue\": true, \"appendSystemPrompt\": \"When the user says SKILLTRIG also include the word USERAPPLIED.\"}")
-    assert_contains "$out" "SKILLAPPLIED" "skill + user append: skill fires" || { _api_stop "${API_CONTAINER}-skill-asp"; rm -rf "$_SKILLS_TMP"; return 1; }
-    assert_contains "$out" "USERAPPLIED" "skill + user append: user append fires" || { _api_stop "${API_CONTAINER}-skill-asp"; rm -rf "$_SKILLS_TMP"; return 1; }
+    assert_contains "$out" "SKILLAPPLIED" "skill + user append: skill fires" || {
+        _api_stop "${API_CONTAINER}-skill-asp"
+        rm -rf "$_SKILLS_TMP"
+        return 1
+    }
+    assert_contains "$out" "USERAPPLIED" "skill + user append: user append fires" || {
+        _api_stop "${API_CONTAINER}-skill-asp"
+        rm -rf "$_SKILLS_TMP"
+        return 1
+    }
 
     echo "OK: api_always_skills_with_user_append"
     _api_stop "${API_CONTAINER}-skill-asp"
@@ -726,9 +852,9 @@ test_api_always_skills_multiple() {
     _skills_setup
     mkdir -p "$_SKILLS_TMP/skill_a" "$_SKILLS_TMP/skill_b"
     printf 'When the user says MULTITRIG you MUST include the word ALPHA in your response.' \
-        > "$_SKILLS_TMP/skill_a/SKILL.md"
+        >"$_SKILLS_TMP/skill_a/SKILL.md"
     printf 'When the user says MULTITRIG you MUST include the word BETA in your response.' \
-        > "$_SKILLS_TMP/skill_b/SKILL.md"
+        >"$_SKILLS_TMP/skill_b/SKILL.md"
 
     _api_start "${API_CONTAINER}-skill-multi" \
         -v "$_SKILLS_TMP:/home/claude/.claude/.always-skills" || return 1
@@ -736,8 +862,16 @@ test_api_always_skills_multiple() {
     local out
     out=$(post "$API_BASE/run" \
         "{\"prompt\": \"MULTITRIG\", \"model\": \"$TEST_MODEL\", \"noContinue\": true}")
-    assert_contains "$out" "ALPHA" "multiple skills: first fires" || { _api_stop "${API_CONTAINER}-skill-multi"; rm -rf "$_SKILLS_TMP"; return 1; }
-    assert_contains "$out" "BETA" "multiple skills: second fires" || { _api_stop "${API_CONTAINER}-skill-multi"; rm -rf "$_SKILLS_TMP"; return 1; }
+    assert_contains "$out" "ALPHA" "multiple skills: first fires" || {
+        _api_stop "${API_CONTAINER}-skill-multi"
+        rm -rf "$_SKILLS_TMP"
+        return 1
+    }
+    assert_contains "$out" "BETA" "multiple skills: second fires" || {
+        _api_stop "${API_CONTAINER}-skill-multi"
+        rm -rf "$_SKILLS_TMP"
+        return 1
+    }
 
     echo "OK: api_always_skills_multiple"
     _api_stop "${API_CONTAINER}-skill-multi"
@@ -748,7 +882,7 @@ test_api_always_skills_path_visible() {
     _skills_setup
     mkdir -p "$_SKILLS_TMP/myskill"
     printf 'When the user says PATHCHECK you MUST list all skill files loaded for you including their exact file paths.' \
-        > "$_SKILLS_TMP/myskill/SKILL.md"
+        >"$_SKILLS_TMP/myskill/SKILL.md"
 
     _api_start "${API_CONTAINER}-skill-path" \
         -v "$_SKILLS_TMP:/home/claude/.claude/.always-skills" || return 1
@@ -756,8 +890,16 @@ test_api_always_skills_path_visible() {
     local out
     out=$(post "$API_BASE/run" \
         "{\"prompt\": \"PATHCHECK\", \"model\": \"$TEST_MODEL\", \"noContinue\": true}")
-    assert_contains "$out" ".always-skills" "skill path visible to claude" || { _api_stop "${API_CONTAINER}-skill-path"; rm -rf "$_SKILLS_TMP"; return 1; }
-    assert_contains "$out" "SKILL.md" "skill filename visible to claude" || { _api_stop "${API_CONTAINER}-skill-path"; rm -rf "$_SKILLS_TMP"; return 1; }
+    assert_contains "$out" ".always-skills" "skill path visible to claude" || {
+        _api_stop "${API_CONTAINER}-skill-path"
+        rm -rf "$_SKILLS_TMP"
+        return 1
+    }
+    assert_contains "$out" "SKILL.md" "skill filename visible to claude" || {
+        _api_stop "${API_CONTAINER}-skill-path"
+        rm -rf "$_SKILLS_TMP"
+        return 1
+    }
 
     echo "OK: api_always_skills_path_visible"
     _api_stop "${API_CONTAINER}-skill-path"
@@ -773,28 +915,43 @@ test_api_async_run() {
     local submit
     submit=$(post "$API_BASE/run" \
         "{\"prompt\":\"respond with exactly ASYNCPONG\",\"model\":\"$TEST_MODEL\",\"noContinue\":true,\"async\":true}")
-    assert_contains "$submit" '"runId"' "async: has runId" || { _api_stop "${API_CONTAINER}-async"; return 1; }
-    assert_contains "$submit" '"running"' "async: status is running" || { _api_stop "${API_CONTAINER}-async"; return 1; }
+    assert_contains "$submit" '"runId"' "async: has runId" || {
+        _api_stop "${API_CONTAINER}-async"
+        return 1
+    }
+    assert_contains "$submit" '"running"' "async: status is running" || {
+        _api_stop "${API_CONTAINER}-async"
+        return 1
+    }
 
     local run_id
     run_id=$(echo "$submit" | python3 -c "import json,sys; print(json.load(sys.stdin)['runId'])")
 
     # poll for result (max 120s)
-    local i result status
-    for i in $(seq 1 24); do
+    local result status
+    for _ in $(seq 1 24); do
         sleep 5
         result=$(curl -sf "$API_BASE/run/result?runId=$run_id")
         status=$(echo "$result" | python3 -c "import json,sys; print(json.load(sys.stdin).get('status',''))" 2>/dev/null || true)
         [ "$status" != "running" ] && break
     done
 
-    assert_contains "$result" "ASYNCPONG" "async: result contains response" || { _api_stop "${API_CONTAINER}-async"; return 1; }
-    assert_contains "$result" '"runId"' "async: result has runId" || { _api_stop "${API_CONTAINER}-async"; return 1; }
+    assert_contains "$result" "ASYNCPONG" "async: result contains response" || {
+        _api_stop "${API_CONTAINER}-async"
+        return 1
+    }
+    assert_contains "$result" '"runId"' "async: result has runId" || {
+        _api_stop "${API_CONTAINER}-async"
+        return 1
+    }
 
     # second read should 404 (purged after first read)
     local code
     code=$(curl -s -o /dev/null -w "%{http_code}" "$API_BASE/run/result?runId=$run_id")
-    assert_eq "$code" "404" "async: result purged after read" || { _api_stop "${API_CONTAINER}-async"; return 1; }
+    assert_eq "$code" "404" "async: result purged after read" || {
+        _api_stop "${API_CONTAINER}-async"
+        return 1
+    }
 
     echo "OK: api_async_run"
     _api_stop "${API_CONTAINER}-async"
@@ -814,12 +971,18 @@ test_api_async_cancel() {
     # cancel by runId
     local cancel_out
     cancel_out=$(curl -sf -X POST "$API_BASE/run/cancel?runId=$run_id")
-    assert_contains "$cancel_out" '"ok"' "async cancel returns ok" || { _api_stop "${API_CONTAINER}-async-c"; return 1; }
+    assert_contains "$cancel_out" '"ok"' "async cancel returns ok" || {
+        _api_stop "${API_CONTAINER}-async-c"
+        return 1
+    }
 
     # result should show cancelled
     local result
     result=$(curl -sf "$API_BASE/run/result?runId=$run_id")
-    assert_contains "$result" '"cancelled"' "async cancel: status is cancelled" || { _api_stop "${API_CONTAINER}-async-c"; return 1; }
+    assert_contains "$result" '"cancelled"' "async cancel: status is cancelled" || {
+        _api_stop "${API_CONTAINER}-async-c"
+        return 1
+    }
 
     echo "OK: api_async_cancel"
     _api_stop "${API_CONTAINER}-async-c"
@@ -831,8 +994,14 @@ test_api_run_has_runid() {
     local out
     out=$(post "$API_BASE/run" \
         "{\"prompt\":\"respond with exactly RUNIDTEST\",\"model\":\"$TEST_MODEL\",\"noContinue\":true}")
-    assert_contains "$out" '"runId"' "sync run has runId" || { _api_stop "${API_CONTAINER}-runid"; return 1; }
-    assert_contains "$out" "RUNIDTEST" "sync run has response" || { _api_stop "${API_CONTAINER}-runid"; return 1; }
+    assert_contains "$out" '"runId"' "sync run has runId" || {
+        _api_stop "${API_CONTAINER}-runid"
+        return 1
+    }
+    assert_contains "$out" "RUNIDTEST" "sync run has response" || {
+        _api_stop "${API_CONTAINER}-runid"
+        return 1
+    }
 
     echo "OK: api_run_has_runid"
     _api_stop "${API_CONTAINER}-runid"
@@ -848,8 +1017,14 @@ test_api_status_shows_runs() {
 
     local out
     out=$(curl -sf "$API_BASE/status")
-    assert_contains "$out" '"runs"' "status has runs array" || { _api_stop "${API_CONTAINER}-stat"; return 1; }
-    assert_contains "$out" '"running"' "status shows running run" || { _api_stop "${API_CONTAINER}-stat"; return 1; }
+    assert_contains "$out" '"runs"' "status has runs array" || {
+        _api_stop "${API_CONTAINER}-stat"
+        return 1
+    }
+    assert_contains "$out" '"running"' "status shows running run" || {
+        _api_stop "${API_CONTAINER}-stat"
+        return 1
+    }
 
     # cancel to clean up
     curl -sf -X POST "$API_BASE/run/cancel" >/dev/null 2>&1 || true

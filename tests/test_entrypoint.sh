@@ -11,13 +11,16 @@ ENTRYPOINT_CASES=(
 test_entrypoint_behaviors() {
     local entry label docker_extra ep_override cmd expected
     for entry in "${ENTRYPOINT_CASES[@]}"; do
-        IFS='|' read -r label docker_extra ep_override cmd expected <<< "$entry"
+        IFS='|' read -r label docker_extra ep_override cmd expected <<<"$entry"
 
         local args=(--rm)
+        # Word splitting is intended: each field holds several arguments.
         # shellcheck disable=SC2206
         [ -n "$docker_extra" ] && args+=($docker_extra)
+        # shellcheck disable=SC2206
         [ -n "$ep_override" ] && args+=($ep_override)
         args+=("$IMAGE")
+        # shellcheck disable=SC2206
         [ -n "$cmd" ] && args+=($cmd)
 
         local out
@@ -88,7 +91,8 @@ test_entrypoint_config_patching() {
 
 test_entrypoint_initd() {
     local img
-    img=$(docker build -q -f - "$WORKDIR" <<'DEOF'
+    img=$(
+        docker build -q -f - "$WORKDIR" <<'DEOF'
 FROM psyb0t/claudebox:test
 RUN mkdir -p /home/claude/.claude/init.d && \
     printf '#!/bin/bash\necho INITRAN > /tmp/init-marker\n' > /home/claude/.claude/init.d/01-test.sh && \

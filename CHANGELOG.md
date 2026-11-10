@@ -4,6 +4,13 @@ All notable changes to **claudebox** (formerly `docker-claude-code`).
 
 Format roughly follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [v2.8.6], 2026-11-10: publish the documentation site
+
+- Publishes the documentation at https://psyb0t.github.io/docker-claudebox/ and moves the reference material out of the README into it. Adds the full `CLAUDEBOX_*` to `AICODEBOX_*` alias table, the wrapper's cron shortcut and the Telegram `TELEGRAM_CHAT_ID` fallback. Documents `docker stop <name>` for cron containers, because `claudebox stop` stops the interactive container.
+- Removes the "isolated" claim from the skill and plugin manifests. Workspace subpaths separate callers but are not a security boundary.
+- Runs shellcheck, shfmt, ruff, pyright and the credential-free tests on every branch push, in a development image built from `Dockerfile.dev`. Formats the shell scripts with shfmt.
+- Adds Buy Me a Coffee to the funding links, and commits `AGENTS.md` and the project rules in `.agents/rules/` for coding agents.
+
 ## [v2.8.5], 2026-10-22: preserve native output and refresh the shared runtime
 
 - Refreshes the Aicodebox runtime to v0.18.2, including workspace and Docker socket identity collision fixes. Both variants continue to follow the shared `latest` and `latest-full` images.

@@ -1,6 +1,10 @@
-# Installation and wrapper
+---
+title: "Installation and wrapper"
+description: "Install the claudebox wrapper, choose the minimal or full image, and manage authentication, Git identity, container reuse and host access."
+nav_order: 2
+---
 
-[Back to README](../README.md)
+# Installation and wrapper
 
 ## Install
 
@@ -29,7 +33,7 @@ curl -fsSL https://raw.githubusercontent.com/psyb0t/docker-claudebox/master/inst
 
 ### Review before running
 
-Download the repository archive or use a local checkout, inspect `install.sh` and `wrapper.sh`, then run `bash install.sh` from that checkout. The installer uses its adjacent wrapper when present.
+Download the repository archive or use a local checkout, inspect [`install.sh`](https://github.com/psyb0t/docker-claudebox/blob/master/install.sh) and [`wrapper.sh`](https://github.com/psyb0t/docker-claudebox/blob/master/wrapper.sh), then run `bash install.sh` from that checkout. The installer uses its adjacent wrapper when present.
 
 When downloaded through the one-line pipeline, the installer instead downloads the wrapper from `CLAUDEBOX_INSTALL_REF`, falling back to the embedded `CLAUDEBOX_RELEASE_REF`. `make version V=X.Y.Z` keeps that ref aligned with the package and plugin metadata; it does not commit or tag. Updating the image does not update an installed wrapper. To explicitly request the current default-branch wrapper:
 

@@ -1,0 +1,27 @@
+# Development image for `make lint` and `make test-ci`.
+#
+# It starts from the same aicodebox base the published image uses, so the
+# adapter tests import the real `aicodebox` package from the base's system
+# Python. It adds Make and the pinned Python lint and test tools. It is never
+# published. Build it with `make dev-image`.
+ARG BASE_IMAGE=psyb0t/aicodebox:latest
+FROM ${BASE_IMAGE}
+
+USER root
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends make \
+    && rm -rf /var/lib/apt/lists/*
+
+# Keep these pins in step with [dependency-groups] dev in claudebox/pyproject.toml.
+# `pyright --version` downloads pyright's Node package now, so lint runs offline.
+RUN uv pip install --system --break-system-packages --no-cache \
+        pytest==9.1.1 \
+        ruff==0.17.0 \
+        pyright==1.1.414 \
+    && pyright --version
+
+ENV PYTHONDONTWRITEBYTECODE=1
+
+ENTRYPOINT []
+CMD ["bash"]

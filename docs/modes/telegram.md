@@ -1,4 +1,11 @@
-# Telegram Mode
+---
+title: "Telegram mode"
+description: "Talk to Claude Code from Telegram with per-chat workspaces, models and prompts, chat and user allowlists, file transfer and bot commands."
+nav_order: 5
+parent: "Modes"
+---
+
+# Telegram mode
 
 Talk to Claude Code from Telegram. Each configured chat gets its own workspace and can select its own model, effort, session behavior, and system prompt. The bot accepts text, documents, photos, videos, voice messages, and captions.
 
@@ -6,7 +13,7 @@ Talk to Claude Code from Telegram. Each configured chat gets its own workspace a
 
 1. Create a bot with [@BotFather](https://t.me/BotFather), run `/newbot`, and keep its token in an ignored `.env` file.
 2. Find your Telegram user ID with [@userinfobot](https://t.me/userinfobot). A direct message chat ID is that user ID. Group chat IDs are negative numbers.
-3. Create `telegram.yml` in the persistent Aicodebox state directory. Claudebox accepts `~/.claude/telegram.yml` through its compatibility alias, but new container configuration should use `$HOME/.aicodebox/telegram.yml`.
+3. Create `telegram.yml` in the persistent aicodebox state directory. [`telegram.yml.example`](https://github.com/psyb0t/docker-claudebox/blob/master/telegram.yml.example) is an annotated starting point. Claudebox accepts `~/.claude/telegram.yml` through its compatibility alias, but new container configuration should use `$HOME/.aicodebox/telegram.yml`.
 
 ```yaml
 allowed_chats:
@@ -37,6 +44,8 @@ chats:
 ```
 
 `allowed_chats` is the access boundary. An empty list means no chat restriction, which allows anyone who can reach the bot to start work. Set explicit direct message and group IDs before exposing the token. Use `allowed_users` to limit members inside a group.
+
+When the configuration file does not exist, the bot falls back to the environment: a numeric `TELEGRAM_CHAT_ID` becomes the only allowed chat. With neither the file nor that variable, every chat is allowed.
 
 Chat configuration supports `workspace`, `model`, `effort`, `continue`, `system_prompt`, `append_system_prompt`, and `allowed_users`. Workspace values must be safe relative paths below `/workspace`.
 

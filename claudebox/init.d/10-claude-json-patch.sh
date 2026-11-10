@@ -26,7 +26,7 @@ if [ ! -f "$CLAUDE_JSON" ]; then
     if [ -f "$SEED_JSON" ]; then
         cp "$SEED_JSON" "$CLAUDE_JSON"
     else
-        echo "{}" > "$CLAUDE_JSON"
+        echo "{}" >"$CLAUDE_JSON"
     fi
 fi
 
@@ -42,4 +42,4 @@ jq \
      | .autoUpdates = false
      | .autoUpdatesProtectedForNative = true
      | .projects[$dir].hasTrustDialogAccepted = true' \
-    "$CLAUDE_JSON" > "$tmp" && mv "$tmp" "$CLAUDE_JSON"
+    "$CLAUDE_JSON" >"$tmp" && mv "$tmp" "$CLAUDE_JSON"

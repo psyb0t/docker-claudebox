@@ -3,7 +3,7 @@
 // running claudebox server's Streamable-HTTP endpoint (`$CLAUDEBOX_URL/mcp/`),
 // authenticating with `$CLAUDEBOX_MCP_MODE_TOKEN` when the server requires it.
 //
-// stdout IS the MCP protocol channel, so diagnostics go to stderr only — the
+// stdout IS the MCP protocol channel, so diagnostics go to stderr only. The
 // sole output here is a fatal pre-launch console.error (user-facing CLI
 // output). The token is passed to the proxy as an argv header, never logged.
 import { spawnSync } from "node:child_process";
@@ -23,7 +23,7 @@ Point this bridge at your running claudebox server, e.g.:
   export CLAUDEBOX_URL=http://localhost:8080
 
 The server needs CLAUDEBOX_API_MODE=1 and CLAUDEBOX_MCP_MODE=1 set.
-claudebox is self-hosted — see https://github.com/psyb0t/docker-claudebox`,
+claudebox is self-hosted, see https://github.com/psyb0t/docker-claudebox`,
   );
   process.exit(1);
 }

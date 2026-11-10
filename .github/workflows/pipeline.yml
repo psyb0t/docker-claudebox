@@ -1,42 +1,62 @@
 name: pipeline
 
+# Every branch push runs lint and the credential-free tests. On the default
+# branch, passing checks then build both image variants, publish :latest,
+# :latest-full and the :sha-<commit> tags, and refresh the badges. A tag push
+# skips the checks, waits for that commit's default-branch run to succeed,
+# promotes the same image digests to the release tags, cuts the GitHub
+# release, refreshes the badges, and publishes the agent skill, the OpenClaw
+# plugin and the MCP registry entry.
 on: [push]
 
+permissions: {}
+
 jobs:
+  # shellcheck, shfmt, ruff and pyright, then the adapter unit tests and the
+  # hermetic wrapper, launcher and entrypoint tests. No credentials needed.
+  code:
+    if: "!startsWith(github.ref, 'refs/tags/')"
+    permissions:
+      contents: read
+      security-events: write
+    uses: psyb0t/reusable-github-workflows/.github/workflows/code-workflow.yml@master
+    with:
+      lint_command: "make lint"
+      test_command: "make test-ci"
+
   badges:
-    needs: [call-docker-image-workflow]
-    if: github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+    needs: [code, wait]
+    if: "always() && ((github.ref_name == github.event.repository.default_branch && needs.code.result == 'success') || (startsWith(github.ref, 'refs/tags/') && needs.wait.result == 'success'))"
     permissions:
       contents: write
     uses: psyb0t/reusable-github-workflows/.github/workflows/create-badges.yml@master
 
+  # The called workflow builds and pushes only on the default branch or a tag,
+  # so other branches stop after the code job.
   call-docker-image-workflow:
-    if: github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+    needs: [code]
+    if: "!startsWith(github.ref, 'refs/tags/')"
     permissions:
       contents: write # GitHub Release
       security-events: write # upload the Grype SARIF to the Security tab
     uses: psyb0t/reusable-github-workflows/.github/workflows/docker-image-workflow.yml@master
-
     with:
       repository_name: psyb0t/claudebox
       push_sha_tag: true
       create_release: false
       target_platforms: "linux/amd64,linux/arm64"
       # Report scan findings to the Security tab but don't fail the run, so the
-      # clawhub publish job below can depend on this workflow succeeding.
+      # publish jobs below can depend on this workflow succeeding.
       scan_fail_build: false
-      # v2 split the image into two Dockerfiles: `Dockerfile` (minimal, ships as
-      # :latest) and `Dockerfile.full` (toolchain-loaded, ships as :latest-full).
-      # Pre-v2 the workflow used `target: full/minimal` on a multi-stage single
-      # Dockerfile — no longer valid.
-      # Both variants inherit separate shared Aicodebox bases and build in parallel.
+      # `Dockerfile` is the minimal image (:latest) and `Dockerfile.full` the
+      # toolchain image (:latest-full). Each starts from its own aicodebox
+      # base, and the two build in parallel.
       build_targets: '[{"file":"Dockerfile","tag_suffix":""},{"file":"Dockerfile.full","tag_suffix":"-full"}]'
-
     secrets:
       dockerhub_username: ${{ secrets.DOCKERHUB_USERNAME }}
       dockerhub_token: ${{ secrets.DOCKERHUB_TOKEN }}
 
-  wait-for-default-branch:
+  wait:
     if: startsWith(github.ref, 'refs/tags/')
     permissions:
       actions: read
@@ -44,8 +64,8 @@ jobs:
     with:
       timeout_minutes: 180
 
-  promote-image:
-    needs: [wait-for-default-branch]
+  docker-promote:
+    needs: [wait]
     if: startsWith(github.ref, 'refs/tags/')
     permissions:
       contents: write
@@ -56,6 +76,7 @@ jobs:
       target_platforms: "linux/amd64,linux/arm64"
       build_targets: '[{"file":"Dockerfile","tag_suffix":""},{"file":"Dockerfile.full","tag_suffix":"-full"}]'
       promote_on_tag: true
+      # The release job below cuts the release from the tag's own notes.
       create_release: false
       scan_fail_build: false
     secrets:
@@ -63,26 +84,23 @@ jobs:
       dockerhub_token: ${{ secrets.DOCKERHUB_TOKEN }}
 
   release:
-    needs: [promote-image]
+    needs: [docker-promote]
     if: startsWith(github.ref, 'refs/tags/')
     permissions:
       contents: write
     uses: psyb0t/reusable-github-workflows/.github/workflows/release-workflow.yml@master
 
-  release-badges:
-    needs: [release]
-    if: startsWith(github.ref, 'refs/tags/')
-    permissions:
-      contents: write
-    uses: psyb0t/reusable-github-workflows/.github/workflows/create-badges.yml@master
-
-  # Publish the skill (.agents/skills/) + plugin (.agents/plugins/) to ClawHub.
-  # Tag pushes publish only after image promotion and the GitHub release.
+  # Publish the skill (.agents/skills/) and the OpenClaw MCP bridge
+  # (.agents/plugins/) to ClawHub once the release and its images exist.
   publish-to-clawhub:
     needs: [release]
     if: startsWith(github.ref, 'refs/tags/')
+    permissions:
+      contents: read
     uses: psyb0t/reusable-github-workflows/.github/workflows/clawhub-publish.yml@master
-
+    with:
+      skill_names: '["claudebox"]'
+      plugin_names: '["claudebox"]'
     secrets:
       clawhub_token: ${{ secrets.CLAWHUB_TOKEN }}
 
@@ -90,6 +108,6 @@ jobs:
     needs: [release]
     if: startsWith(github.ref, 'refs/tags/')
     permissions:
-      id-token: write
+      id-token: write # secretless OIDC auth to the registry
       contents: read
     uses: psyb0t/reusable-github-workflows/.github/workflows/mcp-registry-publish.yml@master

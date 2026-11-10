@@ -29,7 +29,7 @@ export CLAUDEBOX_FULL=1 && curl -fsSL https://raw.githubusercontent.com/psyb0t/d
 
 The full-image choice stays in the installed wrapper. Both variants install the pinned Claude Code CLI from npm when a fresh container first starts, so that start needs network access.
 
-For a reviewed local install, a custom command name, image overrides, or wrapper updates, see [Installation and wrapper](https://github.com/psyb0t/docker-claudebox/blob/master/docs/wrapper.md). The remote installer currently fetches the wrapper from its embedded release ref, not necessarily `master`.
+For a reviewed local install, a custom command name, image overrides, or wrapper updates, see [Installation and wrapper](https://psyb0t.github.io/docker-claudebox/wrapper/). The remote installer currently fetches the wrapper from its embedded release ref, not necessarily `master`.
 
 ## First run
 
@@ -50,7 +50,7 @@ claudebox -p "inspect the workspace" --output-format stream-json
 claudebox stop
 ```
 
-The wrapper supports a defined set of flags, not every native Claude Code argument. See [Programmatic mode](https://github.com/psyb0t/docker-claudebox/blob/master/docs/modes/programmatic.md) for output formats, model selection, and session control.
+The wrapper supports a defined set of flags, not every native Claude Code argument. See [Programmatic mode](https://psyb0t.github.io/docker-claudebox/modes/programmatic/) for output formats, model selection, and session control.
 
 ## Image variants
 
@@ -61,48 +61,53 @@ The wrapper supports a defined set of flags, not every native Claude Code argume
 
 The full variant adds Go and its tools, Python and Node development tools, C/C++ tools, infrastructure tools, database clients, and shell utilities. The shared [Dockerfile.full](https://github.com/psyb0t/docker-aicodebox/blob/main/Dockerfile.full) and lockfiles own the package inventory. Neither Claudebox variant bundles the Claude Code CLI in the published image.
 
-Set `CLAUDEBOX_IMAGE` to use an explicit image tag or digest. An existing container keeps its original image and launch configuration until recreated. See [Wrapper lifecycle](https://github.com/psyb0t/docker-claudebox/blob/master/docs/wrapper.md#container-lifecycle).
+Set `CLAUDEBOX_IMAGE` to use an explicit image tag or digest. An existing container keeps its original image and launch configuration until recreated. See [Wrapper lifecycle](https://psyb0t.github.io/docker-claudebox/wrapper/#container-lifecycle).
 
 ## Modes
 
 | Interface | Guide |
 | --- | --- |
-| Interactive terminal with persistent sessions | [Interactive mode](https://github.com/psyb0t/docker-claudebox/blob/master/docs/modes/interactive.md) |
-| One prompt with text, JSON, or native NDJSON output | [Programmatic mode](https://github.com/psyb0t/docker-claudebox/blob/master/docs/modes/programmatic.md) |
-| HTTP `/run`, files, async polling, and OpenAI-compatible chat | [API mode](https://github.com/psyb0t/docker-claudebox/blob/master/docs/modes/api.md) |
-| Streamable HTTP tools for other agents | [MCP mode](https://github.com/psyb0t/docker-claudebox/blob/master/docs/modes/mcp.md) |
-| Chat workspaces, attachments, and access lists | [Telegram mode](https://github.com/psyb0t/docker-claudebox/blob/master/docs/modes/telegram.md) |
-| Scheduled jobs and durable run artifacts | [Cron mode](https://github.com/psyb0t/docker-claudebox/blob/master/docs/modes/cron.md) |
-
-For all native events from HTTP `POST /run`, request `"eventMode": "full"`. This works with or without `jsonSchema`. Events include the records Claude Code emits, such as tool calls, tool results, and available thinking content. It does not expose private reasoning that the CLI does not emit. `/run` returns a completed JSON response; use native `stream-json` for direct CLI streaming or the OpenAI endpoint's opt-in native SSE events.
+| Interactive terminal with persistent sessions | [Interactive mode](https://psyb0t.github.io/docker-claudebox/modes/interactive/) |
+| One prompt with text, JSON, or native NDJSON output | [Programmatic mode](https://psyb0t.github.io/docker-claudebox/modes/programmatic/) |
+| HTTP `/run`, files, async polling, and OpenAI-compatible chat | [API mode](https://psyb0t.github.io/docker-claudebox/modes/api/) |
+| Streamable HTTP tools for other agents | [MCP mode](https://psyb0t.github.io/docker-claudebox/modes/mcp/) |
+| Chat workspaces, attachments, and access lists | [Telegram mode](https://psyb0t.github.io/docker-claudebox/modes/telegram/) |
+| Scheduled jobs and durable run artifacts | [Cron mode](https://psyb0t.github.io/docker-claudebox/modes/cron/) |
 
 API and MCP authentication are independent. An unset token leaves its endpoint open. Configure explicit Telegram chat access too. Use the loopback-bound deployment examples in each mode guide before exposing a server.
 
-## Configuration and extensions
+## Documentation
 
-- [Environment variables](https://github.com/psyb0t/docker-claudebox/blob/master/docs/environment-variables.md): wrapper settings, forwarded variables, extra mounts, and sibling boxes.
-- [Customization](https://github.com/psyb0t/docker-claudebox/blob/master/docs/customization.md): user scripts, first-container init hooks, always-active skills, and external MCP servers.
-- [GitHub Action](https://github.com/psyb0t/docker-claudebox/blob/master/docs/github-action.md): one-shot jobs with a read-only context and a writable output directory.
-- [Agent integrations](https://github.com/psyb0t/docker-claudebox/blob/master/docs/agent-integrations.md): local wrapper skills and remote MCP connections for Claude Code, Codex, and OpenClaw.
+The full documentation lives at **[psyb0t.github.io/docker-claudebox](https://psyb0t.github.io/docker-claudebox/)**.
 
-Install sibling `claudebox`, `codexbox`, and `pibox` wrappers in the same command directory for nested launches. Each sibling mounts its own host state. Do not manually set `AICODEBOX_HOST_*`.
+| Section | Covers |
+| --- | --- |
+| [Installation and wrapper](https://psyb0t.github.io/docker-claudebox/wrapper/) | Install routes, image selection, authentication, Git identity, container lifecycle, host access |
+| [Modes](https://psyb0t.github.io/docker-claudebox/modes/) | How the container picks a mode, and one page per mode |
+| [Environment variables](https://psyb0t.github.io/docker-claudebox/environment-variables/) | Wrapper settings, forwarded variables, extra mounts, sibling boxes |
+| [Customization](https://psyb0t.github.io/docker-claudebox/customization/) | Your own scripts, init hooks, always-active skills, external MCP servers |
+| [GitHub Action](https://psyb0t.github.io/docker-claudebox/github-action/) | One-shot jobs with a read-only context and a writable output directory |
+| [Agent integrations](https://psyb0t.github.io/docker-claudebox/agent-integrations/) | The skill and plugins for Claude Code, Codex and OpenClaw |
+| [Architecture](https://psyb0t.github.io/docker-claudebox/architecture/) | What claudebox adds to aicodebox, and the startup order |
+| [Troubleshooting](https://psyb0t.github.io/docker-claudebox/troubleshooting/) | Error messages and their fixes |
+| [Upgrading](https://psyb0t.github.io/docker-claudebox/upgrading/) | The old `docker-claude-code` names, v2 changes, legacy variables |
+| [Development](https://psyb0t.github.io/docker-claudebox/development/) | Building, lint, tests and CI |
 
 ## Development
 
 ```bash
 make help
-make test-unit
-make test-image-select
-make test-programmatic-contract
-make test-agent-launcher
 make build
-make build-full
+make lint
+make test-ci
 ```
 
-Builds use the minimal or full aicodebox parent respectively. See [Makefile](https://github.com/psyb0t/docker-claudebox/blob/master/Makefile) for base-image overrides and the remaining checks. The adapter lives in [claudebox/claudebox/adapter.py](https://github.com/psyb0t/docker-claudebox/blob/master/claudebox/claudebox/adapter.py); the shared server modes live in aicodebox.
+`make lint` and `make test-ci` run in containers and need only Docker. See [Development](https://psyb0t.github.io/docker-claudebox/development/) for the other test suites and base-image overrides.
 
-## Migration and license
+## Sponsor
 
-Previously named `docker-claude-code` with image `psyb0t/claude-code`. Current names are `docker-claudebox`, `psyb0t/claudebox`, and `claudebox`. In v2, `latest` became minimal and `latest-full` became the full variant. See [CHANGELOG.md](https://github.com/psyb0t/docker-claudebox/blob/master/CHANGELOG.md) for migration history.
+<a href="https://www.buymeacoffee.com/psyb0t"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-blue.png" alt="Buy Me a Coffee" height="60" width="217"></a>
 
-[WTFPL](https://github.com/psyb0t/docker-claudebox/blob/master/LICENSE).
+## License
+
+[WTFPL](https://github.com/psyb0t/docker-claudebox/blob/master/LICENSE). Previously named `docker-claude-code` with the image `psyb0t/claude-code`; see [Upgrading](https://psyb0t.github.io/docker-claudebox/upgrading/) and the [CHANGELOG](https://github.com/psyb0t/docker-claudebox/blob/master/CHANGELOG.md).

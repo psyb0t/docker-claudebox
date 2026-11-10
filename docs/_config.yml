@@ -1,0 +1,53 @@
+title: claudebox
+tagline: Claude Code in Docker, from a terminal, a script, HTTP, MCP, Telegram or cron
+description: Run Claude Code in Docker through a host wrapper, an HTTP API with an OpenAI-compatible endpoint, an MCP server, a Telegram bot, or a cron scheduler.
+lang: en
+url: https://psyb0t.github.io
+baseurl: /docker-claudebox
+repository: psyb0t/docker-claudebox
+author: Ciprian Mandache
+
+remote_theme: just-the-docs/just-the-docs@v0.12.0
+color_scheme: mocha
+
+plugins:
+  - jekyll-remote-theme
+  - jekyll-seo-tag
+  - jekyll-sitemap
+  - jekyll-relative-links
+  - jekyll-include-cache
+
+permalink: pretty
+
+relative_links:
+  enabled: true
+  collections: false
+
+defaults:
+  - scope:
+      path: ""
+    values:
+      layout: default
+      seo:
+        type: TechArticle
+
+search:
+  heading_level: 3
+
+aux_links:
+  GitHub:
+    - https://github.com/psyb0t/docker-claudebox
+aux_links_new_tab: true
+
+nav_external_links:
+  - title: Changelog
+    url: https://github.com/psyb0t/docker-claudebox/blob/master/CHANGELOG.md
+  - title: aicodebox docs
+    url: https://psyb0t.github.io/docker-aicodebox/
+
+gh_edit_link: true
+gh_edit_link_text: Edit this page on GitHub
+gh_edit_repository: https://github.com/psyb0t/docker-claudebox
+gh_edit_branch: master
+gh_edit_source: docs
+gh_edit_view_mode: tree

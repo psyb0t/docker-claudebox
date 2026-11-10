@@ -39,7 +39,7 @@ mkdir -p "$FAKEBIN" "$CFG"
 
 # Fake claude: record argv; optionally fail when --continue is present so the
 # launcher's resume->fresh fallback can be exercised.
-cat > "$FAKEBIN/claude" <<EOF
+cat >"$FAKEBIN/claude" <<EOF
 #!/bin/bash
 printf '%s\n' "\$*" >> "$LOG"
 if [ "\${FAKE_FAIL_ON_CONTINUE:-}" = "1" ]; then
@@ -53,7 +53,7 @@ chmod +x "$FAKEBIN/claude"
 run_launcher() {
     local env_assigns="$1"
     shift
-    : > "$LOG"
+    : >"$LOG"
     # shellcheck disable=SC2086 # deliberate VAR=val word-split
     PATH="$FAKEBIN:$PATH" CLAUDE_CONFIG_DIR="$CFG" CLAUDEBOX_CONTAINER_NAME="$CONTAINER" \
         env $env_assigns bash "$LAUNCHER" "$@" >/dev/null 2>&1 || true
@@ -85,7 +85,7 @@ log INFO "  PASS"
 
 # ── 4. no-continue marker → no --continue, marker consumed ───────────────────
 log INFO "4: no-continue marker suppresses --continue and is removed"
-: > "$CFG/.${CONTAINER}-no-continue"
+: >"$CFG/.${CONTAINER}-no-continue"
 run_launcher ""
 log_has "--continue" && fail "4: --continue present despite no-continue marker ($(cat "$LOG"))"
 [ -f "$CFG/.${CONTAINER}-no-continue" ] && fail "4: no-continue marker not consumed"

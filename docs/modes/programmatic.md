@@ -1,3 +1,10 @@
+---
+title: "Programmatic mode"
+description: "Run one Claude Code prompt through claudebox -p with text, JSON or native stream-json output, model and effort flags, and session control."
+nav_order: 2
+parent: "Modes"
+---
+
 # Programmatic mode
 
 Pass `-p` and a prompt to get a response. No TTY required. It works from scripts, cron jobs, CI pipelines, and anywhere else you need non-interactive output.

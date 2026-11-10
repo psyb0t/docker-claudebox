@@ -9,7 +9,7 @@ metadata:
 
 # claudebox
 
-Claude Code — the agentic coding CLI from Anthropic — running in an isolated Docker container with dev tools, passwordless sudo, docker-in-docker, and `--permission-mode bypassPermissions` on by default. Built as a thin child image of `psyb0t/aicodebox`; every server-mode surface (API / OpenAI adapter / MCP / Telegram / Cron) is inherited from that base.
+Claude Code, the agentic coding CLI from Anthropic, running in a Docker container with passwordless sudo, the host Docker socket through the wrapper, and `--permission-mode bypassPermissions` on by default. Built as a thin child image of `psyb0t/aicodebox`; every server-mode surface (API / OpenAI adapter / MCP / Telegram / Cron) is inherited from that base.
 
 ## Agent execution
 
@@ -55,38 +55,38 @@ choose another approach.
 
 ## Security & safety
 
-- **No auth when the per-mode token is unset.** `CLAUDEBOX_API_MODE_TOKEN` and `CLAUDEBOX_MCP_MODE_TOKEN` each default to no auth if unset — see [HTTP REST API mode](#http-rest-api-mode) and [MCP server mode](#mcp-server-mode) for details and the exact capability exposed unauthenticated in each case.
-- **File operations include removal.** Deleting a workspace file has no undo — only remove files the current task created, and only when the user asked.
+- **No auth when the per-mode token is unset.** `CLAUDEBOX_API_MODE_TOKEN` and `CLAUDEBOX_MCP_MODE_TOKEN` each default to no auth if unset. See [HTTP REST API mode](#http-rest-api-mode) and [MCP server mode](#mcp-server-mode) for details and the exact capability exposed unauthenticated in each case.
+- **File operations include removal.** Deleting a workspace file has no undo. Only remove files the current task created, and only when the user asked.
 - **The standard wrapper mounts `/var/run/docker.sock`** so Claude can control the host Docker daemon. Server Compose examples omit it. See [Server modes (API / OpenAI / MCP / Telegram / Cron)](references/setup.md#server-modes-api--openai--mcp--telegram--cron), and do not use the wrapper for untrusted prompts.
-- **`--permission-mode bypassPermissions` is on by default** — Claude has full, unrestricted shell/file/docker access inside the container by design (see [When NOT To Use](#when-not-to-use)). Don't treat the container boundary as a sandbox for untrusted input unless you've isolated the container itself.
-- **Install script is piped from curl into bash by default** — a safer download-inspect-run alternative is documented alongside it; see [references/setup.md](references/setup.md#quick-install-cli-wrapper).
+- **`--permission-mode bypassPermissions` is on by default.** Claude has full, unrestricted shell/file/docker access inside the container by design (see [When NOT To Use](#when-not-to-use)). Don't treat the container boundary as a sandbox for untrusted input unless you've isolated the container itself.
+- **Install script is piped from curl into bash by default.** A safer download-inspect-run alternative is documented alongside it; see [references/setup.md](references/setup.md#quick-install-cli-wrapper).
 
 The image exposes interactive, command, HTTP, MCP, Telegram, and cron surfaces. The entrypoint selects one foreground mode, except that Telegram and cron run together. API mode takes precedence if it is set with another foreground mode:
 
-- **Interactive shell** — `claudebox` drops you into the native `claude` CLI, container-backed, with automatic session resumption.
+- **Interactive shell**: `claudebox` drops you into the native `claude` CLI, container-backed, with automatic session resumption.
 - **One-shot exec**: `claudebox -p "prompt" [flags]`, non-interactive, prompt in / structured output out, for scripts and CI.
-- **HTTP REST API** — `CLAUDEBOX_API_MODE=1`. `POST /run`, async runs polled via `GET /run/result?runId=`, `GET/PUT/DELETE /files/{path}`, workspace isolation.
-- **OpenAI-compatible endpoint** — same API-mode server, `/openai/v1/chat/completions` + `/openai/v1/models`. Streaming SSE, multi-turn, multimodal image input.
-- **MCP server** — `CLAUDEBOX_MCP_MODE=1`, 5 tools over streamable HTTP. Mounts at `/mcp/` on the API port when `CLAUDEBOX_API_MODE=1` is also set; otherwise runs standalone as a sidecar process on its own port (`CLAUDEBOX_MCP_MODE_PORT`, default `8081`), coexisting with Telegram/Cron/interactive mode.
-- **Telegram bot** — `CLAUDEBOX_TELEGRAM_MODE=1`, per-chat isolated workspaces, file/photo/video/voice ingestion, slash commands.
-- **Cron scheduler** — `CLAUDEBOX_CRON_MODE=1`, YAML-defined jobs on five or six field cron schedules with durable per-job artifacts.
+- **HTTP REST API**: `CLAUDEBOX_API_MODE=1`. `POST /run`, async runs polled via `GET /run/result?runId=`, `GET/PUT/DELETE /files/{path}`, per-request workspace subpaths.
+- **OpenAI-compatible endpoint**: same API-mode server, `/openai/v1/chat/completions` + `/openai/v1/models`. Streaming SSE, multi-turn, multimodal image input.
+- **MCP server**: `CLAUDEBOX_MCP_MODE=1`, 5 tools over streamable HTTP. Mounts at `/mcp/` on the API port when `CLAUDEBOX_API_MODE=1` is also set; otherwise runs standalone as a sidecar process on its own port (`CLAUDEBOX_MCP_MODE_PORT`, default `8081`), coexisting with Telegram/Cron/interactive mode.
+- **Telegram bot**: `CLAUDEBOX_TELEGRAM_MODE=1`, per-chat workspaces, file/photo/video/voice ingestion, slash commands.
+- **Cron scheduler**: `CLAUDEBOX_CRON_MODE=1`, YAML-defined jobs on five or six field cron schedules with durable per-job artifacts.
 
 For installation and configuration, see [references/setup.md](references/setup.md).
 
 ## When To Use
 
 - Run Claude Code from a script, Makefile target, or CI pipeline without a TTY (`claudebox -p "explain this diff" --output-format json`).
-- Expose Claude Code as an HTTP backend other services can `POST /run` against, with workspace isolation for multi-tenant use.
-- Point an OpenAI SDK / LiteLLM at a self-hosted agentic backend instead of a plain model API — every completion runs the full Claude Code CLI (file I/O, shell, tools), not just text generation.
+- Expose Claude Code as an HTTP backend other services can `POST /run` against, with a separate workspace subpath per caller. Subpaths are not a security boundary between untrusted tenants.
+- Point an OpenAI SDK / LiteLLM at a self-hosted agentic backend instead of a plain model API. Every completion runs the full Claude Code CLI (file I/O, shell, tools), not just text generation.
 - Let another MCP-aware agent, such as Claude Desktop, another Claude Code instance, or an agent framework, use this Claude Code instance as a tool over `/mcp/`.
 - Run Claude from Telegram to ask questions and share files from your phone.
 - Schedule recurring Claude jobs (nightly cleanup, hourly repo checks) with per-run history and optional Telegram result delivery.
 
 ## When NOT To Use
 
-- Real-time token-by-token streaming for tool-calling or JSON-schema-constrained runs — the OpenAI adapter buffers those (computes the full answer, replays as one SSE burst). Only plain chat (no `tools`, no `response_format` schema) streams incrementally.
-- Multiple concurrent requests against the *same* workspace — API mode enforces one active Claude process per workspace and returns `409` on conflict. Use distinct `workspace` subpaths for parallel work.
-- Treating `--permission-mode bypassPermissions` as sandboxed-safe for untrusted input — Claude has full container access by design (shell, docker-in-docker, mounted SSH keys). Isolate the container itself if the input is untrusted.
+- Real-time token-by-token streaming for tool-calling or JSON-schema-constrained runs. The OpenAI adapter buffers those (computes the full answer, replays as one SSE burst). Only plain chat (no `tools`, no `response_format` schema) streams incrementally.
+- Multiple concurrent requests against the *same* workspace. API mode enforces one active Claude process per workspace and returns `409` on conflict. Use distinct `workspace` subpaths for parallel work.
+- Treating `--permission-mode bypassPermissions` as sandboxed-safe for untrusted input. Claude has full container access by design (shell, the Docker socket when mounted, mounted SSH keys). Isolate the container itself if the input is untrusted.
 - Treating the MCP server as a sandbox. `run_prompt` has the same container authority as Claude, including mounted files and optional Docker access.
 
 ## Interactive shell mode
@@ -111,7 +111,7 @@ claudebox stop              # stop the running interactive container for this wo
 claudebox clear-session     # delete session history for this workspace
 ```
 
-No mode flag needed — this is the default when you run `claudebox` with no `CLAUDEBOX_*_MODE` env vars set. Auth: `ANTHROPIC_API_KEY` or `CLAUDE_CODE_OAUTH_TOKEN` (see [Auth](#auth)).
+No mode flag needed: this is the default when you run `claudebox` with no `CLAUDEBOX_*_MODE` env vars set. Auth: `ANTHROPIC_API_KEY` or `CLAUDE_CODE_OAUTH_TOKEN` (see [Auth](#auth)).
 
 ## One-shot exec mode
 
@@ -143,13 +143,13 @@ for a specific one. Model aliases: `haiku`, `sonnet`, `opus`, `opusplan`,
 
 `CLAUDEBOX_API_MODE=1` starts a long-lived FastAPI server (default port `8080`, `CLAUDEBOX_API_MODE_PORT` to override). Bearer auth via `CLAUDEBOX_API_MODE_TOKEN` (unset = no auth).
 
-With `CLAUDEBOX_API_MODE_TOKEN` unset the API surface is unauthenticated — anyone who can reach it gets full `/run` (arbitrary-prompt agentic execution) and `/files` (read/write anywhere under `/workspace`) access. Set the token and bind to loopback / behind an authenticating proxy before exposing it beyond localhost.
+With `CLAUDEBOX_API_MODE_TOKEN` unset the API surface is unauthenticated. Anyone who can reach it gets full `/run` (arbitrary-prompt agentic execution) and `/files` (read/write anywhere under `/workspace`) access. Set the token and bind to loopback / behind an authenticating proxy before exposing it beyond localhost.
 
 ```yaml
 environment:
   - CLAUDEBOX_API_MODE=1
   - CLAUDEBOX_API_MODE_TOKEN=your-secret-token
-  - CLAUDEBOX_AVAILABLE_MODELS=haiku,sonnet,opus,opusplan  # optional — overrides the adapter's built-in default list
+  - CLAUDEBOX_AVAILABLE_MODELS=haiku,sonnet,opus,opusplan  # optional, overrides the adapter's built-in default list
 ```
 
 ```bash
@@ -161,7 +161,7 @@ curl -X POST http://localhost:8080/run \
 
 Key `/run` body fields: `prompt` (required), `workspace` (subpath under `/workspace`), `model`, `systemPrompt`, `appendSystemPrompt`, `jsonSchema`, `eventMode`, `outputFormat` (legacy), `noContinue`, `resume`, `fireAndForget`, `async`, `includeRaw` (raw stdout/stderr), `extraArgs`, `toolsAllowlist`, `noTools`, and `timeoutSeconds`. The Claude adapter always requests complete native records. Use `"eventMode": "full"` to return them in the stable `{sequence, attempt, backend, eventType, event}` envelope. `thinking` maps `low`, `medium`, `high`, `xhigh`, and `max` to Claude Code's `--effort` flag. `off` and `none` keep Claude Code's default. Every response carries a `runId`. Returns `409` if the target workspace is already busy.
 
-**Async runs** — `"async": true` returns immediately with a `runId`; poll it:
+**Async runs**: `"async": true` returns immediately with a `runId`; poll it:
 
 ```bash
 curl -X POST http://localhost:8080/run -H "Authorization: Bearer token" -H "Content-Type: application/json" \
@@ -174,7 +174,7 @@ curl "http://localhost:8080/run/result?runId=abc123" -H "Authorization: Bearer t
 
 Completed/failed/cancelled results are returned once then purged; unread results expire after 6 hours. `GET /run/result?runId=X` 404s on unknown/already-read/expired IDs.
 
-**File operations** — all paths relative to `/workspace`, path traversal blocked with `400`:
+**File operations**: all paths relative to `/workspace`, path traversal blocked with `400`:
 
 ```bash
 curl "http://localhost:8080/files" -H "Authorization: Bearer token"                          # list root
@@ -184,19 +184,19 @@ curl -X PUT "http://localhost:8080/files/myproject/src/main.py" -H "Authorizatio
 curl -X DELETE "http://localhost:8080/files/myproject/src/old.py" -H "Authorization: Bearer token"
 ```
 
-`DELETE /files/{path}` removes a file under `/workspace` (no undo). Confirm the target path first, only remove files the current task created, and on a shared instance don't touch another caller's workspace — see [Security & safety](#security--safety).
+`DELETE /files/{path}` removes a file under `/workspace` (no undo). Confirm the target path first, only remove files the current task created, and on a shared instance don't touch another caller's workspace. See [Security & safety](#security--safety).
 
 **Introspection and lifecycle:**
 
 ```bash
-curl http://localhost:8080/healthz                                                          # {"ok": true, "adapter": "claude"} — no auth
+curl http://localhost:8080/healthz                                                          # {"ok": true, "adapter": "claude"}, no auth
 curl http://localhost:8080/status -H "Authorization: Bearer token"                           # {busyWorkspaces, runs}
 curl -X DELETE "http://localhost:8080/run/abc123" -H "Authorization: Bearer token"            # cancel a run by id
 ```
 
 ## OpenAI-compatible endpoint mode
 
-Same API-mode server (`CLAUDEBOX_API_MODE=1`); no separate flag. `chat/completions`-shaped adapter for LiteLLM, OpenAI SDKs, or any client speaking that wire format. Every request runs the full agentic CLI, not just text generation — Claude can read/write files and run shell commands as part of answering.
+Same API-mode server (`CLAUDEBOX_API_MODE=1`); no separate flag. `chat/completions`-shaped adapter for LiteLLM, OpenAI SDKs, or any client speaking that wire format. Every request runs the full agentic CLI, not just text generation: Claude can read/write files and run shell commands as part of answering.
 
 ```bash
 curl http://localhost:8080/openai/v1/models
@@ -222,7 +222,7 @@ unchanged, so the extension stays opt-in for strict OpenAI SSE clients.
 
 `temperature` and `max_tokens` are accepted for OpenAI-client compatibility but have no effect on this adapter. `reasoning_effort` maps to the `claude --effort` flag: `low`, `medium`, `high`, `xhigh`, and `max` pass through, `minimal` maps to `low`, `none` or `off` keeps the default, and any other value is rejected. The `thinking` field on `/run` and MCP `run_prompt` works the same way.
 
-**Tool calling and structured output are supported, not ignored** — `tools`/`tool_choice` engage a client-executed function-calling bridge (Claude Code acts as a pure function-calling model, emits `tool_calls` for the *client* to run), and `response_format` (`json_object` or `json_schema`) constrains the final answer turn. Both can combine in one request. Because a tool call or schema-checked answer only exists once the full response is computed, `stream:true` combined with `tools` or a schema `response_format` returns a **buffered** single-shot SSE stream instead of token-incremental deltas — only plain chat (no tools, no schema) streams token-by-token.
+**Tool calling and structured output are supported, not ignored.** `tools`/`tool_choice` engage a client-executed function-calling bridge (Claude Code acts as a pure function-calling model, emits `tool_calls` for the *client* to run), and `response_format` (`json_object` or `json_schema`) constrains the final answer turn. Both can combine in one request. Because a tool call or schema-checked answer only exists once the full response is computed, `stream:true` combined with `tools` or a schema `response_format` returns a **buffered** single-shot SSE stream instead of token-incremental deltas. Only plain chat (no tools, no schema) streams token-by-token.
 
 Custom headers for claudebox-specific behavior (canonical `x-aicodebox-*`, with legacy `X-Claude-*` aliases still accepted):
 
@@ -231,7 +231,7 @@ Custom headers for claudebox-specific behavior (canonical `x-aicodebox-*`, with 
 | `x-aicodebox-workspace` (`X-Claude-Workspace`) | Workspace subpath under `/workspace` |
 | `x-aicodebox-continue` (`X-Claude-Continue`) | `1`/`true`/`yes` to continue the previous session |
 | `x-aicodebox-append-system-prompt` (`X-Claude-Append-System-Prompt`) | Text appended to the system prompt |
-| `x-aicodebox-json-schema` | JSON-schema string — fallback for clients that can't set `response_format` in the body (body field wins if both are set) |
+| `x-aicodebox-json-schema` | JSON-schema string, a fallback for clients that can't set `response_format` in the body (body field wins if both are set) |
 | `x-aicodebox-resume` | Resume a specific session id |
 | `x-aicodebox-tools-allowlist` | CSV or JSON array restricting Claude Code's own internal tools |
 | `x-aicodebox-no-tools` | Disable Claude Code's own internal tools (auto-defaulted on when in client tool-calling mode) |
@@ -254,10 +254,10 @@ print(response.choices[0].message.content)
 
 `CLAUDEBOX_MCP_MODE=1` exposes a [Model Context Protocol](https://modelcontextprotocol.io/) server over streamable HTTP, using `CLAUDEBOX_MCP_MODE_TOKEN` as its bearer token (independent of the API token, no fallback; empty/unset = no auth). Where it listens depends on whether API mode is also on:
 
-With `CLAUDEBOX_MCP_MODE_TOKEN` unset the MCP surface is unauthenticated — anyone who can reach it gets full tool access (run prompts, read/write/remove files under `/workspace`). Set the token and bind to loopback / behind an authenticating proxy before exposing it beyond localhost.
+With `CLAUDEBOX_MCP_MODE_TOKEN` unset the MCP surface is unauthenticated. Anyone who can reach it gets full tool access (run prompts, read/write/remove files under `/workspace`). Set the token and bind to loopback / behind an authenticating proxy before exposing it beyond localhost.
 
-- **`CLAUDEBOX_API_MODE=1` + `CLAUDEBOX_MCP_MODE=1`** (the setup the rest of the README documents) — MCP mounts at `/mcp/` on the API port, no extra process.
-- **`CLAUDEBOX_MCP_MODE=1` alone** (or combined with Telegram/Cron/interactive mode) — MCP runs as an independent background process on its own port (`CLAUDEBOX_MCP_MODE_PORT`, default `8081`), serving at the port root, not under `/mcp`.
+- **`CLAUDEBOX_API_MODE=1` + `CLAUDEBOX_MCP_MODE=1`** (the setup the rest of this skill documents): MCP mounts at `/mcp/` on the API port, no extra process.
+- **`CLAUDEBOX_MCP_MODE=1` alone** (or combined with Telegram/Cron/interactive mode): MCP runs as an independent background process on its own port (`CLAUDEBOX_MCP_MODE_PORT`, default `8081`), serving at the port root, not under `/mcp`.
 
 ```yaml
 environment:
@@ -294,9 +294,9 @@ claude mcp add --transport http claudebox http://localhost:8080/mcp/ \
 | `write_file` | Write content to a file (creates parent dirs). |
 | `delete_file` | Delete a file (refuses directories). |
 
-`delete_file` removes a file under `/workspace` (no undo). Confirm the target path first and only remove files the current task created — see [Security & safety](#security--safety).
+`delete_file` removes a file under `/workspace` (no undo). Confirm the target path first and only remove files the current task created. See [Security & safety](#security--safety).
 
-Raw JSON-RPC for debugging (streamable-HTTP handshake — `initialize` then reuse the returned `mcp-session-id`):
+Raw JSON-RPC for debugging (streamable-HTTP handshake: `initialize`, then reuse the returned `mcp-session-id`):
 
 ```bash
 curl -s -D - -X POST "http://localhost:8080/mcp/" \
@@ -315,7 +315,7 @@ curl -s -X POST "http://localhost:8080/mcp/" \
 
 ## Telegram bot mode
 
-`CLAUDEBOX_TELEGRAM_MODE=1` runs a conversational bot with per-chat isolated workspaces. Configure an explicit allowlist before exposing the bot. When `telegram.yml` is absent and `TELEGRAM_CHAT_ID` is unset, the compatibility fallback permits every chat.
+`CLAUDEBOX_TELEGRAM_MODE=1` runs a conversational bot with per-chat workspaces. Configure an explicit allowlist before exposing the bot. When `telegram.yml` is absent and `TELEGRAM_CHAT_ID` is unset, the compatibility fallback permits every chat.
 
 ```yaml
 environment:

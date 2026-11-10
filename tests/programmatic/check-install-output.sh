@@ -18,8 +18,8 @@ run_case() {
     local name="$1" output="$2" npm_status="$3" warm="$4"
     local format=text
     case "$name" in
-    json) format=json ;;
-    stream) format=stream-json ;;
+        json) format=json ;;
+        stream) format=stream-json ;;
     esac
     docker run --rm --name "$PREFIX-$name" --network none \
         --mount "type=bind,src=$REPO/claudebox-entrypoint.sh,dst=/entrypoint.sh,readonly" \

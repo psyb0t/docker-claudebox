@@ -20,7 +20,9 @@ TELEGRAM_YAML="$WORKSPACE/telegram.yml"
 CNAME="claudebox-cron-tg-e2e_cron"
 
 if [ -f "$SCRIPT_DIR/tests/.env" ]; then
-    set -a; . "$SCRIPT_DIR/tests/.env"; set +a
+    set -a
+    . "$SCRIPT_DIR/tests/.env"
+    set +a
 fi
 : "${CLAUDE_CODE_OAUTH_TOKEN:?CLAUDE_CODE_OAUTH_TOKEN not set (put it in tests/.env)}"
 : "${CLAUDEBOX_TELEGRAM_BOT_TOKEN:?CLAUDEBOX_TELEGRAM_BOT_TOKEN not set (put it in tests/.env)}"
@@ -32,7 +34,7 @@ CHAT_ID="$TELEGRAM_CHAT_ID"
 
 mkdir -p "$WORKSPACE"
 
-cat > "$CRON_YAML" <<EOF
+cat >"$CRON_YAML" <<EOF
 model: haiku
 telegram_chat_id: $CHAT_ID
 
@@ -45,7 +47,7 @@ jobs:
       Then briefly tell me you wrote it and what's in it.
 EOF
 
-cat > "$TELEGRAM_YAML" <<EOF
+cat >"$TELEGRAM_YAML" <<EOF
 allowed_chats:
   - $CHAT_ID
 default:

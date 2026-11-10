@@ -104,8 +104,8 @@ if [ "$want_continue" -eq 1 ]; then
     dbg "launching with --continue (fallback to fresh if nothing to resume)"
     # claude --continue exits non-zero before starting when there's nothing to
     # resume, so fall back to a fresh session in that case.
-    "$CLAUDE_BIN" "${flags[@]}" --continue ${args[@]+"${args[@]}"} \
-        || exec "$CLAUDE_BIN" "${flags[@]}" ${args[@]+"${args[@]}"}
+    "$CLAUDE_BIN" "${flags[@]}" --continue ${args[@]+"${args[@]}"} ||
+        exec "$CLAUDE_BIN" "${flags[@]}" ${args[@]+"${args[@]}"}
 else
     dbg "launching without --continue"
     exec "$CLAUDE_BIN" "${flags[@]}" ${args[@]+"${args[@]}"}

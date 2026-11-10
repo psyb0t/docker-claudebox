@@ -1,6 +1,14 @@
+---
+title: "Environment variables"
+description: "Every claudebox wrapper and installer setting, the CLAUDEBOX_ENV_ forwarding prefix, extra mounts, SSH agents and sibling boxes."
+nav_order: 4
+---
+
 # Environment variables
 
 Wrapper and installer settings belong on the host. Settings intended for the running container must be forwarded with `CLAUDEBOX_ENV_*`, except the documented compatibility variables and the wrapper's cron shortcut. Bare `CLAUDEBOX_API_MODE=1 claudebox` is not forwarded automatically; use `CLAUDEBOX_ENV_CLAUDEBOX_API_MODE=1 claudebox` or set the variable directly in a server Compose configuration.
+
+## Wrapper and installer settings
 
 Claudebox-specific wrapper and installer settings use the `CLAUDEBOX_*` prefix. Anything you want available **inside** the container goes through `CLAUDEBOX_ENV_*` with the prefix stripped. `AICODEBOX_ENV_*` and `AICODEBOX_MOUNT_*` are shared wrapper settings. Legacy `CLAUDE_*` / `CLAUDE_ENV_*` / `CLAUDE_MOUNT_*` and bare `ANTHROPIC_API_KEY` / `CLAUDE_CODE_OAUTH_TOKEN` / `DEBUG` still work for backwards compatibility.
 
@@ -22,7 +30,26 @@ Claudebox-specific wrapper and installer settings use the `CLAUDEBOX_*` prefix. 
 | `AICODEBOX_ENV_*`          | Forward a shared environment variable into the launched container, with the prefix stripped | _(none)_                  |
 | `AICODEBOX_MOUNT_*`        | Mount a shared host directory into the launched container                                  | _(none)_                  |
 
-Auth and in-container settings go through `CLAUDEBOX_ENV_*`. The entrypoint maps its supported `CLAUDEBOX_*` mode aliases to `AICODEBOX_*`; an already-set `AICODEBOX_*` value wins. Mode-specific settings are documented in [API](modes/api.md), [MCP](modes/mcp.md), [Telegram](modes/telegram.md), and [cron](modes/cron.md).
+## Settings inside the container
+
+These are read inside the container. Set them directly in Compose or `docker run`, or forward them through the wrapper with `CLAUDEBOX_ENV_`.
+
+The claudebox entrypoint copies each `CLAUDEBOX_<name>` below to `AICODEBOX_<name>`, the name the shared aicodebox base reads. An `AICODEBOX_<name>` that is already set wins.
+
+| `CLAUDEBOX_` name | Documented in |
+| --- | --- |
+| `API_MODE`, `API_MODE_PORT`, `API_MODE_TOKEN` | [API mode](modes/api.md) |
+| `MCP_MODE`, `MCP_MODE_PORT`, `MCP_MODE_TOKEN`, `MCP_MODE_ALLOWED_HOSTS`, `MCP_MODE_ALLOWED_ORIGINS` | [MCP mode](modes/mcp.md#mcp-mode-environment-variables) |
+| `TELEGRAM_MODE`, `TELEGRAM_MODE_TOKEN`, `TELEGRAM_MODE_CONFIG`, `TELEGRAM_MODE_OVERRIDES` | [Telegram mode](modes/telegram.md#environment-variables) |
+| `CRON_MODE`, `CRON_MODE_FILE`, `CRON_MODE_HISTORY_DIR` | [Cron mode](modes/cron.md#environment-variables) |
+| `WORKSPACE` | Workspace root for the server modes, default `/workspace`. The wrapper sets it to the current directory. |
+| `AVAILABLE_MODELS`, `AVAILABLE_EFFORTS` | Choices the API and the Telegram bot offer. See [API mode](modes/api.md) and [Telegram mode](modes/telegram.md#environment-variables). |
+| `CONTAINER_NAME` | Set by the wrapper. The launcher uses it to find the per-container update and no-continue markers. |
+| `GIT_NAME`, `GIT_EMAIL` | [Git identity](wrapper.md#git-identity) |
+
+Older names still work, see [Upgrading](upgrading.md#legacy-variable-names).
+
+The Claude-specific settings have no `AICODEBOX_` equivalent:
 
 | Setting inside the container | Purpose |
 | --- | --- |

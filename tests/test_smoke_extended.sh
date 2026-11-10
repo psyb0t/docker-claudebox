@@ -25,7 +25,8 @@ cleanup() {
 trap cleanup EXIT INT TERM
 
 log() {
-    local level="$1"; shift
+    local level="$1"
+    shift
     printf '{"time":"%s","level":"%s","file":"test_smoke_ext.sh","msg":"%s"}\n' \
         "$(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)" "$level" "$*" >&2
 }
@@ -38,7 +39,7 @@ fail() {
 rm -rf "$FIXTURE_DIR"
 mkdir -p "$FIXTURE_DIR"
 
-cat > "${FIXTURE_DIR}/mock-claude" <<'MOCK'
+cat >"${FIXTURE_DIR}/mock-claude" <<'MOCK'
 #!/bin/bash
 if [ "${1:-}" = "--version" ]; then
     echo "claude-code mock 0.0.1"
@@ -186,7 +187,7 @@ docker rm -f "${CONTAINER_PREFIX}-api" >/dev/null
 log INFO "Test 4: cron mode boots + fires one job"
 mkdir -p "${FIXTURE_DIR}/cron-workspace" "${FIXTURE_DIR}/cron-history"
 CRON_YML="${FIXTURE_DIR}/cron.yml"
-cat > "$CRON_YML" <<'YAML'
+cat >"$CRON_YML" <<'YAML'
 jobs:
   - name: smoke-job
     # 6-field: every 2 seconds — sub-minute fires so we don't wait a minute.
@@ -228,10 +229,11 @@ docker rm -f "${CONTAINER_PREFIX}-cron" >/dev/null
 log INFO "Test 5: telegram mode boot"
 # We don't have a real bot token; just verify the container refuses to hang
 # silently when the token is empty. Expected: quick exit with a clear error.
-tg_out=$(docker run --rm \
-    -e AICODEBOX_TELEGRAM_MODE=1 \
-    -v "${FIXTURE_DIR}/mock-claude:${MOCK_TARGET}:ro" \
-    "$IMAGE" 2>&1 &
+tg_out=$(
+    docker run --rm \
+        -e AICODEBOX_TELEGRAM_MODE=1 \
+        -v "${FIXTURE_DIR}/mock-claude:${MOCK_TARGET}:ro" \
+        "$IMAGE" 2>&1 &
     tg_pid=$!
     sleep 5
     kill -0 "$tg_pid" 2>/dev/null && kill "$tg_pid" 2>/dev/null

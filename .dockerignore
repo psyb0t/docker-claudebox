@@ -9,6 +9,8 @@ CODEX.local.md
 .testing/
 base/
 *.md
+# The documentation site source; the image never reads it.
+docs/
 desc.txt
 git-update.sh
 git-update.sh.debot

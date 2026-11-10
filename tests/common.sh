@@ -23,9 +23,11 @@ if [ -z "${CLAUDE_CODE_OAUTH_TOKEN:-}" ]; then
 fi
 
 # model to use for tests — haiku is fast and cheap
+# shellcheck disable=SC2034 # read by the tests/test_*.sh files test.sh sources
 TEST_MODEL="haiku"
 
 # common docker args for running claude
+# shellcheck disable=SC2034 # read by the tests/test_*.sh files test.sh sources
 DOCKER_RUN_ARGS=(
     --rm
     --network host

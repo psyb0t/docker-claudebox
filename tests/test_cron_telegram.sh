@@ -25,14 +25,15 @@ test_cron_telegram_message_tracking_roundtrip() {
     _ct_setup_dirs
 
     local out rc
-    out=$(docker run --rm -i \
-        --entrypoint python3 \
-        -e "HOME=/tmp/ct_home" \
-        -e "CLAUDEBOX_MODE_TELEGRAM=1" \
-        -e "CLAUDEBOX_MODE_CRON=1" \
-        -e "CLAUDEBOX_MODE_CRON_FILE=/tmp/cron.yaml" \
-        -e "CLAUDEBOX_WORKSPACE=/workspace" \
-        "$IMAGE" - <<'PYEOF'
+    out=$(
+        docker run --rm -i \
+            --entrypoint python3 \
+            -e "HOME=/tmp/ct_home" \
+            -e "CLAUDEBOX_MODE_TELEGRAM=1" \
+            -e "CLAUDEBOX_MODE_CRON=1" \
+            -e "CLAUDEBOX_MODE_CRON_FILE=/tmp/cron.yaml" \
+            -e "CLAUDEBOX_WORKSPACE=/workspace" \
+            "$IMAGE" - <<'PYEOF'
 import sys, os, json
 from pathlib import Path
 from datetime import datetime, timezone
@@ -76,7 +77,11 @@ PYEOF
     rc=$?
 
     _ct_cleanup_dirs
-    [ "$rc" -eq 0 ] || { echo "  FAIL: python exited $rc"; echo "$out" | sed 's/^/    /'; return 1; }
+    [ "$rc" -eq 0 ] || {
+        echo "  FAIL: python exited $rc"
+        echo "$out" | sed 's/^/    /'
+        return 1
+    }
     assert_contains "$out" "OK" "round-trip save/load works" || return 1
 }
 
@@ -86,14 +91,15 @@ test_cron_telegram_message_tracking_prune() {
     _ct_setup_dirs
 
     local out rc
-    out=$(docker run --rm -i \
-        --entrypoint python3 \
-        -e "HOME=/tmp/ct_home" \
-        -e "CLAUDEBOX_MODE_TELEGRAM=1" \
-        -e "CLAUDEBOX_MODE_CRON=1" \
-        -e "CLAUDEBOX_MODE_CRON_FILE=/tmp/cron.yaml" \
-        -e "CLAUDEBOX_WORKSPACE=/workspace" \
-        "$IMAGE" - <<'PYEOF'
+    out=$(
+        docker run --rm -i \
+            --entrypoint python3 \
+            -e "HOME=/tmp/ct_home" \
+            -e "CLAUDEBOX_MODE_TELEGRAM=1" \
+            -e "CLAUDEBOX_MODE_CRON=1" \
+            -e "CLAUDEBOX_MODE_CRON_FILE=/tmp/cron.yaml" \
+            -e "CLAUDEBOX_WORKSPACE=/workspace" \
+            "$IMAGE" - <<'PYEOF'
 import sys, os, json
 from pathlib import Path
 from datetime import datetime, timezone
@@ -127,7 +133,11 @@ PYEOF
     rc=$?
 
     _ct_cleanup_dirs
-    [ "$rc" -eq 0 ] || { echo "  FAIL: python exited $rc"; echo "$out" | sed 's/^/    /'; return 1; }
+    [ "$rc" -eq 0 ] || {
+        echo "  FAIL: python exited $rc"
+        echo "$out" | sed 's/^/    /'
+        return 1
+    }
     assert_contains "$out" "OK" "pruning keeps last 200 entries" || return 1
 }
 
@@ -135,13 +145,14 @@ PYEOF
 
 test_cron_telegram_no_continue_on_cron_reply() {
     local out rc
-    out=$(docker run --rm -i \
-        --entrypoint python3 \
-        -e "HOME=/tmp/ct_home" \
-        -e "CLAUDEBOX_MODE_CRON=1" \
-        -e "CLAUDEBOX_MODE_CRON_FILE=/tmp/cron.yaml" \
-        -e "CLAUDEBOX_WORKSPACE=/workspace" \
-        "$IMAGE" - <<'PYEOF'
+    out=$(
+        docker run --rm -i \
+            --entrypoint python3 \
+            -e "HOME=/tmp/ct_home" \
+            -e "CLAUDEBOX_MODE_CRON=1" \
+            -e "CLAUDEBOX_MODE_CRON_FILE=/tmp/cron.yaml" \
+            -e "CLAUDEBOX_WORKSPACE=/workspace" \
+            "$IMAGE" - <<'PYEOF'
 import sys, os
 sys.path.insert(0, "/home/claude")
 
@@ -160,7 +171,11 @@ PYEOF
     )
     rc=$?
 
-    [ "$rc" -eq 0 ] || { echo "  FAIL: python exited $rc"; echo "$out" | sed 's/^/    /'; return 1; }
+    [ "$rc" -eq 0 ] || {
+        echo "  FAIL: python exited $rc"
+        echo "$out" | sed 's/^/    /'
+        return 1
+    }
     assert_contains "$out" "OK" "use_continue=False omits --continue" || return 1
 }
 
@@ -168,13 +183,14 @@ PYEOF
 
 test_cron_telegram_system_hint_content() {
     local out rc
-    out=$(docker run --rm -i \
-        --entrypoint python3 \
-        -e "HOME=/home/claude" \
-        -e "CLAUDEBOX_MODE_CRON=1" \
-        -e "CLAUDEBOX_MODE_CRON_FILE=/home/claude/.claude/cron.yaml" \
-        -e "CLAUDEBOX_WORKSPACE=/my/workspace" \
-        "$IMAGE" - <<'PYEOF'
+    out=$(
+        docker run --rm -i \
+            --entrypoint python3 \
+            -e "HOME=/home/claude" \
+            -e "CLAUDEBOX_MODE_CRON=1" \
+            -e "CLAUDEBOX_MODE_CRON_FILE=/home/claude/.claude/cron.yaml" \
+            -e "CLAUDEBOX_WORKSPACE=/my/workspace" \
+            "$IMAGE" - <<'PYEOF'
 import sys
 sys.path.insert(0, "/home/claude")
 
@@ -202,7 +218,11 @@ PYEOF
     )
     rc=$?
 
-    [ "$rc" -eq 0 ] || { echo "  FAIL: python exited $rc"; echo "$out" | sed 's/^/    /'; return 1; }
+    [ "$rc" -eq 0 ] || {
+        echo "  FAIL: python exited $rc"
+        echo "$out" | sed 's/^/    /'
+        return 1
+    }
     assert_contains "$out" "OK" "CRON_SYSTEM_HINT has yaml path, history root, workspace slug" || return 1
 }
 
@@ -211,7 +231,7 @@ PYEOF
 test_cron_telegram_combined_entrypoint_starts_both() {
     _ct_setup_dirs
     local cron_file="$CT_TMP/cron.yaml"
-    cat > "$cron_file" <<'EOF'
+    cat >"$cron_file" <<'EOF'
 jobs:
   - name: never_fires
     schedule: "0 0 1 1 *"

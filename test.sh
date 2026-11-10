@@ -51,7 +51,7 @@ for t in "${TESTS_TO_RUN[@]}"; do
     echo "--- $t ---"
     test_setup
     log_file="$TEST_LOG_DIR/$t.log"
-    : > "$log_file"   # truncate for this run
+    : >"$log_file" # truncate for this run
     # Run the test, tee its output into the per-test log, recover the test's
     # own exit code (not tee's) via PIPESTATUS. The `if` form exempts the
     # pipeline from `set -e` so a failing test doesn't kill the runner.

@@ -1,6 +1,10 @@
-# Customization
+---
+title: "Customization"
+description: "Add your own scripts, first-start init hooks, always-active skills and external MCP servers to claudebox through its persistent state directory."
+nav_order: 5
+---
 
-[Back to README](../README.md)
+# Customization
 
 With the standard wrapper, the host's `~/.claude` supplies the persistent state directory. The entrypoint aliases it to `/home/aicode/.aicodebox` inside the container. In server Compose deployments, use the directory mounted at `/home/aicode/.aicodebox` instead.
 

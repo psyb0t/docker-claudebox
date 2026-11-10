@@ -1,9 +1,14 @@
+---
+title: "GitHub Action"
+description: "Run claudebox one-shot in a GitHub Actions job with a read-only context directory, a writable output directory, and JSON or text results."
+nav_order: 6
+---
+
 # GitHub Action
 
-[Back to README](../README.md)
+[`action.yml`](https://github.com/psyb0t/docker-claudebox/blob/master/action.yml) runs claudebox one-shot in a workflow job, through this repository's own [`wrapper.sh`](https://github.com/psyb0t/docker-claudebox/blob/master/wrapper.sh). A context directory is mounted read-only at `/context`, and Claude writes into one output directory, which is its workspace.
 
-[`action.yml`](../action.yml) runs claudebox one-shot in a workflow job, through this repo's own `wrapper.sh`. A context directory is mounted read-only at `/context`, and Claude writes into one output directory, which is its workspace.
-
+<!-- {% raw %} -->
 ```yaml
 jobs:
   summarize:
@@ -23,6 +28,7 @@ jobs:
           claude-code-oauth-token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
       - run: cat "${{ steps.claude.outputs.output-path }}/summary.md"
 ```
+<!-- {% endraw %} -->
 
 | Input | Default | Description |
 | --- | --- | --- |

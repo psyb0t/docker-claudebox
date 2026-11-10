@@ -1,4 +1,11 @@
-# Interactive Mode
+---
+title: "Interactive mode"
+description: "Run Claude Code interactively in a persistent claudebox container that resumes the last session, plus the utility commands the wrapper passes through."
+nav_order: 1
+parent: "Modes"
+---
+
+# Interactive mode
 
 ```bash
 claudebox

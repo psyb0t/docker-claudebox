@@ -22,7 +22,7 @@ _cron_cleanup_dirs() {
 test_cron_invalid_yaml_fails() {
     _cron_setup_dirs
     local cron_file="$CRON_TMP/cron.yaml"
-    cat > "$cron_file" <<'EOF'
+    cat >"$cron_file" <<'EOF'
 # missing 'jobs' key
 foo: bar
 EOF
@@ -80,7 +80,7 @@ test_cron_missing_file_env_fails() {
 test_cron_loads_and_lists_jobs() {
     _cron_setup_dirs
     local cron_file="$CRON_TMP/cron.yaml"
-    cat > "$cron_file" <<'EOF'
+    cat >"$cron_file" <<'EOF'
 jobs:
   - name: never_fires
     schedule: "0 0 1 1 *"
@@ -120,7 +120,7 @@ EOF
 test_cron_duplicate_job_names_fail() {
     _cron_setup_dirs
     local cron_file="$CRON_TMP/cron.yaml"
-    cat > "$cron_file" <<'EOF'
+    cat >"$cron_file" <<'EOF'
 jobs:
   - name: dup
     schedule: "* * * * *"
@@ -145,7 +145,10 @@ EOF
     docker rm -f "$cname" >/dev/null 2>&1 || true
     _cron_cleanup_dirs
 
-    [ "$rc" -ne 0 ] || { echo "  FAIL: duplicate names should have failed"; return 1; }
+    [ "$rc" -ne 0 ] || {
+        echo "  FAIL: duplicate names should have failed"
+        return 1
+    }
     assert_contains "$out" "duplicate job name" "log mentions duplicate" || return 1
 }
 
@@ -154,7 +157,7 @@ EOF
 test_cron_invalid_schedule_fails() {
     _cron_setup_dirs
     local cron_file="$CRON_TMP/cron.yaml"
-    cat > "$cron_file" <<'EOF'
+    cat >"$cron_file" <<'EOF'
 jobs:
   - name: bad
     schedule: "not a cron"
@@ -176,7 +179,10 @@ EOF
     docker rm -f "$cname" >/dev/null 2>&1 || true
     _cron_cleanup_dirs
 
-    [ "$rc" -ne 0 ] || { echo "  FAIL: invalid schedule should have failed"; return 1; }
+    [ "$rc" -ne 0 ] || {
+        echo "  FAIL: invalid schedule should have failed"
+        return 1
+    }
     assert_contains "$out" "invalid cron schedule" "log mentions invalid schedule" || return 1
 }
 
@@ -185,7 +191,7 @@ EOF
 test_cron_legacy_env_works() {
     _cron_setup_dirs
     local cron_file="$CRON_TMP/cron.yaml"
-    cat > "$cron_file" <<'EOF'
+    cat >"$cron_file" <<'EOF'
 jobs:
   - name: legacy_test
     schedule: "0 0 1 1 *"
@@ -220,7 +226,7 @@ test_cron_end_to_end_fires() {
     local cron_file="$CRON_TMP/cron.yaml"
     # 6-field cron: every 30 seconds (sec min hr dom mon dow). croniter supports this with
     # second_at_beginning=True, which cron.py enables.
-    cat > "$cron_file" <<EOF
+    cat >"$cron_file" <<EOF
 jobs:
   - name: ping
     schedule: "*/30 * * * * *"
@@ -251,7 +257,7 @@ EOF
     # the schedule didn't fire when it should have.
     local history_root="$CRON_TMP/home/.claude/cron/history"
     local activity="" first_seen_epoch=0
-    for i in $(seq 1 60); do
+    for _ in $(seq 1 60); do
         activity=$(find "$history_root" -name 'activity.jsonl' -size +0 2>/dev/null | head -1)
         if [ -n "$activity" ]; then
             first_seen_epoch=$(date +%s)
@@ -294,8 +300,16 @@ EOF
     meta="$job_dir/meta.json"
     stderr_log="$job_dir/stderr.log"
 
-    [ -f "$meta" ] || { echo "  FAIL: meta.json missing"; _cron_cleanup_dirs; return 1; }
-    [ -f "$stderr_log" ] || { echo "  FAIL: stderr.log missing"; _cron_cleanup_dirs; return 1; }
+    [ -f "$meta" ] || {
+        echo "  FAIL: meta.json missing"
+        _cron_cleanup_dirs
+        return 1
+    }
+    [ -f "$stderr_log" ] || {
+        echo "  FAIL: stderr.log missing"
+        _cron_cleanup_dirs
+        return 1
+    }
     echo "  OK: history files written (activity.jsonl, meta.json, stderr.log)"
 
     # job dir should be under correct workspace slug
@@ -330,15 +344,33 @@ EOF
     activity_content=$(cat "$activity")
     meta_content=$(cat "$meta")
 
-    assert_contains "$activity_content" "CRONPONG" "claude ran and produced expected output" || { _cron_cleanup_dirs; return 1; }
-    assert_contains "$meta_content" "\"name\": \"ping\"" "meta has job name" || { _cron_cleanup_dirs; return 1; }
-    assert_contains "$meta_content" "\"schedule\": \"*/30 * * * * *\"" "meta has schedule" || { _cron_cleanup_dirs; return 1; }
-    assert_contains "$meta_content" "\"started_at\":" "meta has started_at" || { _cron_cleanup_dirs; return 1; }
-    assert_contains "$meta_content" "\"finished_at\": \"" "meta has finished_at populated" || { _cron_cleanup_dirs; return 1; }
+    assert_contains "$activity_content" "CRONPONG" "claude ran and produced expected output" || {
+        _cron_cleanup_dirs
+        return 1
+    }
+    assert_contains "$meta_content" "\"name\": \"ping\"" "meta has job name" || {
+        _cron_cleanup_dirs
+        return 1
+    }
+    assert_contains "$meta_content" "\"schedule\": \"*/30 * * * * *\"" "meta has schedule" || {
+        _cron_cleanup_dirs
+        return 1
+    }
+    assert_contains "$meta_content" "\"started_at\":" "meta has started_at" || {
+        _cron_cleanup_dirs
+        return 1
+    }
+    assert_contains "$meta_content" "\"finished_at\": \"" "meta has finished_at populated" || {
+        _cron_cleanup_dirs
+        return 1
+    }
 
     local rc
     rc=$(python3 -c "import json; print(json.load(open('$meta'))['exit_code'])" 2>/dev/null)
-    assert_eq "$rc" "0" "claude exit code 0" || { _cron_cleanup_dirs; return 1; }
+    assert_eq "$rc" "0" "claude exit code 0" || {
+        _cron_cleanup_dirs
+        return 1
+    }
 
     _cron_cleanup_dirs
 }
@@ -348,7 +380,7 @@ EOF
 test_cron_root_defaults_and_template_vars() {
     _cron_setup_dirs
     local cron_file="$CRON_TMP/cron.yaml"
-    cat > "$cron_file" <<'EOF'
+    cat >"$cron_file" <<'EOF'
 model: haiku
 system_prompt: "You are the {job_name} agent. Time: {system_datetime}."
 append_system_prompt: "It is currently {system_datetime}."
@@ -380,11 +412,11 @@ EOF
     docker rm -f "$cname" >/dev/null 2>&1 || true
     _cron_cleanup_dirs
 
-    assert_contains "$out" "default model: haiku"         "default model logged"            || return 1
-    assert_contains "$out" "default system_prompt set"    "default system_prompt logged"    || return 1
+    assert_contains "$out" "default model: haiku" "default model logged" || return 1
+    assert_contains "$out" "default system_prompt set" "default system_prompt logged" || return 1
     assert_contains "$out" "default append_system_prompt" "default append_system_prompt logged" || return 1
-    assert_contains "$out" "override_job"                 "override job listed"             || return 1
-    assert_contains "$out" "model=sonnet"                 "per-job model override logged"   || return 1
+    assert_contains "$out" "override_job" "override job listed" || return 1
+    assert_contains "$out" "model=sonnet" "per-job model override logged" || return 1
 }
 
 # ── end-to-end: system_prompt and append_system_prompt actually reach claude ──
@@ -392,7 +424,7 @@ EOF
 test_cron_system_prompt_end_to_end() {
     _cron_setup_dirs
     local cron_file="$CRON_TMP/cron.yaml"
-    cat > "$cron_file" <<EOF
+    cat >"$cron_file" <<EOF
 jobs:
   - name: sysprompt_test
     schedule: "*/30 * * * * *"
@@ -433,7 +465,7 @@ EOF
 
     # wait for both jobs to produce activity files
     local sys_activity="" app_activity=""
-    for i in $(seq 1 70); do
+    for _ in $(seq 1 70); do
         sys_activity=$(find "$history_root" -path "*-sysprompt_test/activity.jsonl" -size +0 2>/dev/null | head -1)
         app_activity=$(find "$history_root" -path "*-appendprompt_test/activity.jsonl" -size +0 2>/dev/null | head -1)
         [ -n "$sys_activity" ] && [ -n "$app_activity" ] && break
@@ -456,20 +488,28 @@ EOF
     if [ -z "$sys_activity" ]; then
         echo "  FAIL: sysprompt_test job never produced output"
         echo "$logs" | tail -20 | sed 's/^/    /'
-        _cron_cleanup_dirs; return 1
+        _cron_cleanup_dirs
+        return 1
     fi
     if [ -z "$app_activity" ]; then
         echo "  FAIL: appendprompt_test job never produced output"
         echo "$logs" | tail -20 | sed 's/^/    /'
-        _cron_cleanup_dirs; return 1
+        _cron_cleanup_dirs
+        return 1
     fi
 
     local sys_content app_content
     sys_content=$(cat "$sys_activity")
     app_content=$(cat "$app_activity")
 
-    assert_contains "$sys_content" "SYSPROMPTOK"   "system_prompt shaped claude response"        || { _cron_cleanup_dirs; return 1; }
-    assert_contains "$app_content" "APPENDPROMPTOK" "append_system_prompt shaped claude response" || { _cron_cleanup_dirs; return 1; }
+    assert_contains "$sys_content" "SYSPROMPTOK" "system_prompt shaped claude response" || {
+        _cron_cleanup_dirs
+        return 1
+    }
+    assert_contains "$app_content" "APPENDPROMPTOK" "append_system_prompt shaped claude response" || {
+        _cron_cleanup_dirs
+        return 1
+    }
 
     _cron_cleanup_dirs
 }

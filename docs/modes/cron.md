@@ -1,10 +1,17 @@
-# Cron Mode
+---
+title: "Cron mode"
+description: "Schedule Claude Code jobs from a YAML file with five or six field cron expressions, per-run history directories and Telegram notifications."
+nav_order: 6
+parent: "Modes"
+---
+
+# Cron mode
 
 Run scheduled Claude jobs from a YAML file. The scheduler expands template values when a job fires, runs Claude in the selected workspace, and keeps durable artifacts for every run.
 
 ## Cron YAML
 
-Create a YAML file and mount it into the container. `cron.yml.example` contains the complete annotated reference.
+Create a YAML file and mount it into the container. [`cron.yml.example`](https://github.com/psyb0t/docker-claudebox/blob/master/cron.yml.example) is the complete annotated reference.
 
 ```yaml
 model: haiku
@@ -84,6 +91,22 @@ services:
 Claudebox creates `~/.claude` as a compatibility alias for its canonical `$HOME/.aicodebox` state directory. Use the canonical path in new container configuration. A Docker socket is a host control boundary. Add it only when a job genuinely needs Docker control and you accept that authority.
 
 The current image installs Claude Code during first start, so a fresh long running container needs a writable root filesystem. Do not add `read_only: true` or `cap_drop: [ALL]` to this image without first verifying its startup path for the image version you run.
+
+## Cron through the wrapper
+
+The wrapper has a shortcut that starts the scheduler for the current directory in a detached container named after the workspace with a `_cron` suffix:
+
+```bash
+CLAUDEBOX_CRON_MODE=1 \
+  CLAUDEBOX_CRON_MODE_FILE=/home/aicode/.claude/cron.yaml \
+  claudebox
+```
+
+Unlike other container settings, these two need no `CLAUDEBOX_ENV_` prefix. The wrapper passes `CLAUDEBOX_CRON_MODE=1`, the file path and `CLAUDEBOX_WORKSPACE` set to the current directory. The file path is read inside the container, so put the YAML in the host's `~/.claude` (mounted at `/home/aicode/.claude`) or in the workspace. If the container is already running, the wrapper prints its name and exits. If it exists but is stopped, the wrapper starts it again with its original settings.
+
+Follow it with `docker logs -f <name>` and stop it with `docker stop <name>`. `claudebox stop` stops the interactive container, not this one, even with `CLAUDEBOX_CRON_MODE` set.
+
+The wrapper's cron container gets the same host access as the interactive one, including the Docker socket. Use the Compose example above for a server.
 
 ## Combined cron + Telegram mode
 

@@ -11,7 +11,7 @@ BUILD_CHECKS=(
 test_build_image_config() {
     local entry label field expected
     for entry in "${BUILD_CHECKS[@]}"; do
-        IFS='|' read -r label field expected <<< "$entry"
+        IFS='|' read -r label field expected <<<"$entry"
         local out
         out=$(docker inspect "$IMAGE" --format "{{json .${field}}}")
         assert_contains "$out" "$expected" "$label" || return 1
@@ -33,7 +33,7 @@ BINARY_CHECKS=(
 test_build_binaries() {
     local entry label cmd
     for entry in "${BINARY_CHECKS[@]}"; do
-        IFS='|' read -r label cmd <<< "$entry"
+        IFS='|' read -r label cmd <<<"$entry"
         # shellcheck disable=SC2086
         docker run --rm --entrypoint bash "$IMAGE" -c "$cmd" >/dev/null 2>&1 || {
             echo "  FAIL: $label not found ($cmd)"
@@ -55,7 +55,7 @@ USER_CHECKS=(
 test_build_user_perms() {
     local entry label cmd expected
     for entry in "${USER_CHECKS[@]}"; do
-        IFS='|' read -r label cmd expected <<< "$entry"
+        IFS='|' read -r label cmd expected <<<"$entry"
         local out
         out=$(docker run --rm --entrypoint bash "$IMAGE" -c "$cmd" 2>&1)
         assert_contains "$out" "$expected" "$label" || return 1

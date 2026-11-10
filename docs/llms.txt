@@ -1,0 +1,15 @@
+---
+layout: null
+permalink: /llms.txt
+sitemap: false
+search_exclude: true
+nav_exclude: true
+---
+# claudebox
+
+> {{ site.description }}
+
+{% assign pages = site.pages | where_exp: "item", "item.description" | where_exp: "item", "item.sitemap != false" | sort: "url" -%}
+{% for item in pages -%}
+- [{{ item.title }}]({{ item.url | absolute_url }}): {{ item.description }}
+{% endfor -%}

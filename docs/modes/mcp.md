@@ -1,4 +1,11 @@
-# MCP Mode
+---
+title: "MCP mode"
+description: "Expose Claude Code as a streamable HTTP MCP server with run_prompt and workspace file tools, inside API mode or next to cron and Telegram."
+nav_order: 4
+parent: "Modes"
+---
+
+# MCP mode
 
 Expose Claude Code as a [Model Context Protocol](https://modelcontextprotocol.io/) server over streamable HTTP so other agents, IDEs, and MCP clients can drive it as a tool.
 
@@ -31,7 +38,7 @@ Prefer the file tools over stuffing large payloads into `prompt`. The agent can 
 
 The four file tools resolve their `path` under the workspace root and reject anything that climbs out of it:
 
-```
+```text
 path escapes workspace root
 ```
 
@@ -54,10 +61,11 @@ Two things here that will bite you if you assume otherwise:
 
 The token is accepted as either a header or a query parameter, since not every MCP client can set headers:
 
-```
+```text
 Authorization: Bearer your-mcp-token
 ```
-```
+
+```text
 http://host:8081/?apiToken=your-mcp-token
 ```
 

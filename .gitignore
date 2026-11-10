@@ -1,10 +1,8 @@
-CLAUDE.md
 __pycache__
 *.pyc
 .research_files
 .agent_notes/
 .agent_knowledge/
-AGENTS.md
 CODEX.local.md
 git-update.sh
 git-update.sh.debot
@@ -41,3 +39,6 @@ coverage.out
 profile.out
 .cover/
 htmlcov/
+
+# Local config overrides at any depth
+*.local.json
