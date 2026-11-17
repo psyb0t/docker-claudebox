@@ -4,6 +4,11 @@ All notable changes to **claudebox** (formerly `docker-claude-code`).
 
 Format roughly follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [v2.8.8], 2026-11-17: update Claude Code
+
+- Updates Claude Code to 2.1.322. New containers install it on first start. An existing container keeps its installed version until it is replaced or updated with `claudebox --update`.
+- Trims the contributor rules in `.agents/rules/` to the ones specific to this repository.
+
 ## [v2.8.7], 2026-11-10: fix container reuse and cron stop
 
 - Builds on aicodebox v0.18.4, now pinned by tag and digest instead of following `latest`. That release fixes a 500 on OpenAI messages with null content, checks image-fetch redirects, rejects workspace symlinks that escape the root, makes MCP `run_prompt` take the workspace lock and retry `json_schema` runs, stops the Telegram bot on a malformed `TELEGRAM_CHAT_ID`, and prints cron `{system_datetime}` in UTC.

@@ -9,7 +9,7 @@ TAG        := v$(VERSION)
 # at a locally-built base image.
 BASE_IMAGE ?= psyb0t/aicodebox:v0.18.4@sha256:4962442c598356a0e570ea16d6ab22af83a5c4fb874165665010b83b256b00e9
 FULL_BASE_IMAGE ?= psyb0t/aicodebox:v0.18.4-full@sha256:dcacf5779530eaf346979e50cb134ab5f6be56bba1654cc334f158f37b7d884d
-CLAUDE_VERSION ?= 2.1.296
+CLAUDE_VERSION ?= 2.1.322
 
 # Lint, CI tests and the docs build run in containers, so the host needs only
 # Docker, Make and Git. DEV_IMAGE is built from Dockerfile.dev on BASE_IMAGE.
