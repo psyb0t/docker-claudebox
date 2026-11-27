@@ -5,7 +5,7 @@ description: "Install the claudebox skill and plugins in Claude Code, Codex and 
 
 # Agent integrations
 
-The [skill](https://github.com/psyb0t/docker-claudebox/tree/master/.agents/skills/claudebox) works in any agent that reads `.agents/skills/` (such as [peen](https://github.com/psyb0t/peen)). It tells agents to use the installed wrapper for local work and to use MCP only for an already-running remote server. It installs natively in the clients below.
+The [skill](https://github.com/psyb0t/docker-claudebox/tree/master/.agents/skills/claudebox) works in any agent that reads `.agents/skills/` (such as [peen](https://github.com/psyb0t/peen)). It tells agents how to use an already-installed claudebox: the wrapper for local work, and MCP only for an already-running remote server. Setup stays in these docs. It installs natively in the clients below.
 
 ## Claude Code
 

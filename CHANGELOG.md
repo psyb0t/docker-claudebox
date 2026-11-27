@@ -4,6 +4,13 @@ All notable changes to **claudebox** (formerly `docker-claude-code`).
 
 Format roughly follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [v2.8.10], 2026-11-27: limit the agent skill to using a running claudebox
+
+- The agent skill now covers only using a claudebox that is already installed and running: the `claudebox` command, the HTTP, OpenAI-compatible and MCP endpoints, Telegram and cron. Installer steps, wrapper internals and server setup are out of the skill and stay in the [documentation](https://psyb0t.github.io/docker-claudebox/) and the README. `references/setup.md` is removed.
+- The skill's safety notes are stated once: deleting files or sessions has no undo, which hosts receive data, permission prompts are bypassed so the container is not a sandbox, and an unset API or MCP token means no authentication.
+- The ClawHub publish job no longer sets `pin_source_urls`.
+- Rule AGT1 now says the skill covers use of the running tool and links the docs for setup. Rule SEC1 leaves the host networking and Docker socket details to the docs.
+
 ## [v2.8.9], 2026-11-27: move the docs to Docusaurus and tighten the agent skill
 
 - The documentation site is built with Docusaurus instead of Jekyll, from the same pages at the same addresses. `make docs` builds it in a pinned Node container and fails on a broken link or anchor, and a new `docs.yml` workflow publishes it to GitHub Pages. `docs/_config.yml`, `docs/_sass/` and `docs/llms.txt` are gone, and `llms.txt` now lives in `website/static/`.

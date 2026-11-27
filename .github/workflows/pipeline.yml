@@ -105,7 +105,6 @@ jobs:
     with:
       skill_names: '["claudebox"]'
       plugin_names: '["claudebox"]'
-      pin_source_urls: true
     secrets:
       clawhub_token: ${{ secrets.CLAWHUB_TOKEN }}
 

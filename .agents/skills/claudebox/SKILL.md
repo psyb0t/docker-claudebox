@@ -1,98 +1,67 @@
 ---
 name: claudebox
-description: "Install, configure, or run Claude Code through the claudebox Docker wrapper (host networking, Docker socket and no permission prompts by default), or connect to its HTTP, MCP, Telegram, or cron surfaces. Use when the user asks to run or serve Claude Code in a container."
+description: "Run Claude Code through an already-installed claudebox: interactive and one-shot `claudebox -p` calls, plus its HTTP /run API, OpenAI-compatible endpoint, MCP tools, Telegram bot and cron results. Use when the user asks to run Claude Code in the claudebox container or to call a claudebox server."
 homepage: https://github.com/psyb0t/docker-claudebox
 user-invocable: true
 metadata:
-  { "openclaw": { "emoji": "📦", "primaryEnv": "CLAUDEBOX_URL", "requires": { "bins": ["docker", "curl"] } } }
+  { "openclaw": { "emoji": "📦", "primaryEnv": "CLAUDEBOX_URL", "requires": { "bins": ["claudebox", "curl"] } } }
 permissions:
-  network: "Calls to a claudebox server the user runs, at http://localhost:8080 by default. The installer and wrapper reach GitHub and Docker Hub, the container reaches the npm registry on first start, Anthropic for model requests, and api.telegram.org in Telegram mode."
-  shell: "Run the claudebox wrapper, docker and curl. The installer uses sudo to copy the wrapper into /usr/local/bin."
-  filesystem: "Read and write the workspace directory the wrapper mounts, ~/.claude (credentials and session state) and ~/.ssh/claudebox (a generated key), and write the wrapper to the install directory."
+  network: "Calls to the user's claudebox server at CLAUDEBOX_URL (http://localhost:8080 by default). Claude Code sends prompts to Anthropic for model requests, and in Telegram mode the bot talks to api.telegram.org."
+  shell: "Run the claudebox command and curl."
+  filesystem: "Read and write files in the workspace directory the user names for claudebox."
 ---
 
 # claudebox
 
-Claude Code, the agentic coding CLI from Anthropic, running in a Docker container with passwordless sudo, the host Docker socket through the wrapper, and `--permission-mode bypassPermissions` on by default. Built as a thin child image of `psyb0t/aicodebox`; every server-mode surface (API / OpenAI adapter / MCP / Telegram / Cron) is inherited from that base.
+Claude Code, the agentic coding CLI from Anthropic, running in a Docker container with `--permission-mode bypassPermissions` on by default. It offers interactive, one-shot, HTTP, OpenAI-compatible, MCP, Telegram and cron surfaces.
+
+## Setup
+
+claudebox must already be installed and running; this skill only covers using it. Installation and server configuration are in the docs at https://psyb0t.github.io/docker-claudebox/ and the README at https://github.com/psyb0t/docker-claudebox. For the HTTP, OpenAI and MCP surfaces, read `CLAUDEBOX_URL` (default `http://localhost:8080`), `CLAUDEBOX_API_MODE_TOKEN` and `CLAUDEBOX_MCP_MODE_TOKEN` from the environment the user set. For the local `claudebox` command, run it from the workspace the user named.
 
 ## Agent execution
 
-Use `claudebox` when it is on `PATH`. Run it from the workspace the user
-named. Do not assemble a new `docker run` command for routine interactive or
-one-shot work. The wrapper owns the workspace mount, `~/.claude`, SSH state,
-image selection, and session lifecycle.
+Use `claudebox` when it is on `PATH`, from the workspace the user named.
 
 ```bash
 claudebox                                      # interactive Claude Code
 claudebox -p "inspect this workspace"          # one-shot work
 claudebox -p "emit events" --output-format stream-json
-CLAUDEBOX_FULL=1 claudebox -p "run the full suite"
 ```
 
-For a wrapper-started server, prefix container variables with
-`CLAUDEBOX_ENV_`. For example,
-`CLAUDEBOX_ENV_CLAUDEBOX_API_MODE=1 claudebox` passes
-`CLAUDEBOX_API_MODE=1` into the container. Bare `CLAUDEBOX_API_MODE` is not
-forwarded and does not start the server.
-
-Start a local API and MCP server only when the user asks for one. Authenticate
-Claude first, then use distinct bearer tokens for the two surfaces:
-
-```bash
-CLAUDEBOX_ENV_CLAUDEBOX_API_MODE=1 \
-CLAUDEBOX_ENV_CLAUDEBOX_MCP_MODE=1 \
-CLAUDEBOX_ENV_CLAUDEBOX_API_MODE_TOKEN=your-api-token \
-CLAUDEBOX_ENV_CLAUDEBOX_MCP_MODE_TOKEN=your-mcp-token \
-claudebox
-```
-
-Use an HTTP or MCP endpoint only when the user asks for a service or provides
-an already-running remote URL. MCP plugins connect to a server. They do not
-replace the local wrapper.
-
-If `claudebox`, `codexbox`, and `pibox` were installed in the same command
-directory, a box can invoke a sibling command directly. The parent wrapper
-passes the real host paths and the sibling wrapper file. Do not set
-`AICODEBOX_HOST_*`, copy wrapper files, or manually mount another box's state
-directory. If the sibling command is absent, ask the user to install it or to
-choose another approach.
+Use an HTTP or MCP endpoint only when the user asks for a service or provides an already-running remote URL.
 
 ## Security & safety
 
-- **No auth when the per-mode token is unset.** `CLAUDEBOX_API_MODE_TOKEN` and `CLAUDEBOX_MCP_MODE_TOKEN` each default to no auth if unset. See [HTTP REST API mode](#http-rest-api-mode) and [MCP server mode](#mcp-server-mode) for details and the exact capability exposed unauthenticated in each case.
 - **Deletion has no undo.** The file delete endpoint, the MCP `delete_file` tool and `claudebox clear-session` remove data. Use them only on files or sessions the current task created, only when the user asked for that removal, and never in another caller's workspace.
-- **Data leaves the machine only to these hosts.** Claude Code sends prompts and the files it reads to Anthropic. Telegram mode sends bot messages and files to the Telegram Bot API. The installer fetches the wrapper from GitHub and the image from Docker Hub, and the first container start installs Claude Code from npm. The server fetches `http(s)` image URLs in OpenAI-style requests. The `curl` examples below call a claudebox server you run yourself, on `localhost` over plain HTTP by default; put a TLS reverse proxy in front for any other host. Tokens in the examples are placeholders.
-- **The standard wrapper uses host networking and always mounts `/var/run/docker.sock`**, so Claude can control the host Docker daemon. Server Compose examples omit the socket. See [Server modes (API / OpenAI / MCP / Telegram / Cron)](references/setup.md#server-modes-api--openai--mcp--telegram--cron), and do not use the wrapper for untrusted prompts.
-- **`--permission-mode bypassPermissions` is on by default.** Claude has full, unrestricted shell/file/docker access inside the container by design (see [When NOT To Use](#when-not-to-use)). Don't treat the container boundary as a sandbox for untrusted input unless you've isolated the container itself.
-- **The installer is downloaded to a file, read, then run.** It generates an SSH key, pulls the image and uses `sudo` to install the wrapper; see [references/setup.md](references/setup.md#quick-install-cli-wrapper).
+- **Data leaves the machine only to these hosts.** Claude Code sends prompts and the files it reads to Anthropic. Telegram mode sends bot messages and files to the Telegram Bot API. The server fetches `http(s)` image URLs in OpenAI-style requests. The `curl` examples below call the claudebox server the user runs, over plain HTTP on `localhost` by default. Send the user's tokens only to the user's own server.
+- **`--permission-mode bypassPermissions` is on by default.** Claude has full, unrestricted shell and file access inside the container, and the container is not a sandbox. Do not send untrusted prompts or input to it.
+- **An unset API or MCP token means no authentication** on that surface. If the user's server is open, tell them rather than relying on it.
 
-The image exposes interactive, command, HTTP, MCP, Telegram, and cron surfaces. The entrypoint selects one foreground mode, except that Telegram and cron run together. API mode takes precedence if it is set with another foreground mode:
+## Surfaces
 
 - **Interactive shell**: `claudebox` drops you into the native `claude` CLI, container-backed, with automatic session resumption.
 - **One-shot exec**: `claudebox -p "prompt" [flags]`, non-interactive, prompt in / structured output out, for scripts and CI.
-- **HTTP REST API**: `CLAUDEBOX_API_MODE=1`. `POST /run`, async runs polled via `GET /run/result?runId=`, file list, download, upload and delete under `/files`, per-request workspace subpaths.
-- **OpenAI-compatible endpoint**: same API-mode server, `/openai/v1/chat/completions` + `/openai/v1/models`. Streaming SSE, multi-turn, multimodal image input.
-- **MCP server**: `CLAUDEBOX_MCP_MODE=1`, 5 tools over streamable HTTP. Mounts at `/mcp/` on the API port when `CLAUDEBOX_API_MODE=1` is also set; otherwise runs standalone as a sidecar process on its own port (`CLAUDEBOX_MCP_MODE_PORT`, default `8081`), coexisting with Telegram/Cron/interactive mode.
-- **Telegram bot**: `CLAUDEBOX_TELEGRAM_MODE=1`, per-chat workspaces, file/photo/video/voice ingestion, slash commands.
-- **Cron scheduler**: `CLAUDEBOX_CRON_MODE=1`, YAML-defined jobs on five or six field cron schedules with durable per-job artifacts.
-
-For installation and configuration, see [references/setup.md](references/setup.md).
+- **HTTP REST API**: `POST /run`, async runs polled via `GET /run/result?runId=`, file list, download, upload and delete under `/files`, per-request workspace subpaths.
+- **OpenAI-compatible endpoint**: `/openai/v1/chat/completions` + `/openai/v1/models`. Streaming SSE, multi-turn, multimodal image input.
+- **MCP server**: 5 tools over streamable HTTP, at `/mcp/` on the API port when API mode is also on, otherwise on its own port (default `8081`) at the port root.
+- **Telegram bot**: per-chat workspaces, file/photo/video/voice ingestion, slash commands.
+- **Cron scheduler**: YAML-defined jobs with durable per-job artifacts.
 
 ## When To Use
 
 - Run Claude Code from a script, Makefile target, or CI pipeline without a TTY (`claudebox -p "explain this diff" --output-format json`).
-- Expose Claude Code as an HTTP backend other services can `POST /run` against, with a separate workspace subpath per caller. Subpaths are not a security boundary between untrusted tenants.
-- Point an OpenAI SDK / LiteLLM at a self-hosted agentic backend instead of a plain model API. Every completion runs the full Claude Code CLI (file I/O, shell, tools), not just text generation.
-- Let another MCP-aware agent, such as Claude Desktop, another Claude Code instance, or an agent framework, use this Claude Code instance as a tool over `/mcp/`.
-- Run Claude from Telegram to ask questions and share files from your phone.
-- Schedule recurring Claude jobs (nightly cleanup, hourly repo checks) with per-run history and optional Telegram result delivery.
+- Call a claudebox HTTP backend with `POST /run`, using a separate workspace subpath per caller. Subpaths are not a security boundary between untrusted tenants.
+- Point an OpenAI SDK / LiteLLM at a claudebox as an agentic backend instead of a plain model API. Every completion runs the full Claude Code CLI (file I/O, shell, tools), not just text generation.
+- Let another MCP-aware agent use this Claude Code instance as a tool over `/mcp/`.
+- Talk to Claude from Telegram to ask questions and share files.
 
 ## When NOT To Use
 
 - Real-time token-by-token streaming for tool-calling or JSON-schema-constrained runs. The OpenAI adapter buffers those (computes the full answer, replays as one SSE burst). Only plain chat (no `tools`, no `response_format` schema) streams incrementally.
-- Multiple concurrent requests against the *same* workspace. API mode enforces one active Claude process per workspace and returns `409` on conflict. Use distinct `workspace` subpaths for parallel work.
-- Treating `--permission-mode bypassPermissions` as sandboxed-safe for untrusted input. Claude has full container access by design (shell, the Docker socket when mounted, mounted SSH keys). Isolate the container itself if the input is untrusted.
-- Treating the MCP server as a sandbox. `run_prompt` has the same container authority as Claude, including mounted files and optional Docker access.
+- Multiple concurrent requests against the *same* workspace. API mode allows one active Claude process per workspace and returns `409` on conflict. Use distinct `workspace` subpaths for parallel work.
+- Treating `--permission-mode bypassPermissions` as safe for untrusted input. Claude has full container access by design.
+- Treating the MCP server as a sandbox. `run_prompt` has the same container authority as Claude, including mounted files.
 
 ## Interactive shell mode
 
@@ -101,7 +70,6 @@ Drop-in replacement for the native `claude` command, container-backed:
 ```bash
 claudebox                  # interactive session, --continue applied automatically
 claudebox --no-continue    # start a fresh session instead of resuming
-claudebox --update         # opt in to a Claude Code CLI update this run
 ```
 
 Utility commands pass through without entering interactive mode:
@@ -109,14 +77,10 @@ Utility commands pass through without entering interactive mode:
 ```bash
 claudebox --version         # claude CLI version
 claudebox doctor            # health checks
-claudebox auth              # manage authentication
 claudebox mcp <args...>     # manage MCP servers, e.g. `claudebox mcp list`
-claudebox setup-token       # interactive OAuth token setup
 claudebox stop              # stop the running interactive container for this workspace
 claudebox clear-session     # delete session history for this workspace
 ```
-
-No mode flag needed: this is the default when you run `claudebox` with no `CLAUDEBOX_*_MODE` env vars set. Auth: `ANTHROPIC_API_KEY` or `CLAUDE_CODE_OAUTH_TOKEN` (see [Auth](#auth)).
 
 ## One-shot exec mode
 
@@ -144,22 +108,13 @@ share context. Use `--no-continue` for a clean slate or `--resume <session_id>`
 for a specific one. Model aliases: `haiku`, `sonnet`, `opus`, `opusplan`,
 `sonnet[1m]`. The wrapper requires `-p` to select this mode.
 
-## HTTP REST API mode
+## HTTP REST API
 
-`CLAUDEBOX_API_MODE=1` starts a long-lived FastAPI server (default port `8080`, `CLAUDEBOX_API_MODE_PORT` to override). Bearer auth via `CLAUDEBOX_API_MODE_TOKEN` (unset = no auth).
-
-With `CLAUDEBOX_API_MODE_TOKEN` unset the API surface is unauthenticated. Anyone who can reach it gets full `/run` (arbitrary-prompt agentic execution) and `/files` (read/write anywhere under `/workspace`) access. Set the token and bind to loopback / behind an authenticating proxy before exposing it beyond localhost.
-
-```yaml
-environment:
-  - CLAUDEBOX_API_MODE=1
-  - CLAUDEBOX_API_MODE_TOKEN=your-secret-token
-  - CLAUDEBOX_AVAILABLE_MODELS=haiku,sonnet,opus,opusplan  # optional, overrides the adapter's built-in default list
-```
+The API listens at `CLAUDEBOX_URL`. If the server has `CLAUDEBOX_API_MODE_TOKEN` set, send it as a bearer token.
 
 ```bash
-curl -X POST http://localhost:8080/run \
-  -H "Authorization: Bearer your-secret-token" \
+curl -X POST "$CLAUDEBOX_URL/run" \
+  -H "Authorization: Bearer $CLAUDEBOX_API_MODE_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"prompt": "what does this repo do", "workspace": "myproject"}'
 ```
@@ -169,11 +124,11 @@ Key `/run` body fields: `prompt` (required), `workspace` (subpath under `/worksp
 **Async runs**: `"async": true` returns immediately with a `runId`; poll it:
 
 ```bash
-curl -X POST http://localhost:8080/run -H "Authorization: Bearer token" -H "Content-Type: application/json" \
+curl -X POST "$CLAUDEBOX_URL/run" -H "Authorization: Bearer $CLAUDEBOX_API_MODE_TOKEN" -H "Content-Type: application/json" \
   -d '{"prompt": "refactor this codebase", "workspace": "myproject", "async": true}'
 # → {"runId": "abc123", "workspace": "/workspace/myproject", "status": "running"}
 
-curl "http://localhost:8080/run/result?runId=abc123" -H "Authorization: Bearer token"
+curl "$CLAUDEBOX_URL/run/result?runId=abc123" -H "Authorization: Bearer $CLAUDEBOX_API_MODE_TOKEN"
 # running → {"runId":..., "status": "running"}; completed → full result JSON (then purged from cache)
 ```
 
@@ -182,11 +137,11 @@ Completed/failed/cancelled results are returned once then purged; unread results
 **File operations**: all paths relative to `/workspace`, path traversal blocked with `400`:
 
 ```bash
-curl "http://localhost:8080/files" -H "Authorization: Bearer token"                          # list root
-curl "http://localhost:8080/files/myproject/src" -H "Authorization: Bearer token"            # list dir
-curl "http://localhost:8080/files/myproject/src/main.py" -H "Authorization: Bearer token"    # download
-curl -X PUT "http://localhost:8080/files/myproject/src/main.py" -H "Authorization: Bearer token" --data-binary @main.py
-curl -X DELETE "http://localhost:8080/files/myproject/src/old.py" -H "Authorization: Bearer token"
+curl "$CLAUDEBOX_URL/files" -H "Authorization: Bearer $CLAUDEBOX_API_MODE_TOKEN"                          # list root
+curl "$CLAUDEBOX_URL/files/myproject/src" -H "Authorization: Bearer $CLAUDEBOX_API_MODE_TOKEN"            # list dir
+curl "$CLAUDEBOX_URL/files/myproject/src/main.py" -H "Authorization: Bearer $CLAUDEBOX_API_MODE_TOKEN"    # download
+curl -X PUT "$CLAUDEBOX_URL/files/myproject/src/main.py" -H "Authorization: Bearer $CLAUDEBOX_API_MODE_TOKEN" --data-binary @main.py
+curl -X DELETE "$CLAUDEBOX_URL/files/myproject/src/old.py" -H "Authorization: Bearer $CLAUDEBOX_API_MODE_TOKEN"
 ```
 
 The delete call removes one file under `/workspace`. See [Security & safety](#security--safety) before using it.
@@ -194,25 +149,27 @@ The delete call removes one file under `/workspace`. See [Security & safety](#se
 **Introspection and lifecycle:**
 
 ```bash
-curl http://localhost:8080/healthz                                                          # {"ok": true, "adapter": "claude"}, no auth
-curl http://localhost:8080/status -H "Authorization: Bearer token"                           # {busyWorkspaces, runs}
-curl -X DELETE "http://localhost:8080/run/abc123" -H "Authorization: Bearer token"            # cancel a run by id
+curl "$CLAUDEBOX_URL/healthz"                                                                     # {"ok": true, "adapter": "claude"}, no auth
+curl "$CLAUDEBOX_URL/status" -H "Authorization: Bearer $CLAUDEBOX_API_MODE_TOKEN"                 # {busyWorkspaces, runs}
+curl -X DELETE "$CLAUDEBOX_URL/run/abc123" -H "Authorization: Bearer $CLAUDEBOX_API_MODE_TOKEN"   # cancel a run by id
 ```
 
-## OpenAI-compatible endpoint mode
+## OpenAI-compatible endpoint
 
-Same API-mode server (`CLAUDEBOX_API_MODE=1`); no separate flag. `chat/completions`-shaped adapter for LiteLLM, OpenAI SDKs, or any client speaking that wire format. Every request runs the full agentic CLI, not just text generation: Claude can read/write files and run shell commands as part of answering.
+Served by the same API server; no separate URL. `chat/completions`-shaped adapter for LiteLLM, OpenAI SDKs, or any client speaking that wire format. Every request runs the full agentic CLI, not just text generation: Claude can read/write files and run shell commands as part of answering.
 
 ```bash
-curl http://localhost:8080/openai/v1/models
+curl "$CLAUDEBOX_URL/openai/v1/models"
 # {"object":"list","data":[{"id":"haiku",...},{"id":"sonnet",...},{"id":"opus",...},{"id":"opusplan",...}]}
 
-curl -X POST http://localhost:8080/openai/v1/chat/completions \
+curl -X POST "$CLAUDEBOX_URL/openai/v1/chat/completions" \
+  -H "Authorization: Bearer $CLAUDEBOX_API_MODE_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"model":"haiku","messages":[{"role":"user","content":"hello"}]}'
 
 # streaming
-curl -X POST http://localhost:8080/openai/v1/chat/completions \
+curl -X POST "$CLAUDEBOX_URL/openai/v1/chat/completions" \
+  -H "Authorization: Bearer $CLAUDEBOX_API_MODE_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"model":"haiku","messages":[{"role":"user","content":"hello"}],"stream":true}'
 ```
@@ -249,27 +206,15 @@ import litellm
 response = litellm.completion(
     model="claudebox/haiku",
     messages=[{"role": "user", "content": "hello"}],
-    api_base="http://localhost:8080/openai/v1",
-    api_key="your-secret-token",  # any string if no API token is configured
+    api_base="http://localhost:8080/openai/v1",  # CLAUDEBOX_URL + /openai/v1
+    api_key="your-api-token",  # the user's CLAUDEBOX_API_MODE_TOKEN, any string if none is configured
 )
 print(response.choices[0].message.content)
 ```
 
-## MCP server mode
+## MCP server
 
-`CLAUDEBOX_MCP_MODE=1` exposes a [Model Context Protocol](https://modelcontextprotocol.io/) server over streamable HTTP, using `CLAUDEBOX_MCP_MODE_TOKEN` as its bearer token (independent of the API token, no fallback; empty/unset = no auth). Where it listens depends on whether API mode is also on:
-
-With `CLAUDEBOX_MCP_MODE_TOKEN` unset the MCP surface is unauthenticated. Anyone who can reach it gets full tool access (run prompts, read/write/remove files under `/workspace`). Set the token and bind to loopback / behind an authenticating proxy before exposing it beyond localhost.
-
-- **`CLAUDEBOX_API_MODE=1` + `CLAUDEBOX_MCP_MODE=1`** (the setup the rest of this skill documents): MCP mounts at `/mcp/` on the API port, no extra process.
-- **`CLAUDEBOX_MCP_MODE=1` alone** (or combined with Telegram/Cron/interactive mode): MCP runs as an independent background process on its own port (`CLAUDEBOX_MCP_MODE_PORT`, default `8081`), serving at the port root, not under `/mcp`.
-
-```yaml
-environment:
-  - CLAUDEBOX_API_MODE=1
-  - CLAUDEBOX_MCP_MODE=1
-  - CLAUDEBOX_MCP_MODE_TOKEN=your-mcp-token
-```
+The MCP server speaks [Model Context Protocol](https://modelcontextprotocol.io/) over streamable HTTP, with `CLAUDEBOX_MCP_MODE_TOKEN` as its bearer token (independent of the API token, no fallback). When the API server also has MCP on, it is at `$CLAUDEBOX_URL/mcp/`. A standalone MCP server serves at the root of its own port (default `8081`), not under `/mcp`. Use the URL the user gives you.
 
 ```json
 {
@@ -285,8 +230,8 @@ environment:
 Clients that can't set headers can pass the token as a query param instead: `http://localhost:8080/mcp/?apiToken=your-mcp-token`. Wire it into Claude Code directly:
 
 ```bash
-claude mcp add --transport http claudebox http://localhost:8080/mcp/ \
-  --header "Authorization: Bearer your-mcp-token"
+claude mcp add --transport http claudebox "$CLAUDEBOX_URL/mcp/" \
+  --header "Authorization: Bearer $CLAUDEBOX_MCP_MODE_TOKEN"
 ```
 
 **Available tools:**
@@ -304,104 +249,29 @@ claude mcp add --transport http claudebox http://localhost:8080/mcp/ \
 Raw JSON-RPC for debugging (streamable-HTTP handshake: `initialize`, then reuse the returned `mcp-session-id`):
 
 ```bash
-curl -s -D - -X POST "http://localhost:8080/mcp/" \
-  -H "Authorization: Bearer your-mcp-token" \
+curl -s -D - -X POST "$CLAUDEBOX_URL/mcp/" \
+  -H "Authorization: Bearer $CLAUDEBOX_MCP_MODE_TOKEN" \
   -H "Content-Type: application/json" \
   -H "Accept: application/json, text/event-stream" \
   -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"debug","version":"1"}}}'
 # capture the mcp-session-id response header, then:
-curl -s -X POST "http://localhost:8080/mcp/" \
-  -H "Authorization: Bearer your-mcp-token" \
+curl -s -X POST "$CLAUDEBOX_URL/mcp/" \
+  -H "Authorization: Bearer $CLAUDEBOX_MCP_MODE_TOKEN" \
   -H "Content-Type: application/json" \
   -H "Accept: application/json, text/event-stream" \
   -H "mcp-session-id: <session-id-from-above>" \
   -d '{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}'
 ```
 
-## Telegram bot mode
+## Telegram bot
 
-`CLAUDEBOX_TELEGRAM_MODE=1` runs a conversational bot with per-chat workspaces. Configure an explicit allowlist before exposing the bot. When `telegram.yml` is absent and `TELEGRAM_CHAT_ID` is unset, the compatibility fallback permits every chat.
+When the user's instance runs the Telegram bot, each chat has its own workspace and settings.
 
-```yaml
-environment:
-  - CLAUDEBOX_TELEGRAM_MODE=1
-  - CLAUDEBOX_TELEGRAM_MODE_TOKEN=123456:ABC-DEF   # from @BotFather
-```
+Bot commands: any text message is a prompt; sending a file/photo/video/voice saves it to the workspace (caption becomes the prompt); `/model [name]`, `/effort [level]`, `/system_prompt [text]`, `/append_system_prompt [text]`, `/fetch <path>`, `/cancel`, `/status`, `/config`, `/reload`. Claude sends files back with `[SEND_FILE: relative/path]` in its response text. `effort` (config field and `/effort` command) is passed to the `claude` CLI as `--effort`; `off` keeps Claude Code's default effort.
 
-`$HOME/.aicodebox/telegram.yml` (mounted into the container):
+## Cron scheduler
 
-```yaml
-allowed_chats:
-  - 123456789    # your DM (positive = user id)
-  - -987654321   # a group chat (negative)
-
-default:
-  model: sonnet
-  effort: high
-  continue: true
-
-chats:
-  123456789:
-    workspace: my-project
-    model: opus
-    system_prompt: "You are a senior engineer"
-```
-
-Per-chat settings: `workspace`, `model`, `effort`, `continue`, `system_prompt`, `append_system_prompt`, and `allowed_users` for a group-chat allowlist.
-
-Bot commands: any text message is a prompt; sending a file/photo/video/voice saves it to the workspace (caption becomes the prompt); `/model [name]`, `/effort [level]`, `/system_prompt [text]`, `/append_system_prompt [text]`, `/fetch <path>`, `/cancel`, `/status`, `/config`, `/reload`. Claude sends files back with `[SEND_FILE: relative/path]` in its response text.
-
-`effort` (config field and `/effort` command) is passed to the `claude` CLI as `--effort`. `off` keeps Claude Code's default effort.
-
-## Cron scheduler mode
-
-`CLAUDEBOX_CRON_MODE=1` runs YAML-defined Claude jobs on cron schedules. Five fields give minute resolution and six fields give second resolution. `docker logs` shows every tick.
-
-```yaml
-environment:
-  - CLAUDEBOX_CRON_MODE=1
-  - CLAUDEBOX_CRON_MODE_FILE=/home/aicode/.aicodebox/cron.yaml
-  - CLAUDEBOX_WORKSPACE=/workspace
-```
-
-`cron.yaml`:
-
-```yaml
-model: haiku                       # default for all jobs; per-job "model" overrides
-jobs:
-  - name: hourly_repo_check
-    schedule: "0 * * * *"          # 5-field standard cron
-    instruction: |
-      Look at the git log for the last hour. Summarize commits.
-  - name: every_30_seconds
-    schedule: "*/30 * * * * *"     # 6-field sub-minute
-    instruction: Write the current UTC timestamp to ./status.txt.
-```
-
-Root defaults and per-job overrides support `model`, `effort`, `thinking`, `system_prompt`, `append_system_prompt`, and `telegram_chat_id`. A job also supports `workspace` and `no_continue`. `telegram_chat_id` requires `CLAUDEBOX_TELEGRAM_MODE_TOKEN`; set it to `0` in a job to disable a root default. `{system_datetime}` and `{job_name}` work in `instruction`, `system_prompt`, and `append_system_prompt`. Claude maps `effort` and `thinking` to its `--effort` flag.
-
-Each run writes `meta.json`, `stdout.log`, `stderr.log`, and `result.txt` under `$HOME/.aicodebox/cron/history/<workspace-slug>/<YYYYMMDD-HHMMSS>-<job-name>/`. The scheduler appends a summary to `$HOME/.aicodebox/cron/<job-name>.jsonl`. Set `CLAUDEBOX_CRON_MODE_HISTORY_DIR` to change the whole cron state root. Same-name overlaps are skipped. Combine with `CLAUDEBOX_TELEGRAM_MODE=1` to post results and reply to a finished run. See [references/setup.md](references/setup.md#cron--telegram-combined-mode).
-
-## Auth
-
-Interactive/exec/cron/CLI-driven modes need an Anthropic credential:
-
-```bash
-claudebox setup-token                                        # interactive OAuth setup, one-time
-CLAUDE_CODE_OAUTH_TOKEN=<YOUR_OAUTH_TOKEN> claudebox -p "do stuff" # then reuse the token
-# or
-ANTHROPIC_API_KEY=<YOUR_API_KEY> claudebox -p "do stuff"
-```
-
-Server modes gate their own HTTP surface independently, each with its own bearer token (unset = open):
-
-| Mode | Token var |
-| --- | --- |
-| API / OpenAI adapter | `CLAUDEBOX_API_MODE_TOKEN` |
-| MCP | `CLAUDEBOX_MCP_MODE_TOKEN` (separate from the API token, no fallback) |
-| Telegram | `CLAUDEBOX_TELEGRAM_MODE_TOKEN` (the bot token itself, not a bearer secret) |
-
-All of these still need the underlying Anthropic credential (`CLAUDE_CODE_OAUTH_TOKEN` / `ANTHROPIC_API_KEY`) set in the container env to actually talk to the model.
+When the user's instance runs the cron scheduler, YAML-defined Claude jobs run on five-field (minute) or six-field (second) cron schedules and can post results to Telegram. Each run records `meta.json`, `stdout.log`, `stderr.log` and `result.txt` under the instance's cron history. Job definitions are the operator's to manage; see the docs at https://psyb0t.github.io/docker-claudebox/.
 
 ## Typical Workflows
 
@@ -414,20 +284,20 @@ claudebox -p "review this diff for security issues" --output-format json --model
 ### Drive claudebox from another agent over MCP
 
 ```bash
-claude mcp add --transport http claudebox http://localhost:8080/mcp/ \
+claude mcp add --transport http claudebox "$CLAUDEBOX_URL/mcp/" \
   --header "Authorization: Bearer $CLAUDEBOX_MCP_MODE_TOKEN"
 ```
 
 ### Fire-and-poll a long refactor over HTTP
 
 ```bash
-RUN_ID=$(curl -s -X POST http://localhost:8080/run -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+RUN_ID=$(curl -s -X POST "$CLAUDEBOX_URL/run" -H "Authorization: Bearer $CLAUDEBOX_API_MODE_TOKEN" -H "Content-Type: application/json" \
   -d '{"prompt": "refactor the auth module", "workspace": "myproject", "async": true}' | jq -r .runId)
 
-until curl -s "http://localhost:8080/run/result?runId=$RUN_ID" -H "Authorization: Bearer $TOKEN" | jq -e '.status != "running"' >/dev/null; do
+until curl -s "$CLAUDEBOX_URL/run/result?runId=$RUN_ID" -H "Authorization: Bearer $CLAUDEBOX_API_MODE_TOKEN" | jq -e '.status != "running"' >/dev/null; do
   sleep 5
 done
-curl -s "http://localhost:8080/run/result?runId=$RUN_ID" -H "Authorization: Bearer $TOKEN" | jq
+curl -s "$CLAUDEBOX_URL/run/result?runId=$RUN_ID" -H "Authorization: Bearer $CLAUDEBOX_API_MODE_TOKEN" | jq
 ```
 
 ### Point LiteLLM at claudebox as an OpenAI-compatible backend
@@ -437,15 +307,3 @@ import litellm
 litellm.completion(model="claudebox/sonnet", messages=[{"role": "user", "content": "hello"}],
                     api_base="http://localhost:8080/openai/v1", api_key=API_TOKEN)
 ```
-
-### Nightly cleanup job with Telegram notification
-
-```yaml
-telegram_chat_id: -1001234567890
-jobs:
-  - name: nightly_cleanup
-    schedule: "0 3 * * *"
-    instruction: Find files older than 7 days under ./tmp and delete them. Report what you removed.
-```
-
-For install steps, docker run/compose invocations, the full env-var reference, port list, and container management commands, see [references/setup.md](references/setup.md).
