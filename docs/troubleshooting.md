@@ -1,7 +1,6 @@
 ---
 title: "Troubleshooting"
 description: "claudebox error messages from the installer, the wrapper, the entrypoint and the servers, what causes each one, and how to fix it."
-nav_order: 9
 ---
 
 # Troubleshooting

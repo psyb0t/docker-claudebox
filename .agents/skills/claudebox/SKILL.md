@@ -1,10 +1,14 @@
 ---
 name: claudebox
-description: "Install, configure, or run Claude Code through the claudebox wrapper, or connect to its HTTP, MCP, Telegram, or cron surfaces."
+description: "Install, configure, or run Claude Code through the claudebox Docker wrapper (host networking, Docker socket and no permission prompts by default), or connect to its HTTP, MCP, Telegram, or cron surfaces. Use when the user asks to run or serve Claude Code in a container."
 homepage: https://github.com/psyb0t/docker-claudebox
 user-invocable: true
 metadata:
   { "openclaw": { "emoji": "📦", "primaryEnv": "CLAUDEBOX_URL", "requires": { "bins": ["docker", "curl"] } } }
+permissions:
+  network: "Calls to a claudebox server the user runs, at http://localhost:8080 by default. The installer and wrapper reach GitHub and Docker Hub, the container reaches the npm registry on first start, Anthropic for model requests, and api.telegram.org in Telegram mode."
+  shell: "Run the claudebox wrapper, docker and curl. The installer uses sudo to copy the wrapper into /usr/local/bin."
+  filesystem: "Read and write the workspace directory the wrapper mounts, ~/.claude (credentials and session state) and ~/.ssh/claudebox (a generated key), and write the wrapper to the install directory."
 ---
 
 # claudebox
@@ -56,16 +60,17 @@ choose another approach.
 ## Security & safety
 
 - **No auth when the per-mode token is unset.** `CLAUDEBOX_API_MODE_TOKEN` and `CLAUDEBOX_MCP_MODE_TOKEN` each default to no auth if unset. See [HTTP REST API mode](#http-rest-api-mode) and [MCP server mode](#mcp-server-mode) for details and the exact capability exposed unauthenticated in each case.
-- **File operations include removal.** Deleting a workspace file has no undo. Only remove files the current task created, and only when the user asked.
-- **The standard wrapper mounts `/var/run/docker.sock`** so Claude can control the host Docker daemon. Server Compose examples omit it. See [Server modes (API / OpenAI / MCP / Telegram / Cron)](references/setup.md#server-modes-api--openai--mcp--telegram--cron), and do not use the wrapper for untrusted prompts.
+- **Deletion has no undo.** The file delete endpoint, the MCP `delete_file` tool and `claudebox clear-session` remove data. Use them only on files or sessions the current task created, only when the user asked for that removal, and never in another caller's workspace.
+- **Data leaves the machine only to these hosts.** Claude Code sends prompts and the files it reads to Anthropic. Telegram mode sends bot messages and files to the Telegram Bot API. The installer fetches the wrapper from GitHub and the image from Docker Hub, and the first container start installs Claude Code from npm. The server fetches `http(s)` image URLs in OpenAI-style requests. The `curl` examples below call a claudebox server you run yourself, on `localhost` over plain HTTP by default; put a TLS reverse proxy in front for any other host. Tokens in the examples are placeholders.
+- **The standard wrapper uses host networking and always mounts `/var/run/docker.sock`**, so Claude can control the host Docker daemon. Server Compose examples omit the socket. See [Server modes (API / OpenAI / MCP / Telegram / Cron)](references/setup.md#server-modes-api--openai--mcp--telegram--cron), and do not use the wrapper for untrusted prompts.
 - **`--permission-mode bypassPermissions` is on by default.** Claude has full, unrestricted shell/file/docker access inside the container by design (see [When NOT To Use](#when-not-to-use)). Don't treat the container boundary as a sandbox for untrusted input unless you've isolated the container itself.
-- **Install script is piped from curl into bash by default.** A safer download-inspect-run alternative is documented alongside it; see [references/setup.md](references/setup.md#quick-install-cli-wrapper).
+- **The installer is downloaded to a file, read, then run.** It generates an SSH key, pulls the image and uses `sudo` to install the wrapper; see [references/setup.md](references/setup.md#quick-install-cli-wrapper).
 
 The image exposes interactive, command, HTTP, MCP, Telegram, and cron surfaces. The entrypoint selects one foreground mode, except that Telegram and cron run together. API mode takes precedence if it is set with another foreground mode:
 
 - **Interactive shell**: `claudebox` drops you into the native `claude` CLI, container-backed, with automatic session resumption.
 - **One-shot exec**: `claudebox -p "prompt" [flags]`, non-interactive, prompt in / structured output out, for scripts and CI.
-- **HTTP REST API**: `CLAUDEBOX_API_MODE=1`. `POST /run`, async runs polled via `GET /run/result?runId=`, `GET/PUT/DELETE /files/{path}`, per-request workspace subpaths.
+- **HTTP REST API**: `CLAUDEBOX_API_MODE=1`. `POST /run`, async runs polled via `GET /run/result?runId=`, file list, download, upload and delete under `/files`, per-request workspace subpaths.
 - **OpenAI-compatible endpoint**: same API-mode server, `/openai/v1/chat/completions` + `/openai/v1/models`. Streaming SSE, multi-turn, multimodal image input.
 - **MCP server**: `CLAUDEBOX_MCP_MODE=1`, 5 tools over streamable HTTP. Mounts at `/mcp/` on the API port when `CLAUDEBOX_API_MODE=1` is also set; otherwise runs standalone as a sidecar process on its own port (`CLAUDEBOX_MCP_MODE_PORT`, default `8081`), coexisting with Telegram/Cron/interactive mode.
 - **Telegram bot**: `CLAUDEBOX_TELEGRAM_MODE=1`, per-chat workspaces, file/photo/video/voice ingestion, slash commands.
@@ -184,7 +189,7 @@ curl -X PUT "http://localhost:8080/files/myproject/src/main.py" -H "Authorizatio
 curl -X DELETE "http://localhost:8080/files/myproject/src/old.py" -H "Authorization: Bearer token"
 ```
 
-`DELETE /files/{path}` removes a file under `/workspace` (no undo). Confirm the target path first, only remove files the current task created, and on a shared instance don't touch another caller's workspace. See [Security & safety](#security--safety).
+The delete call removes one file under `/workspace`. See [Security & safety](#security--safety) before using it.
 
 **Introspection and lifecycle:**
 
@@ -294,7 +299,7 @@ claude mcp add --transport http claudebox http://localhost:8080/mcp/ \
 | `write_file` | Write content to a file (creates parent dirs). |
 | `delete_file` | Delete a file (refuses directories). |
 
-`delete_file` removes a file under `/workspace` (no undo). Confirm the target path first and only remove files the current task created. See [Security & safety](#security--safety).
+`delete_file` follows the same guardrail as the file delete call, see [Security & safety](#security--safety).
 
 Raw JSON-RPC for debugging (streamable-HTTP handshake: `initialize`, then reuse the returned `mcp-session-id`):
 

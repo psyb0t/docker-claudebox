@@ -1,8 +1,6 @@
 ---
 title: "Programmatic mode"
 description: "Run one Claude Code prompt through claudebox -p with text, JSON or native stream-json output, model and effort flags, and session control."
-nav_order: 2
-parent: "Modes"
 ---
 
 # Programmatic mode

@@ -32,7 +32,7 @@ Data flow, servers: client -> aicodebox API, MCP, Telegram or cron server -> `Cl
 - Python 3.12 or newer for the adapter (`requires-python` in `claudebox/pyproject.toml`), with no runtime dependencies beyond the base's `aicodebox` package. Dev tools pinned in the `dev` dependency group: pytest, ruff, pyright. `uv` manages the lockfile.
 - Runtime: the aicodebox base (Ubuntu 24.04, Python, Node, Docker CLI, `jq`). Claude Code comes from npm at first start.
 - Images: `linux/amd64` and `linux/arm64`, built and published by `.github/workflows/pipeline.yml` through `psyb0t/reusable-github-workflows`.
-- Docs: Jekyll on GitHub Pages with the just-the-docs theme, from `docs/`.
+- Docs: Docusaurus, built from `docs/` through `website/` and published to GitHub Pages by `.github/workflows/docs.yml`.
 
 ## Layout
 
@@ -50,7 +50,8 @@ Data flow, servers: client -> aicodebox API, MCP, Telegram or cron server -> `Cl
 | `cron.yml.example`, `telegram.yml.example`, `.env.example` | Annotated configuration examples |
 | `tests/` | Shell test suites. `test.sh` at the root runs the credentialed ones. |
 | `tests/programmatic/` | Native output contract and first-start install output checks |
-| `docs/` | Documentation site source (`_config.yml`, `_sass/`, pages, `llms.txt`, `404.md`) |
+| `docs/` | Documentation pages (Markdown with `title` and `description` front matter) |
+| `website/` | Docusaurus config, sidebar order (`sidebars.mjs`), lockfile and `static/llms.txt` |
 | `.agents/skills/claudebox/` | The agent skill, published to ClawHub |
 | `.agents/plugins/claudebox/` | The OpenClaw stdio-to-HTTP MCP bridge, published to ClawHub |
 | `.agents/.claude-plugin/`, `.agents/.codex-plugin/` | Claude Code and Codex plugin manifests |
@@ -71,7 +72,8 @@ make lint                # shellcheck, shfmt, ruff, pyright (containers)
 make format              # shfmt -w and ruff format
 make test-ci             # credential-free tests, what CI runs (containers)
 make test-unit           # adapter tests with uv and a sibling docker-aicodebox checkout
-make docs                # build the docs site into .testing/docs-site
+make docs                # build the docs site into website/build and check links
+make docs-lock           # refresh website/pnpm-lock.yaml
 make version V=X.Y.Z     # set the version in pyproject, the Codex manifest and install.sh
 ```
 

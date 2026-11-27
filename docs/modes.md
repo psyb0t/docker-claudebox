@@ -1,8 +1,6 @@
 ---
 title: "Modes"
 description: "How a claudebox container picks its mode: interactive or one-shot CLI, API server, Telegram bot, cron scheduler, and the MCP server that runs next to any of them."
-nav_order: 3
-has_children: true
 ---
 
 # Modes

@@ -4,6 +4,13 @@ All notable changes to **claudebox** (formerly `docker-claude-code`).
 
 Format roughly follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [v2.8.9], 2026-11-27: move the docs to Docusaurus and tighten the agent skill
+
+- The documentation site is built with Docusaurus instead of Jekyll, from the same pages at the same addresses. `make docs` builds it in a pinned Node container and fails on a broken link or anchor, and a new `docs.yml` workflow publishes it to GitHub Pages. `docs/_config.yml`, `docs/_sass/` and `docs/llms.txt` are gone, and `llms.txt` now lives in `website/static/`.
+- The agent skill now lists the network hosts, shell commands and files it uses. It says the wrapper uses host networking and always mounts the Docker socket, names the hosts your data goes to, and warns that deleting a file or a session has no undo, so it should only touch what the task created and only when you asked. Its install steps download the installer, read it, then run it, instead of piping it into `bash`.
+- When a release is tagged, ClawHub publishing rewrites the skill's raw GitHub links to that tag, so the installer the skill links to is the released one.
+- The image publish jobs set the Docker Hub repository public and sync its description explicitly.
+
 ## [v2.8.8], 2026-11-17: update Claude Code
 
 - Updates Claude Code to 2.1.322. New containers install it on first start. An existing container keeps its installed version until it is replaced or updated with `claudebox --update`.

@@ -1,0 +1,21 @@
+# claudebox
+
+> Run Claude Code in Docker through a host wrapper, an HTTP API with an OpenAI-compatible endpoint, an MCP server, a Telegram bot, or a cron scheduler.
+
+- [claudebox](https://psyb0t.github.io/docker-claudebox/): claudebox runs Claude Code in Docker from a terminal, a script, an HTTP API, an MCP server, a Telegram bot or a cron schedule, in minimal or full images.
+- [Agent integrations](https://psyb0t.github.io/docker-claudebox/agent-integrations/): Install the claudebox skill and plugins in Claude Code, Codex and OpenClaw, and bridge stdio MCP clients to a running claudebox server.
+- [Architecture](https://psyb0t.github.io/docker-claudebox/architecture/): What claudebox adds to the aicodebox base image: the Claude adapter, the entrypoint, the launcher, first-start scripts, and the container startup order.
+- [Customization](https://psyb0t.github.io/docker-claudebox/customization/): Add your own scripts, first-start init hooks, always-active skills and external MCP servers to claudebox through its persistent state directory.
+- [Development](https://psyb0t.github.io/docker-claudebox/development/): Build claudebox from source, run its lint, credential-free and end-to-end tests with Make and Docker, build these docs, and what the CI pipeline runs.
+- [Environment variables](https://psyb0t.github.io/docker-claudebox/environment-variables/): Every claudebox wrapper and installer setting, the CLAUDEBOX_ENV_ forwarding prefix, extra mounts, SSH agents and sibling boxes.
+- [GitHub Action](https://psyb0t.github.io/docker-claudebox/github-action/): Run claudebox one-shot in a GitHub Actions job with a read-only context directory, a writable output directory, and JSON or text results.
+- [Modes](https://psyb0t.github.io/docker-claudebox/modes/): How a claudebox container picks its mode: interactive or one-shot CLI, API server, Telegram bot, cron scheduler, and the MCP server that runs next to any of them.
+- [API mode](https://psyb0t.github.io/docker-claudebox/modes/api/): The claudebox HTTP API: POST /run with native events and async polling, workspace file endpoints, and the OpenAI-compatible chat endpoint.
+- [Cron mode](https://psyb0t.github.io/docker-claudebox/modes/cron/): Schedule Claude Code jobs from a YAML file with five or six field cron expressions, per-run history directories and Telegram notifications.
+- [Interactive mode](https://psyb0t.github.io/docker-claudebox/modes/interactive/): Run Claude Code interactively in a persistent claudebox container that resumes the last session, plus the utility commands the wrapper passes through.
+- [MCP mode](https://psyb0t.github.io/docker-claudebox/modes/mcp/): Expose Claude Code as a streamable HTTP MCP server with run_prompt and workspace file tools, inside API mode or next to cron and Telegram.
+- [Programmatic mode](https://psyb0t.github.io/docker-claudebox/modes/programmatic/): Run one Claude Code prompt through claudebox -p with text, JSON or native stream-json output, model and effort flags, and session control.
+- [Telegram mode](https://psyb0t.github.io/docker-claudebox/modes/telegram/): Talk to Claude Code from Telegram with per-chat workspaces, models and prompts, chat and user allowlists, file transfer and bot commands.
+- [Troubleshooting](https://psyb0t.github.io/docker-claudebox/troubleshooting/): claudebox error messages from the installer, the wrapper, the entrypoint and the servers, what causes each one, and how to fix it.
+- [Upgrading](https://psyb0t.github.io/docker-claudebox/upgrading/): Update the claudebox image and wrapper, move from docker-claude-code and v1, and the legacy variable names, paths and endpoints that still work.
+- [Installation and wrapper](https://psyb0t.github.io/docker-claudebox/wrapper/): Install the claudebox wrapper, choose the minimal or full image, and manage authentication, Git identity, container reuse and host access.

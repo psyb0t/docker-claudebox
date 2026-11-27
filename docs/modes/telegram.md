@@ -1,8 +1,6 @@
 ---
 title: "Telegram mode"
 description: "Talk to Claude Code from Telegram with per-chat workspaces, models and prompts, chat and user allowlists, file transfer and bot commands."
-nav_order: 5
-parent: "Modes"
 ---
 
 # Telegram mode

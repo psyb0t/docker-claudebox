@@ -1,10 +1,7 @@
 ---
-title: "Home"
+title: "claudebox"
 description: "claudebox runs Claude Code in Docker from a terminal, a script, an HTTP API, an MCP server, a Telegram bot or a cron schedule, in minimal or full images."
-nav_order: 1
-permalink: /
-seo:
-  type: WebSite
+slug: /
 ---
 
 # claudebox

@@ -1,7 +1,6 @@
 ---
 title: "Agent integrations"
 description: "Install the claudebox skill and plugins in Claude Code, Codex and OpenClaw, and bridge stdio MCP clients to a running claudebox server."
-nav_order: 7
 ---
 
 # Agent integrations

@@ -1,7 +1,6 @@
 ---
 title: "Development"
 description: "Build claudebox from source, run its lint, credential-free and end-to-end tests with Make and Docker, build these docs, and what the CI pipeline runs."
-nav_order: 11
 ---
 
 # Development
@@ -64,13 +63,14 @@ The end-to-end suites spend real Claude usage. Put a token in `tests/.env`, usin
 
 ## Documentation
 
-This site is built from [`docs/`](https://github.com/psyb0t/docker-claudebox/tree/master/docs) by GitHub Pages, with Jekyll and the just-the-docs theme.
+This site is built from [`docs/`](https://github.com/psyb0t/docker-claudebox/tree/master/docs) with Docusaurus. The configuration, sidebar order and `llms.txt` live in [`website/`](https://github.com/psyb0t/docker-claudebox/tree/master/website), and [`docs.yml`](https://github.com/psyb0t/docker-claudebox/blob/master/.github/workflows/docs.yml) publishes it to GitHub Pages.
 
 ```bash
-make docs   # build into .testing/docs-site with GitHub's own build image
+make docs        # build into website/build in a pinned Node container and check every link
+make docs-lock   # refresh website/pnpm-lock.yaml after a dependency change
 ```
 
-Every page needs front matter with a unique `title` and a `description` of 50 to 170 characters. Link between pages with the relative `.md` path. Link a file outside `docs/` with its full GitHub URL, because a relative link to it breaks on the site.
+Every page needs front matter with a unique `title` and a `description` of 50 to 170 characters. Add a new page to `website/sidebars.mjs` and to `website/static/llms.txt`. Link between pages with the relative `.md` path. Link a file outside `docs/` with its full GitHub URL, because a relative link to it breaks on the site.
 
 ## CI
 

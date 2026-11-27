@@ -42,3 +42,8 @@ htmlcov/
 
 # Local config overrides at any depth
 *.local.json
+
+# Documentation site build output and dependencies
+/website/node_modules/
+/website/.docusaurus/
+/website/build/

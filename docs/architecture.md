@@ -1,7 +1,6 @@
 ---
 title: "Architecture"
 description: "What claudebox adds to the aicodebox base image: the Claude adapter, the entrypoint, the launcher, first-start scripts, and the container startup order."
-nav_order: 8
 ---
 
 # Architecture

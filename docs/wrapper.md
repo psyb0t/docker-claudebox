@@ -1,7 +1,6 @@
 ---
 title: "Installation and wrapper"
 description: "Install the claudebox wrapper, choose the minimal or full image, and manage authentication, Git identity, container reuse and host access."
-nav_order: 2
 ---
 
 # Installation and wrapper

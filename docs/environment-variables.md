@@ -1,7 +1,6 @@
 ---
 title: "Environment variables"
 description: "Every claudebox wrapper and installer setting, the CLAUDEBOX_ENV_ forwarding prefix, extra mounts, SSH agents and sibling boxes."
-nav_order: 4
 ---
 
 # Environment variables

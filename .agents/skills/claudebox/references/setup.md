@@ -6,18 +6,17 @@ Use the installed `claudebox` wrapper from the target workspace for local work. 
 
 You need Bash, Docker, curl, SSH key-generation tools, and permission to install the wrapper. Authenticate with Claude Code or supply `ANTHROPIC_API_KEY` or `CLAUDE_CODE_OAUTH_TOKEN`.
 
-```bash
-curl -fsSL https://raw.githubusercontent.com/psyb0t/docker-claudebox/master/install.sh | bash
-```
-
-For full:
+Download the installer, read it, then run it:
 
 ```bash
-export CLAUDEBOX_FULL=1
-curl -fsSL https://raw.githubusercontent.com/psyb0t/docker-claudebox/master/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/psyb0t/docker-claudebox/master/install.sh -o claudebox-install.sh
+less claudebox-install.sh
+bash claudebox-install.sh
 ```
 
-For a reviewed install, obtain a local checkout, inspect `install.sh` and its adjacent `wrapper.sh`, then run `bash install.sh`. The remote installer fetches its wrapper from an embedded release ref unless `CLAUDEBOX_INSTALL_REF` overrides it. The wrapper and image are updated separately. See [installation and wrapper behavior](https://github.com/psyb0t/docker-claudebox/blob/master/docs/wrapper.md) before changing image selection or reusing a container.
+The installer pulls the `psyb0t/claudebox` image, creates `~/.claude` and an SSH key at `~/.ssh/claudebox/id_ed25519`, downloads `wrapper.sh` from the same release ref (`CLAUDEBOX_INSTALL_REF` overrides it), and uses `sudo` to copy the wrapper into `/usr/local/bin` (`CLAUDEBOX_INSTALL_DIR` changes the directory). For the full image, run `CLAUDEBOX_FULL=1 bash claudebox-install.sh`.
+
+To review the wrapper too, use a local checkout and read `install.sh` and the adjacent `wrapper.sh` before running `bash install.sh`. The wrapper and image are updated separately. See [installation and wrapper behavior](https://github.com/psyb0t/docker-claudebox/blob/master/docs/wrapper.md) before changing image selection or reusing a container.
 
 ## Local use
 

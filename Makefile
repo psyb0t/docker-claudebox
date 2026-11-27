@@ -16,8 +16,6 @@ CLAUDE_VERSION ?= 2.1.322
 DEV_IMAGE        ?= claudebox-dev:local
 SHELLCHECK_IMAGE ?= koalaman/shellcheck:v0.11.0
 SHFMT_IMAGE      ?= mvdan/shfmt:v3.14.1
-JEKYLL_IMAGE     ?= ghcr.io/actions/jekyll-build-pages:v1.0.13@sha256:6791ebfd912185ed59bfb5fb102664fa872496b79f87ff8b9cfba292a7345041
-DOCS_SITE        ?= .testing/docs-site
 SHFMT_FLAGS      := -i 4 -ci
 SHELL_FILES      := $(shell git ls-files '*.sh' 2>/dev/null)
 
@@ -27,7 +25,7 @@ SHELL_FILES      := $(shell git ls-files '*.sh' 2>/dev/null)
 DEV_RUN        := docker run --rm --network none -v "$(CURDIR):$(CURDIR):ro" -w "$(CURDIR)" $(DEV_IMAGE)
 DEV_RUN_DOCKER := docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v "$(CURDIR):$(CURDIR):ro" -w "$(CURDIR)" -e BASE_IMAGE=$(BASE_IMAGE) $(DEV_IMAGE)
 
-.PHONY: all build build-full build-all pull-base pull-full-base test test-unit test-smoke test-persist test-image-select test-agent-launcher test-managed-nested test-cron-shortcut test-entrypoint-aliases clean help version pkg-lock dev-image lint format test-ci docs
+.PHONY: all build build-full build-all pull-base pull-full-base test test-unit test-smoke test-persist test-image-select test-agent-launcher test-managed-nested test-cron-shortcut test-entrypoint-aliases clean help version pkg-lock dev-image lint format test-ci docs docs-build docs-lock
 
 all: build ## Build the minimal claudebox image on top of the published base
 
@@ -152,20 +150,27 @@ test-ci: dev-image ## Run the credential-free tests CI runs: adapter, wrapper, l
 	$(DEV_RUN_DOCKER) bash tests/test_entrypoint_aliases.sh
 	$(DEV_RUN_DOCKER) bash tests/test_entrypoint_identity.sh
 
-# Builds with the image GitHub Pages uses, so the output matches the published
-# site. The output directory is gitignored.
-docs: ## Build the documentation site into .testing/docs-site
-	@mkdir -p "$(DOCS_SITE)"
-	docker run --rm \
-		--user "$$(id -u):$$(id -g)" \
-		-e HOME=/tmp \
-		-e GITHUB_WORKSPACE=/work \
-		-e GITHUB_REPOSITORY=psyb0t/docker-claudebox \
-		-e INPUT_SOURCE=docs \
-		-e INPUT_DESTINATION="$(DOCS_SITE)" \
-		-e INPUT_VERBOSE=false \
-		-v "$(CURDIR):/work" \
-		$(JEKYLL_IMAGE)
+# The site builds in a pinned Node container. The install is age-gated and runs
+# no package scripts (see website/pnpm-workspace.yaml); the build itself has no
+# network. The output directory website/build is gitignored.
+DOCS_NODE_IMAGE := node:24.21.0-bookworm-slim@sha256:d6aa754f16b3197301076f047b5def2f02ea1dbbc2ca920407d46d7ec7f87b20
+DOCS_CACHE := .testing/docs-cache
+DOCS_RUN := docker run --rm --init --cap-drop ALL --security-opt no-new-privileges:true \
+	--user $(shell id -u):$(shell id -g) -e HOME=/tmp -e COREPACK_HOME=/cache/corepack \
+	-v "$(CURDIR)/$(DOCS_CACHE):/cache" \
+	-v "$(CURDIR)/docs:/work/docs:ro" -v "$(CURDIR)/website:/work/website" -w /work/website
+
+docs: docs-build ## Build the documentation site into website/build
+
+docs-build: | $(DOCS_CACHE) ## Install the locked docs dependencies and build the site
+	$(DOCS_RUN) $(DOCS_NODE_IMAGE) corepack pnpm install --frozen-lockfile --ignore-scripts --store-dir /cache/pnpm
+	$(DOCS_RUN) --network none $(DOCS_NODE_IMAGE) corepack pnpm run build
+
+docs-lock: | $(DOCS_CACHE) ## Refresh website/pnpm-lock.yaml
+	$(DOCS_RUN) $(DOCS_NODE_IMAGE) corepack pnpm install --lockfile-only --ignore-scripts --store-dir /cache/pnpm
+
+$(DOCS_CACHE):
+	mkdir -p "$@"
 
 clean: ## Remove built images (keeps the aicodebox base)
 	docker rmi $(IMAGE_NAME):$(TAG) 2>/dev/null || true

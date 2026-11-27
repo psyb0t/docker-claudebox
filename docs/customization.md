@@ -1,7 +1,6 @@
 ---
 title: "Customization"
 description: "Add your own scripts, first-start init hooks, always-active skills and external MCP servers to claudebox through its persistent state directory."
-nav_order: 5
 ---
 
 # Customization

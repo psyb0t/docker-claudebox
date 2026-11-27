@@ -1,8 +1,6 @@
 ---
 title: "Cron mode"
 description: "Schedule Claude Code jobs from a YAML file with five or six field cron expressions, per-run history directories and Telegram notifications."
-nav_order: 6
-parent: "Modes"
 ---
 
 # Cron mode

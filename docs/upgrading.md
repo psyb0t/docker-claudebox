@@ -1,7 +1,6 @@
 ---
 title: "Upgrading"
 description: "Update the claudebox image and wrapper, move from docker-claude-code and v1, and the legacy variable names, paths and endpoints that still work."
-nav_order: 10
 ---
 
 # Upgrading

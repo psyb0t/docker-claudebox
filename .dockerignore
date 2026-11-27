@@ -11,6 +11,7 @@ base/
 *.md
 # The documentation site source; the image never reads it.
 docs/
+website/
 desc.txt
 git-update.sh
 git-update.sh.debot

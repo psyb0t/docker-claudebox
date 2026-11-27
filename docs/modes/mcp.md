@@ -1,8 +1,6 @@
 ---
 title: "MCP mode"
 description: "Expose Claude Code as a streamable HTTP MCP server with run_prompt and workspace file tools, inside API mode or next to cron and Telegram."
-nav_order: 4
-parent: "Modes"
 ---
 
 # MCP mode
